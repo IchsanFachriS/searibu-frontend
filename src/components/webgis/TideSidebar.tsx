@@ -2,24 +2,28 @@ import React, { useEffect, useState, useRef } from 'react';
 import { X, TrendingUp, TrendingDown, Loader2, Calendar, AlertCircle, RefreshCw } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
+// ── Sesuaikan dengan response aktual dari backend ─────────────────────────────
+// GET /api/tide/prediction?lon=...&lat=...&start_date=...&end_date=...&interval_hours=1
+interface BackendPrediction {
+  time: string;   // ISO8601 UTC, e.g. "2026-02-26T00:00:00Z"
+  height: number; // meter
+}
+
 interface TideData {
   request: {
     lon: number;
     lat: number;
-    days: number;
-    request_time: string;
+    start_time: string;
+    end_time: string;
+    interval_hours: number;
   };
   grid: {
+    id: number;
     lon: number;
     lat: number;
     distance_km: number;
   };
-  predictions: Array<{
-    time: string;
-    timestamp: number;
-    height: number;
-    constituents?: { [key: string]: number };
-  }>;
+  predictions: BackendPrediction[];
   statistics: {
     max: number;
     min: number;
@@ -28,12 +32,14 @@ interface TideData {
   };
   metadata: {
     model: string;
-    units: string;
+    method: string;
     datum: string;
-    time_zone: string;
+    timezone: string;
     constituents: string[];
+    n_constituents: number;
   };
 }
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface TideSidebarProps {
   isOpen: boolean;
@@ -41,12 +47,12 @@ interface TideSidebarProps {
   coordinates: { lat: number; lon: number } | null;
 }
 
-const API_BASE_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = (import.meta as any).env.VITE_API_URL ?? '';
 
-export const TideSidebar: React.FC<TideSidebarProps> = ({ 
-  isOpen, 
-  onClose, 
-  coordinates 
+export const TideSidebar: React.FC<TideSidebarProps> = ({
+  isOpen,
+  onClose,
+  coordinates,
 }) => {
   const { language } = useLanguage();
   const [tideData, setTideData] = useState<TideData | null>(null);
@@ -60,6 +66,7 @@ export const TideSidebar: React.FC<TideSidebarProps> = ({
     if (isOpen && coordinates) {
       fetchTideData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, coordinates]);
 
   useEffect(() => {
@@ -69,187 +76,170 @@ export const TideSidebar: React.FC<TideSidebarProps> = ({
     return () => {
       if (chartInstance.current) {
         chartInstance.current.destroy();
+        chartInstance.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tideData, selectedDate]);
 
+  // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchTideData = async () => {
     if (!coordinates) return;
-
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/tide/prediction?lon=${coordinates.lon}&lat=${coordinates.lat}&days=7`
-      );
+      // Ambil 7 hari mulai hari ini
+      const today = new Date();
+      const startDate = today.toISOString().split('T')[0];
+      const endDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split('T')[0];
 
+      const url =
+        `${API_BASE_URL}/api/tide/prediction` +
+        `?lon=${coordinates.lon}` +
+        `&lat=${coordinates.lat}` +
+        `&start_date=${startDate}` +
+        `&end_date=${endDate}` +
+        `&interval_hours=1`;
+
+      const response = await fetch(url);
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Server error: ${response.status}`);
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Server error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: TideData = await response.json();
       setTideData(data);
+      setSelectedDate(today);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(errorMessage);
-      console.error('Error fetching tide data:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
   };
 
+  // ── Chart ──────────────────────────────────────────────────────────────────
   const renderChart = async () => {
     if (!chartRef.current || !tideData) return;
-
     const ctx = chartRef.current.getContext('2d');
     if (!ctx) return;
 
-    // Destroy existing chart
     if (chartInstance.current) {
       chartInstance.current.destroy();
+      chartInstance.current = null;
     }
 
-    // Filter data for selected date
     const selectedDateStr = selectedDate.toISOString().split('T')[0];
-    const dayData = tideData.predictions.filter(p => 
-      p.time.startsWith(selectedDateStr)
-    );
-
-    if (dayData.length === 0) {
-      return;
-    }
+    const dayData = tideData.predictions.filter(p => p.time.startsWith(selectedDateStr));
+    if (dayData.length === 0) return;
 
     const labels = dayData.map(p => {
-      const date = new Date(p.time);
-      return date.getHours().toString().padStart(2, '0') + ':00';
+      const d = new Date(p.time);
+      return d.getUTCHours().toString().padStart(2, '0') + ':00';
     });
-
     const heights = dayData.map(p => p.height);
 
-    // Import Chart.js dynamically
     try {
-      const ChartJS = await import('chart.js/auto');
-      
-      chartInstance.current = new ChartJS.default(ctx, {
+      const { default: Chart } = await import('chart.js/auto');
+      chartInstance.current = new Chart(ctx, {
         type: 'line',
         data: {
           labels,
-          datasets: [{
-            label: language === 'en' ? 'Tide Level (m)' : 'Tinggi Pasut (m)',
-            data: heights,
-            borderColor: '#2563eb',
-            backgroundColor: 'rgba(37, 99, 235, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4,
-            pointRadius: 3,
-            pointHoverRadius: 6,
-            pointBackgroundColor: '#2563eb',
-            pointBorderColor: '#fff',
-            pointBorderWidth: 2,
-          }]
+          datasets: [
+            {
+              label: language === 'en' ? 'Tide Level (m)' : 'Tinggi Pasut (m)',
+              data: heights,
+              borderColor: '#2563eb',
+              backgroundColor: 'rgba(37, 99, 235, 0.1)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.4,
+              pointRadius: 3,
+              pointHoverRadius: 6,
+              pointBackgroundColor: '#2563eb',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+            },
+          ],
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: {
-              display: false
-            },
+            legend: { display: false },
             tooltip: {
-              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              backgroundColor: 'rgba(0,0,0,0.8)',
               padding: 12,
-              titleFont: { size: 14, weight: 'bold' },
-              bodyFont: { size: 13 },
               callbacks: {
-                label: (context) => {
-                  const value = context.parsed.y;
-                  if (value === null || value === undefined) return '';
-                  return `${language === 'en' ? 'Height' : 'Tinggi'}: ${value.toFixed(3)}m`;
-                }
-              }
-            }
+                label: ctx =>
+                  `${language === 'en' ? 'Height' : 'Tinggi'}: ${(ctx.parsed.y ?? 0).toFixed(3)}m`,
+              },
+            },
           },
           scales: {
             y: {
-              grid: {
-                color: 'rgba(0, 0, 0, 0.05)'
-              },
+              grid: { color: 'rgba(0,0,0,0.05)' },
               ticks: {
-                callback: (value) => (typeof value === 'number' ? value.toFixed(2) : value) + 'm',
-                font: { size: 11 }
+                callback: v => (typeof v === 'number' ? v.toFixed(2) : v) + 'm',
+                font: { size: 11 },
               },
               title: {
                 display: true,
-                text: language === 'en' ? 'Height (meters)' : 'Tinggi (meter)',
-                font: { size: 12, weight: 'bold' }
-              }
+                text: language === 'en' ? 'Height (m)' : 'Tinggi (m)',
+                font: { size: 12, weight: 'bold' },
+              },
             },
             x: {
-              grid: {
-                color: 'rgba(0, 0, 0, 0.05)'
-              },
-              ticks: {
-                font: { size: 11 }
-              },
+              grid: { color: 'rgba(0,0,0,0.05)' },
+              ticks: { font: { size: 11 } },
               title: {
                 display: true,
-                text: language === 'en' ? 'Time (UTC)' : 'Waktu (UTC)',
-                font: { size: 12, weight: 'bold' }
-              }
-            }
-          }
-        }
+                text: 'UTC',
+                font: { size: 12, weight: 'bold' },
+              },
+            },
+          },
+        },
       });
     } catch (err) {
-      console.error('Error loading Chart.js:', err);
+      console.error('Error rendering chart:', err);
     }
   };
 
-  const getDateOptions = () => {
-    const options = [];
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const getDateOptions = (): Date[] => {
+    const opts: Date[] = [];
     const today = new Date();
     for (let i = 0; i < 7; i++) {
-      const date = new Date(today);
-      date.setDate(date.getDate() + i);
-      options.push(date);
+      const d = new Date(today);
+      d.setDate(d.getDate() + i);
+      opts.push(d);
     }
-    return options;
+    return opts;
   };
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString(language === 'en' ? 'en-US' : 'id-ID', {
+  const formatDate = (date: Date) =>
+    date.toLocaleDateString(language === 'en' ? 'en-US' : 'id-ID', {
       weekday: 'short',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
     });
-  };
 
   const getHighLowTides = () => {
-    if (!tideData) return { high: [], low: [] };
-    
+    if (!tideData) return { high: [] as BackendPrediction[], low: [] as BackendPrediction[] };
     const selectedDateStr = selectedDate.toISOString().split('T')[0];
-    const dayData = tideData.predictions.filter(p => 
-      p.time.startsWith(selectedDateStr)
-    );
-
-    const high: typeof dayData = [];
-    const low: typeof dayData = [];
-
+    const dayData = tideData.predictions.filter(p => p.time.startsWith(selectedDateStr));
+    const high: BackendPrediction[] = [];
+    const low: BackendPrediction[] = [];
     for (let i = 1; i < dayData.length - 1; i++) {
       const prev = dayData[i - 1].height;
       const curr = dayData[i].height;
       const next = dayData[i + 1].height;
-
-      if (curr > prev && curr > next) {
-        high.push(dayData[i]);
-      } else if (curr < prev && curr < next) {
-        low.push(dayData[i]);
-      }
+      if (curr > prev && curr > next) high.push(dayData[i]);
+      else if (curr < prev && curr < next) low.push(dayData[i]);
     }
-
     return { high, low };
   };
 
@@ -260,11 +250,11 @@ export const TideSidebar: React.FC<TideSidebarProps> = ({
   return (
     <>
       {/* Overlay */}
-      <div 
+      <div
         className="fixed inset-0 bg-black/30 z-[998] transition-opacity duration-300"
         onClick={onClose}
       />
-      
+
       {/* Sidebar */}
       <div className="fixed top-0 right-0 h-screen w-full md:w-[520px] bg-white shadow-2xl z-[999] overflow-y-auto transform transition-transform duration-300 ease-in-out">
         {/* Header */}
@@ -282,17 +272,19 @@ export const TideSidebar: React.FC<TideSidebarProps> = ({
               <X className="w-6 h-6" />
             </button>
           </div>
-          
+
           {coordinates && (
             <div className="text-sm opacity-90 space-y-1">
               <p className="flex items-center gap-2">
                 <span>📍</span>
-                <span className="font-mono">{coordinates.lat.toFixed(4)}°, {coordinates.lon.toFixed(4)}°</span>
+                <span className="font-mono">
+                  {coordinates.lat.toFixed(4)}°, {coordinates.lon.toFixed(4)}°
+                </span>
               </p>
               {tideData && (
                 <p className="text-xs">
-                  {language === 'en' ? 'Nearest grid' : 'Grid terdekat'}: 
-                  <span className="font-mono ml-1">
+                  {language === 'en' ? 'Nearest grid' : 'Grid terdekat'}:{' '}
+                  <span className="font-mono">
                     {tideData.grid.lat.toFixed(4)}°, {tideData.grid.lon.toFixed(4)}°
                   </span>
                   <span className="ml-1">({tideData.grid.distance_km.toFixed(2)} km)</span>
@@ -304,6 +296,7 @@ export const TideSidebar: React.FC<TideSidebarProps> = ({
 
         {/* Content */}
         <div className="p-6">
+          {/* Loading */}
           {loading && (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
@@ -311,12 +304,15 @@ export const TideSidebar: React.FC<TideSidebarProps> = ({
                 {language === 'en' ? 'Loading tide data...' : 'Memuat data pasut...'}
               </p>
               <p className="text-sm text-gray-500 mt-2">
-                {language === 'en' ? 'This may take a few seconds' : 'Ini mungkin memakan waktu beberapa detik'}
+                {language === 'en'
+                  ? 'This may take a few seconds'
+                  : 'Ini mungkin memakan waktu beberapa detik'}
               </p>
             </div>
           )}
 
-          {error && (
+          {/* Error */}
+          {error && !loading && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -337,6 +333,7 @@ export const TideSidebar: React.FC<TideSidebarProps> = ({
             </div>
           )}
 
+          {/* Data */}
           {tideData && !loading && (
             <>
               {/* Statistics Cards */}
@@ -353,7 +350,7 @@ export const TideSidebar: React.FC<TideSidebarProps> = ({
                   </p>
                   {high.length > 0 && (
                     <p className="text-xs text-blue-600 mt-1">
-                      {high.length} {language === 'en' ? 'high tides' : 'pasang tinggi'}
+                      {high.length} {language === 'en' ? 'high tides today' : 'pasang tinggi hari ini'}
                     </p>
                   )}
                 </div>
@@ -370,7 +367,7 @@ export const TideSidebar: React.FC<TideSidebarProps> = ({
                   </p>
                   {low.length > 0 && (
                     <p className="text-xs text-amber-600 mt-1">
-                      {low.length} {language === 'en' ? 'low tides' : 'surut rendah'}
+                      {low.length} {language === 'en' ? 'low tides today' : 'surut rendah hari ini'}
                     </p>
                   )}
                 </div>
@@ -380,23 +377,41 @@ export const TideSidebar: React.FC<TideSidebarProps> = ({
               {(high.length > 0 || low.length > 0) && (
                 <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
                   <h4 className="text-sm font-semibold text-gray-700 mb-3">
-                    {language === 'en' ? 'Today\'s High & Low Tides' : 'Pasang Surut Hari Ini'}
+                    {language === 'en' ? "Today's High & Low Tides" : 'Pasang Surut Hari Ini'}
                   </h4>
                   <div className="space-y-2">
                     {high.slice(0, 2).map((tide, idx) => (
                       <div key={`high-${idx}`} className="flex justify-between items-center text-sm">
                         <span className="text-blue-600 font-medium">
-                          ↑ {new Date(tide.time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                          ↑{' '}
+                          {new Date(tide.time).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false,
+                            timeZone: 'UTC',
+                          })}{' '}
+                          UTC
                         </span>
-                        <span className="font-semibold text-blue-900">{tide.height.toFixed(3)}m</span>
+                        <span className="font-semibold text-blue-900">
+                          {tide.height.toFixed(3)}m
+                        </span>
                       </div>
                     ))}
                     {low.slice(0, 2).map((tide, idx) => (
                       <div key={`low-${idx}`} className="flex justify-between items-center text-sm">
                         <span className="text-amber-600 font-medium">
-                          ↓ {new Date(tide.time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                          ↓{' '}
+                          {new Date(tide.time).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false,
+                            timeZone: 'UTC',
+                          })}{' '}
+                          UTC
                         </span>
-                        <span className="font-semibold text-amber-900">{tide.height.toFixed(3)}m</span>
+                        <span className="font-semibold text-amber-900">
+                          {tide.height.toFixed(3)}m
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -426,7 +441,9 @@ export const TideSidebar: React.FC<TideSidebarProps> = ({
                         }`}
                       >
                         <div className="text-[10px] opacity-75">
-                          {date.toLocaleDateString(language === 'en' ? 'en-US' : 'id-ID', { weekday: 'short' })}
+                          {date.toLocaleDateString(language === 'en' ? 'en-US' : 'id-ID', {
+                            weekday: 'short',
+                          })}
                         </div>
                         <div className="font-bold">{date.getDate()}</div>
                       </button>
@@ -439,11 +456,11 @@ export const TideSidebar: React.FC<TideSidebarProps> = ({
               <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6 shadow-sm">
                 <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
                   <span>📊</span>
-                  {language === 'en' ? 'Tide Levels - ' : 'Tinggi Pasut - '}
+                  {language === 'en' ? 'Tide Levels — ' : 'Tinggi Pasut — '}
                   {formatDate(selectedDate)}
                 </h3>
                 <div className="h-64">
-                  <canvas ref={chartRef}></canvas>
+                  <canvas ref={chartRef} />
                 </div>
               </div>
 
@@ -469,32 +486,44 @@ export const TideSidebar: React.FC<TideSidebarProps> = ({
                     </thead>
                     <tbody>
                       {tideData.predictions
-                        .filter(p => p.time.startsWith(selectedDate.toISOString().split('T')[0]))
+                        .filter(p =>
+                          p.time.startsWith(selectedDate.toISOString().split('T')[0]),
+                        )
                         .map((prediction, index) => {
                           const date = new Date(prediction.time);
-                          const isMax = Math.abs(prediction.height - tideData.statistics.max) < 0.001;
-                          const isMin = Math.abs(prediction.height - tideData.statistics.min) < 0.001;
-                          
+                          const isMax =
+                            Math.abs(prediction.height - tideData.statistics.max) < 0.001;
+                          const isMin =
+                            Math.abs(prediction.height - tideData.statistics.min) < 0.001;
+
                           return (
-                            <tr 
+                            <tr
                               key={index}
                               className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
                                 isMax ? 'bg-blue-50' : isMin ? 'bg-amber-50' : ''
                               }`}
                             >
                               <td className="px-4 py-3 text-gray-700 font-mono text-xs">
-                                {date.toLocaleTimeString('en-US', { 
-                                  hour: '2-digit', 
+                                {date.toLocaleTimeString('en-US', {
+                                  hour: '2-digit',
                                   minute: '2-digit',
-                                  hour12: false 
+                                  hour12: false,
+                                  timeZone: 'UTC',
                                 })}
                                 {isMax && <span className="ml-2 text-blue-600">↑</span>}
                                 {isMin && <span className="ml-2 text-amber-600">↓</span>}
                               </td>
-                              <td className={`px-4 py-3 text-right font-semibold font-mono ${
-                                isMax ? 'text-blue-700' : isMin ? 'text-amber-700' : 'text-gray-900'
-                              }`}>
-                                {prediction.height > 0 ? '+' : ''}{prediction.height.toFixed(3)}m
+                              <td
+                                className={`px-4 py-3 text-right font-semibold font-mono ${
+                                  isMax
+                                    ? 'text-blue-700'
+                                    : isMin
+                                    ? 'text-amber-700'
+                                    : 'text-gray-900'
+                                }`}
+                              >
+                                {prediction.height > 0 ? '+' : ''}
+                                {prediction.height.toFixed(3)}m
                               </td>
                             </tr>
                           );
@@ -505,18 +534,20 @@ export const TideSidebar: React.FC<TideSidebarProps> = ({
               </div>
 
               {/* Metadata */}
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg text-xs text-gray-600 space-y-1">
+              <div className="mt-6 p-4 bg-gray-50 rounded-lg text-xs text-gray-600 space-y-1 border border-gray-200">
                 <p>
-                  <strong>{language === 'en' ? 'Model' : 'Model'}:</strong> {tideData.metadata.model}
+                  <strong>Model:</strong> {tideData.metadata.model}
                 </p>
                 <p>
-                  <strong>{language === 'en' ? 'Datum' : 'Datum'}:</strong> {tideData.metadata.datum}
+                  <strong>Datum:</strong> {tideData.metadata.datum}
                 </p>
                 <p>
-                  <strong>{language === 'en' ? 'Timezone' : 'Zona Waktu'}:</strong> {tideData.metadata.time_zone}
+                  <strong>{language === 'en' ? 'Timezone' : 'Zona Waktu'}:</strong>{' '}
+                  {tideData.metadata.timezone}
                 </p>
                 <p>
-                  <strong>{language === 'en' ? 'Constituents' : 'Konstituensi'}:</strong> {tideData.metadata.constituents.join(', ').toUpperCase()}
+                  <strong>{language === 'en' ? 'Constituents' : 'Konstituen'}:</strong>{' '}
+                  {tideData.metadata.constituents.map(c => c.toUpperCase()).join(', ')}
                 </p>
               </div>
             </>
