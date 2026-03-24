@@ -8,52 +8,34 @@ interface BasemapToggleProps {
   onBasemapChange: (basemap: BasemapType) => void;
 }
 
-export const BasemapToggle: React.FC<BasemapToggleProps> = ({
-  currentBasemap,
-  onBasemapChange,
-}) => {
-  const { language } = useLanguage();
+const SANS = '"Inter", "DM Sans", system-ui, sans-serif';
 
+export const BasemapToggle: React.FC<BasemapToggleProps> = ({ currentBasemap, onBasemapChange }) => {
+  const { language } = useLanguage();
   const labels = {
-    osm: {
-      en: 'Map',
-      id: 'Peta',
-    },
-    satellite: {
-      en: 'Satellite',
-      id: 'Satelit',
-    },
+    osm:       { en: 'Map',       id: 'Peta' },
+    satellite: { en: 'Satellite', id: 'Satelit' },
   };
 
   return (
-    <div className="fixed bottom-6 left-24 z-[2000] bg-white rounded-lg shadow-xl p-1.5 flex gap-1 border border-gray-200">
-      {/* OSM Button */}
-      <button
-        onClick={() => onBasemapChange('osm')}
-        className={`flex items-center gap-2 px-4 py-2.5 rounded-md transition-all duration-200 ${
-          currentBasemap === 'osm'
-            ? 'bg-indigo-500 text-white shadow-md'
-            : 'bg-transparent text-gray-700 hover:bg-gray-100'
-        }`}
-        title={labels.osm[language]}
-      >
-        <Map className="w-5 h-5" />
-        <span className="font-medium text-sm">{labels.osm[language]}</span>
-      </button>
-
-      {/* Satellite Button */}
-      <button
-        onClick={() => onBasemapChange('satellite')}
-        className={`flex items-center gap-2 px-4 py-2.5 rounded-md transition-all duration-200 ${
-          currentBasemap === 'satellite'
-            ? 'bg-indigo-500 text-white shadow-md'
-            : 'bg-transparent text-gray-700 hover:bg-gray-100'
-        }`}
-        title={labels.satellite[language]}
-      >
-        <Satellite className="w-5 h-5" />
-        <span className="font-medium text-sm">{labels.satellite[language]}</span>
-      </button>
+    <div style={{ position: 'absolute', bottom: 24, left: 20, zIndex: 1000,
+      background: 'rgba(255,255,255,0.97)', borderRadius: 8,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.14)', padding: 5,
+      display: 'flex', gap: 4, border: '1px solid rgba(0,0,0,0.08)',
+      backdropFilter: 'blur(8px)' }}>
+      {(['osm', 'satellite'] as BasemapType[]).map(type => (
+        <button key={type} onClick={() => onBasemapChange(type)}
+          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px',
+            borderRadius: 5, border: 'none', cursor: 'pointer',
+            fontFamily: SANS, fontSize: 13, fontWeight: 600,
+            letterSpacing: '0.01em', transition: 'background 0.2s ease, color 0.2s ease',
+            background: currentBasemap === type ? '#0284c7' : 'transparent',
+            color: currentBasemap === type ? '#fff' : '#374151',
+            boxShadow: currentBasemap === type ? '0 2px 8px rgba(2,132,199,0.3)' : 'none' }}>
+          {type === 'osm' ? <Map size={14} /> : <Satellite size={14} />}
+          {labels[type][language]}
+        </button>
+      ))}
     </div>
   );
 };
