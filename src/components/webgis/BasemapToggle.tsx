@@ -1,7 +1,8 @@
 import React from 'react';
 import { Map, Satellite } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
-import { BasemapType } from '../pages/WebGISPage';
+
+export type BasemapType = 'osm' | 'satellite';
 
 interface BasemapToggleProps {
   currentBasemap: BasemapType;
