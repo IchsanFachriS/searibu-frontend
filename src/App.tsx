@@ -19,9 +19,25 @@ const App: React.FC = () => {
     }
   };
 
+  /* Page-level background — matches each section so no white ever shows */
+  const pageBg: Record<string, string> = {
+    home:   '#08121e',   /* hero dark — HomePage own sections override this */
+    webgis: '#f8fafc',
+    about:  '#f5f0e8',
+    guide:  '#f5f0e8',
+  };
+
   return (
     <LanguageProvider>
-      <div style={{ minHeight: '100vh', background: '#f5f0e8' }}>
+      {/* Global overscroll / background kill-switch */}
+      <style>{`
+        html, body, #root {
+          background: ${pageBg[activePage] ?? '#f8fafc'} !important;
+          overscroll-behavior: none !important;
+        }
+      `}</style>
+
+      <div style={{ minHeight: '100vh', background: pageBg[activePage] ?? '#f8fafc' }}>
         <Navbar activePage={activePage} setActivePage={setActivePage} />
         <main>
           {renderPage()}

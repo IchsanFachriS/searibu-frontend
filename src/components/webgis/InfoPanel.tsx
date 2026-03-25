@@ -387,8 +387,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       <style>{`
         @keyframes shimmer { from{background-position:-200% 0} to{background-position:200% 0} }
         @keyframes spin { to{transform:rotate(360deg)} }
+        .ip-scroll { overscroll-behavior: none; }
         .ip-scroll::-webkit-scrollbar { width:4px; }
-        .ip-scroll::-webkit-scrollbar-track { background:transparent; }
+        .ip-scroll::-webkit-scrollbar-track { background:#f8fafc; }
         .ip-scroll::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:2px; }
       `}</style>
 
@@ -415,7 +416,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       </div>
 
       {/* ── Scrollable Body ── */}
-      <div className="ip-scroll" style={{ flex:1, overflowY:"auto" }}>
+      <div className="ip-scroll" style={{ flex:1, overflowY:"auto", background:"#f8fafc", overscrollBehavior:"none" }}>
 
         {loading && (<><SkeletonHero/><div style={{margin:"12px 12px 0"}}><Shimmer w="30%" h="8px"/><div style={{marginTop:7}}><Shimmer w="100%" h="36px" r="11px"/></div></div><SkeletonChart/></>)}
 
@@ -611,7 +612,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
             </div>
 
             {/* ── Metadata Footer ── */}
-            <div style={{ margin:"12px 12px 20px", borderRadius:11, padding:"10px 13px", background:"#f1f5f9", border:"1px solid #e2e8f0" }}>
+            <div style={{ margin:"12px 12px 0", borderRadius:11, padding:"10px 13px", background:"#f1f5f9", border:"1px solid #e2e8f0" }}>
               {([
                 [lang==="en"?"Tide model":"Model pasut", tideData?.metadata.model],
                 ["Datum", tideData?.metadata.datum],

@@ -30,7 +30,9 @@ export const WebGISPage: React.FC = () => {
           overflow: hidden;
           margin-top: 62px;
           position: relative;
+          background: #f8fafc;
         }
+        html, body, #root { background: #f8fafc !important; overscroll-behavior: none; }
 
         /* Desktop: side-by-side panel */
         @media (min-width: 769px) {
@@ -45,6 +47,7 @@ export const WebGISPage: React.FC = () => {
             transition: width 0.35s cubic-bezier(0.4,0,0.2,1), min-width 0.35s cubic-bezier(0.4,0,0.2,1);
             overflow: hidden;
             flex-shrink: 0;
+            background: #f8fafc;
           }
           .webgis-panel-desktop.closed {
             width: 0 !important;

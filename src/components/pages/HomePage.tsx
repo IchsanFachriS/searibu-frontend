@@ -1,411 +1,590 @@
-import React, { useEffect, useState } from 'react';
-import { useLanguage } from '../../context/LanguageContext';
-import { ArrowRight, Waves, Wind, Anchor } from 'lucide-react';
+/**
+ * HomePage.tsx — Searibu Landing Page
+ * Aesthetic: Scientific-editorial (Nature × National Geographic × Precision Engineering)
+ * Palette: Navy #0a1628 + Ocean #0284c7 + Amber/Orange #e8600a + Warm White #f5f0e8
+ * Typography: Cormorant Garamond (display) + Inter (body/data)
+ */
 
-/* ── Font roles (defined once, used everywhere) ──
-   SANS    → Inter — all UI text, labels, body copy, buttons, captions
-   DISPLAY → Cormorant Garamond italic — ONLY large hero/section headlines
-   MONO    → not used here; reserved for data panels (InfoPanel, charts)
-─────────────────────────────────────────────── */
+import React, { useEffect, useState, useRef } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
+import { ArrowRight, Waves, Wind, Navigation, BarChart2, Map, Shield } from 'lucide-react';
+
+/* ── Font roles ── */
+const DISPLAY = '"Cormorant Garamond", "Georgia", serif';
 const SANS    = '"Inter", "Helvetica Neue", Arial, sans-serif';
-const DISPLAY = '"Cormorant Garamond", Georgia, serif';
 
 interface HomePageProps { onNavigate?: (page: string) => void; }
 
-const CONTENT = {
+/* ── Copy ── */
+const COPY = {
   en: {
-    kicker: 'Ocean Intelligence Platform',
-    headline: 'Where Science\nMeets the Sea',
-    subhead: 'Real-time tidal predictions and marine weather intelligence for the Seribu Archipelago',
-    body: 'Navigate the Kepulauan Seribu with confidence. Access precision TPXO tidal models, live atmospheric forecasting, and data-driven activity recommendations — all in one place.',
-    cta: 'Explore the Atlas', ctaSub: 'Open WebGIS',
-    s1n: '128+', s1l: 'Grid Points',
-    s2n: '15',   s2l: 'Day Forecast',
-    s3n: 'TPXO 9', s3l: 'Tidal Model',
-    features: [
-      { icon: 'waves',  title: 'Tidal Prediction',   desc: 'Hourly TPXO-based predictions with observed station overlay.' },
-      { icon: 'wind',   title: 'Marine Weather',     desc: 'Wind, wave height, ocean current from Open-Meteo API.' },
-      { icon: 'anchor', title: 'Activity Safety',    desc: 'Recommendations for snorkeling, fishing & sailing.' },
+    /* Hero */
+    eyebrow: 'Blue Economy · Seribu Islands · Jakarta Bay',
+    headline: ['Ocean-Informed', 'Marine Tourism'],
+    subline:  'IHO S-104 tidal intelligence and real-time metocean data for safe, well-planned maritime recreation.',
+    cta:      'Open WebGIS Atlas',
+    ctaSecondary: 'Read the Guide',
+
+    /* Context strip */
+    context: 'Research · Institut Teknologi Bandung · Geodesy & Geomatics Engineering · 2025',
+
+    /* Problem section */
+    problemEyebrow: 'The Problem',
+    problemHead:    'Sea conditions determine whether a trip is safe — yet reliable data has been absent.',
+    problemBody:    'Maritime accidents account for 51–62% of all reported incidents in Indonesian waters (IMIC Bakamla, 2021–2023). In the Seribu Islands, tidal variation, wave height, and wind speed directly govern the viability of every activity — snorkeling, diving, island-hopping, fishing. Until now, no localized metocean decision-support tool existed for visitors or operators.',
+    stat1n: '51–62%',  stat1l: 'of maritime incidents caused by ocean conditions',
+    stat2n: '0',        stat2l: 'of 10 major Indonesian dive destinations had metocean tools',
+    stat3n: '0.51',     stat3l: 'hazard weight — oceanographic factors (Chuang et al. 2024)',
+
+    /* Data section */
+    dataEyebrow: 'Metocean Parameters',
+    dataHead:    'Every activity. Every parameter. One platform.',
+    dataBody:    'Searibu consolidates tidal prediction from TPXO9, real-time observations from the Luwes telemetry station, and hourly marine forecasts from Open-Meteo into a single IHO S-104 compliant interface.',
+    activities: [
+      { name: 'Snorkeling',       params: ['Tides', 'Wind', 'Waves', 'Current'] },
+      { name: 'Scuba Diving',     params: ['Tides', 'Current', 'Weather'] },
+      { name: 'Freediving',       params: ['Tides', 'Waves', 'Current'] },
+      { name: 'Jet Ski / Sports', params: ['Wind', 'Waves', 'Weather'] },
+      { name: 'SUP / Kayaking',   params: ['Tides', 'Wind', 'Waves', 'Current'] },
+      { name: 'Island Hopping',   params: ['Tides', 'Wind', 'Waves'] },
+      { name: 'Fishing Tourism',  params: ['Wind', 'Waves', 'Weather'] },
+      { name: 'Beach Camping',    params: ['Tides', 'Weather', 'Sun'] },
     ],
-    pullTitle: 'Field Observation',
-    pullBody: 'Real water-level readings from Luwes telemetry stations, plotted alongside TPXO predictions for scientific cross-validation.',
-    why: 'Why Searibu',
-    whyHead: 'The only platform built for Seribu Islands navigation',
-    whyBody: 'Combining satellite-derived tidal models, real-time meteorological data, and on-ground telemetry observations into a unified marine intelligence system — trusted by researchers and island visitors alike.',
-    credit: 'Kepulauan Seribu · Jakarta Bay · 5°S',
+
+    /* Features section */
+    featEyebrow: 'Platform Capabilities',
+    featHead:    'Precision data. Human-readable output.',
+    features: [
+      { icon: 'waves',  title: 'TPXO Tidal Prediction',   body: 'Hourly astronomical tide forecasts from the TPXO9-atlas-v5 global model. 15 harmonic constituents. MSL datum. IHO S-104 Ed.2.0.0 compliant.' },
+      { icon: 'wind',   title: 'Real-time Marine Forecast', body: 'Wind speed and direction, significant wave height, ocean current velocity — updated hourly via Open-Meteo Marine API at ~15 km resolution.' },
+      { icon: 'map',    title: 'Interactive WebGIS Atlas',  body: 'Leaflet-based map with TPXO spatial grids, island markers, and Luwes tidal station. Click any grid cell for location-specific data.' },
+      { icon: 'shield', title: 'Activity Safety Ratings',   body: 'Science-based thresholds (Chuang et al. 2024; de Vos & Rautenbach 2019) automatically classify conditions for 11 marine tourism activities.' },
+      { icon: 'chart',  title: 'Observation vs. Prediction', body: 'Real-time water level from Luwes station overlaid on TPXO predictions. Transfer of Level correction (TOL = −2.156 m) applied for MSL alignment.' },
+      { icon: 'nav',    title: 'S-104 HDF5 Export',         body: 'Download water level data as IHO S-104 compliant HDF5 files — both astronomical prediction and observed datasets — for ECDIS integration.' },
+    ],
+
+    /* Standards section */
+    stdEyebrow: 'Technical Foundation',
+    stdHead:    'Built to international hydrographic standards.',
+    stdBody:    'The system architecture follows IHO S-100 Universal Hydrographic Data Model (Ed. 5.2.0) and IHO S-104 Water Level Information for Surface Navigation (Ed. 2.0.0, adopted December 2024), ensuring long-term interoperability with electronic navigational chart environments.',
+
+    /* Footer */
+    footerSub: 'Capstone Design Project — FITB, Institut Teknologi Bandung',
   },
+
   id: {
-    kicker: 'Platform Intelijen Kelautan',
-    headline: 'Saat Sains\nBertemu Laut',
-    subhead: 'Prediksi pasang surut real-time dan intelijen cuaca laut untuk Kepulauan Seribu',
-    body: 'Jelajahi Kepulauan Seribu dengan percaya diri. Akses model pasut TPXO yang presisi, prakiraan atmosfer langsung, dan rekomendasi aktivitas berbasis data.',
-    cta: 'Buka Atlas', ctaSub: 'Lihat WebGIS',
-    s1n: '128+', s1l: 'Titik Grid',
-    s2n: '15',   s2l: 'Hari Prakiraan',
-    s3n: 'TPXO 9', s3l: 'Model Pasut',
-    features: [
-      { icon: 'waves',  title: 'Prediksi Pasang Surut', desc: 'Prediksi per jam berbasis TPXO dengan overlay stasiun observasi.' },
-      { icon: 'wind',   title: 'Cuaca Laut',           desc: 'Angin, tinggi gelombang, arus laut dari Open-Meteo API.' },
-      { icon: 'anchor', title: 'Keselamatan Aktivitas', desc: 'Rekomendasi untuk snorkeling, memancing & berlayar.' },
+    eyebrow: 'Blue Economy · Kepulauan Seribu · Teluk Jakarta',
+    headline: ['Informasi Kelautan', 'Untuk Wisata Bahari'],
+    subline:  'Prediksi pasut berstandar IHO S-104 dan data cuaca laut real-time untuk wisata bahari yang aman dan terencana.',
+    cta:      'Buka Atlas WebGIS',
+    ctaSecondary: 'Panduan Penggunaan',
+
+    context: 'Riset · Institut Teknologi Bandung · Teknik Geodesi dan Geomatika · 2025',
+
+    problemEyebrow: 'Permasalahan',
+    problemHead:    'Kondisi laut menentukan keselamatan perjalanan — namun data yang andal selama ini tidak tersedia.',
+    problemBody:    'Kecelakaan maritim menyumbang 51–62% dari seluruh insiden yang dilaporkan di perairan Indonesia (IMIC Bakamla, 2021–2023). Di Kepulauan Seribu, variasi pasut, tinggi gelombang, dan kecepatan angin secara langsung menentukan keamanan setiap aktivitas — snorkeling, selam, island-hopping, memancing. Hingga kini, belum ada sistem informasi metosean yang terlokalisasi tersedia bagi wisatawan maupun operator.',
+    stat1n: '51–62%', stat1l: 'insiden maritim disebabkan kondisi laut',
+    stat2n: '0',       stat2l: 'dari 10 destinasi selam utama memiliki alat metosean',
+    stat3n: '0,51',    stat3l: 'bobot bahaya — faktor oseanografi (Chuang et al. 2024)',
+
+    dataEyebrow: 'Parameter Metosean',
+    dataHead:    'Setiap aktivitas. Setiap parameter. Satu platform.',
+    dataBody:    'Searibu mengintegrasikan prediksi pasut TPXO9, observasi real-time dari stasiun telemetri Luwes, dan prakiraan laut per jam dari Open-Meteo ke dalam antarmuka tunggal berstandar IHO S-104.',
+    activities: [
+      { name: 'Snorkeling',      params: ['Pasut', 'Angin', 'Gelombang', 'Arus'] },
+      { name: 'Selam Scuba',     params: ['Pasut', 'Arus', 'Cuaca'] },
+      { name: 'Freediving',      params: ['Pasut', 'Gelombang', 'Arus'] },
+      { name: 'Jet Ski / Sport', params: ['Angin', 'Gelombang', 'Cuaca'] },
+      { name: 'SUP / Kayak',     params: ['Pasut', 'Angin', 'Gelombang', 'Arus'] },
+      { name: 'Wisata Pulau',    params: ['Pasut', 'Angin', 'Gelombang'] },
+      { name: 'Memancing',       params: ['Angin', 'Gelombang', 'Cuaca'] },
+      { name: 'Camping Pantai',  params: ['Pasut', 'Cuaca', 'Matahari'] },
     ],
-    pullTitle: 'Observasi Lapangan',
-    pullBody: 'Pembacaan muka air nyata dari stasiun telemetri Luwes, diplotkan bersama prediksi TPXO untuk validasi silang ilmiah.',
-    why: 'Mengapa Searibu',
-    whyHead: 'Satu-satunya platform untuk navigasi Kepulauan Seribu',
-    whyBody: 'Menggabungkan model pasut berbasis satelit, data meteorologi real-time, dan observasi telemetri lapangan menjadi sistem intelijen kelautan terpadu.',
-    credit: 'Kepulauan Seribu · Teluk Jakarta · 5°S',
+
+    featEyebrow: 'Fitur Platform',
+    featHead:    'Data presisi. Keluaran yang mudah dipahami.',
+    features: [
+      { icon: 'waves',  title: 'Prediksi Pasut TPXO',       body: 'Prakiraan pasut astronomis per jam dari model global TPXO9-atlas-v5. 15 konstituen harmonik. Datum MSL. Sesuai IHO S-104 Ed.2.0.0.' },
+      { icon: 'wind',   title: 'Prakiraan Laut Real-time',   body: 'Kecepatan dan arah angin, tinggi gelombang signifikan, kecepatan arus — diperbarui per jam melalui Open-Meteo Marine API resolusi ~15 km.' },
+      { icon: 'map',    title: 'Atlas WebGIS Interaktif',    body: 'Peta berbasis Leaflet dengan grid TPXO, penanda pulau, dan stasiun pasut Luwes. Klik sel grid untuk data spesifik lokasi.' },
+      { icon: 'shield', title: 'Penilaian Keamanan Aktivitas', body: 'Ambang batas berbasis ilmiah (Chuang et al. 2024; de Vos & Rautenbach 2019) mengklasifikasikan kondisi otomatis untuk 11 aktivitas wisata bahari.' },
+      { icon: 'chart',  title: 'Observasi vs. Prediksi',    body: 'Muka air real-time dari stasiun Luwes dioverlay di atas prediksi TPXO. Koreksi Transfer of Level (TOL = −2.156 m) diterapkan untuk penyelarasan MSL.' },
+      { icon: 'nav',    title: 'Ekspor HDF5 S-104',          body: 'Unduh data muka air sebagai file HDF5 berstandar IHO S-104 — data prediksi astronomis maupun observasi — untuk integrasi ECDIS.' },
+    ],
+
+    stdEyebrow: 'Landasan Teknis',
+    stdHead:    'Dibangun sesuai standar hidrografi internasional.',
+    stdBody:    'Arsitektur sistem mengikuti IHO S-100 Universal Hydrographic Data Model (Ed. 5.2.0) dan IHO S-104 Water Level Information for Surface Navigation (Ed. 2.0.0, diadopsi Desember 2024), memastikan interoperabilitas jangka panjang dengan lingkungan peta navigasi elektronik.',
+
+    footerSub: 'Proyek Capstone Design — FITB, Institut Teknologi Bandung',
   },
 };
 
+/* ── Animated counter ── */
+const useCounter = (target: string, active: boolean) => {
+  const [val, setVal] = useState('0');
+  useEffect(() => {
+    if (!active) return;
+    const num = parseFloat(target.replace(',', '.').replace(/[^0-9.]/g, ''));
+    if (isNaN(num)) { setVal(target); return; }
+    const suffix = target.replace(/[0-9.,]/g, '');
+    let start = 0;
+    const step = num / 40;
+    const timer = setInterval(() => {
+      start += step;
+      if (start >= num) { setVal(target); clearInterval(timer); return; }
+      const disp = Number.isInteger(num) ? Math.floor(start).toString() : start.toFixed(2);
+      setVal(disp + suffix);
+    }, 20);
+    return () => clearInterval(timer);
+  }, [active, target]);
+  return val;
+};
+
+/* ── Intersection observer hook ── */
+const useInView = (threshold = 0.15) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setInView(true); }, { threshold });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return { ref, inView };
+};
+
+/* ── Feature icon ── */
+const FeatureIcon: React.FC<{ type: string }> = ({ type }) => {
+  const s = { width: 18, height: 18, color: '#e8600a' };
+  if (type === 'waves')  return <Waves {...s} />;
+  if (type === 'wind')   return <Wind {...s} />;
+  if (type === 'map')    return <Map {...s} />;
+  if (type === 'shield') return <Shield {...s} />;
+  if (type === 'chart')  return <BarChart2 {...s} />;
+  if (type === 'nav')    return <Navigation {...s} />;
+  return null;
+};
+
+/* ── Param badge ── */
+const ParamBadge: React.FC<{ label: string }> = ({ label }) => (
+  <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 3, background: 'rgba(2,132,199,0.10)', border: '1px solid rgba(2,132,199,0.22)', fontFamily: SANS, fontSize: 10, fontWeight: 600, color: '#0369a1', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+    {label}
+  </span>
+);
+
+/* ══════════════════════════════════════════════════
+   STAT BLOCK
+══════════════════════════════════════════════════ */
+const StatBlock: React.FC<{ n: string; label: string; active: boolean; accent?: boolean }> = ({ n, label, active, accent }) => {
+  const val = useCounter(n, active);
+  return (
+    <div style={{ padding: '24px 0', borderTop: '1px solid rgba(255,255,255,0.10)' }}>
+      <p style={{ fontFamily: DISPLAY, fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 700, color: accent ? '#e8810a' : '#fff', lineHeight: 1, margin: '0 0 8px', letterSpacing: '-0.02em' }}>
+        {val}
+      </p>
+      <p style={{ fontFamily: SANS, fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5, letterSpacing: '0.04em', textTransform: 'uppercase', maxWidth: 180 }}>
+        {label}
+      </p>
+    </div>
+  );
+};
+
+/* ══════════════════════════════════════════════════
+   MAIN COMPONENT
+══════════════════════════════════════════════════ */
 export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   const { language } = useLanguage();
-  const c = CONTENT[language];
-  const [phase, setPhase] = useState(0);
+  const c = COPY[language as 'en' | 'id'];
 
+  /* entry animation phases */
+  const [phase, setPhase] = useState(0);
   useEffect(() => {
-    const delays = [0, 80, 260, 440, 620, 820];
-    const timers = delays.map((d, i) => setTimeout(() => setPhase(i + 1), d));
+    const timers = [0, 100, 280, 460, 640, 820].map((d, i) => setTimeout(() => setPhase(i + 1), d));
     return () => timers.forEach(clearTimeout);
   }, []);
 
-  const fu = (t: number, d = 0): React.CSSProperties => ({
-    opacity: phase >= t ? 1 : 0,
-    transform: phase >= t ? 'translateY(0)' : 'translateY(24px)',
-    transition: `opacity 0.95s cubic-bezier(0.22,1,0.36,1) ${d}ms, transform 0.95s cubic-bezier(0.22,1,0.36,1) ${d}ms`,
+  /* section observers */
+  const prob  = useInView();
+  const data  = useInView();
+  const feat  = useInView();
+  const std   = useInView();
+
+  const anim = (t: number, delay = 0): React.CSSProperties => ({
+    opacity:    phase >= t ? 1 : 0,
+    transform:  phase >= t ? 'translateY(0)' : 'translateY(20px)',
+    transition: `opacity 0.85s cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 0.85s cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
+  });
+
+  const secAnim = (inV: boolean, delay = 0): React.CSSProperties => ({
+    opacity:    inV ? 1 : 0,
+    transform:  inV ? 'translateY(0)' : 'translateY(28px)',
+    transition: `opacity 0.9s cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 0.9s cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
   });
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Cormorant+Garamond:ital,wght@1,600;1,700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap');
 
-        /* ── CTA Buttons ── */
-        .hp-btn-primary {
-          display: inline-flex; align-items: center; gap: 9px;
-          background: #e8600a; color: #fff;
-          font-family: 'Inter', sans-serif; font-size: 13px;
-          font-weight: 600; letter-spacing: 0.01em;
-          padding: 13px 28px; border: none; border-radius: 7px; cursor: pointer;
-          transition: background 0.25s, transform 0.2s, box-shadow 0.28s;
-        }
-        .hp-btn-primary:hover {
-          background: #c24e06; transform: translateY(-2px);
-          box-shadow: 0 10px 28px rgba(232,96,10,0.32);
-        }
-        .hp-btn-secondary {
+        .hp-cta {
           display: inline-flex; align-items: center; gap: 8px;
-          background: transparent; color: rgba(255,255,255,0.62);
-          font-family: 'Inter', sans-serif; font-size: 13px;
-          font-weight: 500; letter-spacing: 0.01em;
-          padding: 13px 22px; border: 1.5px solid rgba(255,255,255,0.25);
-          border-radius: 7px; cursor: pointer;
-          transition: border-color 0.22s, color 0.22s, background 0.22s;
+          background: #e8600a; color: #fff;
+          font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600;
+          letter-spacing: 0.02em; padding: 12px 26px;
+          border: none; border-radius: 4px; cursor: pointer;
+          transition: background 0.22s, transform 0.22s, box-shadow 0.28s;
         }
-        .hp-btn-secondary:hover {
-          border-color: rgba(255,255,255,0.52); color: #fff;
-          background: rgba(255,255,255,0.07);
-        }
+        .hp-cta:hover { background: #c24e06; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(232,96,10,0.30); }
 
-        /* ── Feature cards (dark) ── */
+        .hp-cta-ghost {
+          display: inline-flex; align-items: center; gap: 8px;
+          background: transparent; color: rgba(255,255,255,0.65);
+          font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500;
+          letter-spacing: 0.02em; padding: 12px 24px;
+          border: 1px solid rgba(255,255,255,0.22); border-radius: 4px; cursor: pointer;
+          transition: border-color 0.2s, color 0.2s, background 0.2s;
+        }
+        .hp-cta-ghost:hover { border-color: rgba(255,255,255,0.5); color: #fff; background: rgba(255,255,255,0.06); }
+
         .feat-card {
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.09);
-          border-radius: 10px; padding: 22px 20px;
-          transition: background 0.28s, border-color 0.28s, transform 0.28s;
+          background: #fff; border: 1px solid #e8ecf0;
+          border-radius: 4px; padding: 28px 24px;
+          transition: box-shadow 0.25s, transform 0.25s, border-color 0.25s;
         }
-        .feat-card:hover {
-          background: rgba(255,255,255,0.07);
-          border-color: rgba(232,96,10,0.28);
-          transform: translateY(-3px);
-        }
+        .feat-card:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.08); transform: translateY(-3px); border-color: #d0dbe6; }
 
-        /* ── Info cards (light section) ── */
-        .info-card {
-          background: #fff; border: 1px solid rgba(0,0,0,0.07);
-          border-radius: 10px; padding: 26px 24px;
-          transition: box-shadow 0.28s, transform 0.28s;
-        }
-        .info-card:hover {
-          box-shadow: 0 8px 28px rgba(0,0,0,0.09);
-          transform: translateY(-3px);
-        }
+        .act-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f1f5f8; }
+        .act-row:last-child { border-bottom: none; }
 
-        .stat-cell {
-          text-align: center; padding: 26px 20px;
-          border-right: 1px solid rgba(0,0,0,0.08);
-        }
-        .stat-cell:last-child { border-right: none; }
-
-        @media (max-width: 960px) {
+        @media (max-width: 768px) {
           .hero-grid { grid-template-columns: 1fr !important; }
-          .feat-col { display: none !important; }
-          .hero-pad { padding: 110px 32px 80px !important; }
-          .info-grid { grid-template-columns: 1fr 1fr !important; }
-          .why-grid  { grid-template-columns: 1fr !important; gap: 16px !important; }
+          .prob-grid  { grid-template-columns: 1fr !important; }
+          .feat-grid  { grid-template-columns: 1fr 1fr !important; }
+          .std-grid   { grid-template-columns: 1fr !important; gap: 32px !important; }
+          .hero-pad   { padding: 120px 24px 80px !important; }
+          .sec-pad    { padding: 72px 24px !important; }
         }
-        @media (max-width: 640px) {
-          .hero-pad  { padding: 100px 22px 72px !important; }
-          .cta-row   { flex-direction: column !important; align-items: flex-start !important; }
-          .info-grid { grid-template-columns: 1fr !important; }
-          .stats-row { grid-template-columns: 1fr 1fr !important; }
-          .stat-cell { border-right: none !important; border-bottom: 1px solid rgba(0,0,0,0.07) !important; }
-          .section-pad { padding-left: 22px !important; padding-right: 22px !important; }
+        @media (max-width: 480px) {
+          .feat-grid { grid-template-columns: 1fr !important; }
+          .stat-grid { grid-template-columns: 1fr 1fr !important; }
         }
       `}</style>
 
-      {/* ════════════ HERO ════════════ */}
-      <section style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
-        {/* Background */}
-        <div style={{ position: 'absolute', inset: 0,
-          backgroundImage: 'url("/background.jpeg")',
-          backgroundSize: 'cover', backgroundPosition: 'center 38%',
-          opacity: phase >= 1 ? 1 : 0, filter: 'brightness(0.3) saturate(0.65)',
-          transition: 'opacity 2s ease' }} />
-        <div style={{ position: 'absolute', inset: 0, zIndex: 1,
-          background: 'linear-gradient(110deg, rgba(7,18,28,0.97) 0%, rgba(7,18,28,0.78) 52%, rgba(7,18,28,0.16) 100%)' }} />
-        <div style={{ position: 'absolute', inset: 0, zIndex: 1,
-          background: 'linear-gradient(to top, rgba(7,18,28,0.95) 0%, transparent 52%)' }} />
-        <div style={{ position: 'absolute', inset: 0, zIndex: 2,
-          background: 'radial-gradient(ellipse 55% 65% at 76% 36%, rgba(232,96,10,0.08) 0%, transparent 70%)' }} />
+      {/* ════════════ 1. HERO ════════════ */}
+      <section style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden', background: '#08121e' }}>
+
+        {/* Full-bleed background image */}
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+          <img
+            src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=1800&q=80"
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 40%', opacity: phase >= 1 ? 1 : 0, filter: 'brightness(0.38) saturate(0.7)', transition: 'opacity 2.2s ease' }}
+          />
+        </div>
+
+        {/* Gradient overlays */}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(105deg, rgba(8,18,30,0.95) 0%, rgba(8,18,30,0.72) 50%, rgba(8,18,30,0.20) 100%)' }}/>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(8,18,30,1) 0%, transparent 45%)' }}/>
+        {/* Accent glow */}
+        <div style={{ position: 'absolute', top: '20%', left: '48%', width: 400, height: 400, background: 'radial-gradient(circle, rgba(232,96,10,0.07) 0%, transparent 70%)', pointerEvents: 'none' }}/>
 
         {/* Content */}
-        <div className="hero-grid hero-pad" style={{
-          position: 'relative', zIndex: 5, maxWidth: 1320, margin: '0 auto',
-          padding: '132px 48px 96px', display: 'grid',
-          gridTemplateColumns: '1fr 340px', gap: 48,
-          minHeight: '100vh', alignItems: 'center',
+        <div className="hero-pad hero-grid" style={{
+          position: 'relative', zIndex: 5,
+          maxWidth: 1280, margin: '0 auto',
+          padding: '140px 64px 100px',
+          display: 'grid', gridTemplateColumns: '1fr 420px',
+          gap: 64, minHeight: '100vh', alignItems: 'center',
         }}>
 
-          {/* Left */}
+          {/* LEFT */}
           <div>
-            {/* Kicker — sans */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12,
-              marginBottom: 24, ...fu(2) }}>
-              <div style={{ width: 22, height: 1.5, background: '#e8600a', borderRadius: 1 }} />
-              <span style={{ fontFamily: SANS, fontSize: 12, fontWeight: 600,
-                letterSpacing: '0.1em', textTransform: 'uppercase', color: '#f07c30' }}>
-                {c.kicker}
+            {/* Eyebrow */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28, ...anim(2) }}>
+              <div style={{ width: 32, height: 1, background: '#e8600a' }}/>
+              <span style={{ fontFamily: SANS, fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(232,128,26,0.85)' }}>
+                {c.eyebrow}
               </span>
             </div>
 
-            {/* Headline — DISPLAY (Cormorant) — intentional editorial moment */}
-            <h1 style={{ fontFamily: DISPLAY,
-              fontSize: 'clamp(3rem, 5.5vw, 5rem)', fontWeight: 700, fontStyle: 'italic',
-              color: '#f0ece6', lineHeight: 1.05, letterSpacing: '-0.02em',
-              marginBottom: 22, whiteSpace: 'pre-line', ...fu(3) }}>
-              {c.headline.split('\n').map((line, i) => (
-                <React.Fragment key={i}>
-                  {i === 0 ? line : <><br /><span style={{ color: '#e8810a' }}>{line}</span></>}
-                </React.Fragment>
-              ))}
+            {/* Headline */}
+            <h1 style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(3.2rem, 5.8vw, 5.4rem)', lineHeight: 1.04, letterSpacing: '-0.02em', color: '#f0ece6', margin: '0 0 24px', ...anim(3) }}>
+              {c.headline[0]}<br />
+              <span style={{ color: '#e8810a' }}>{c.headline[1]}</span>
             </h1>
 
-            {/* Subhead — SANS italic (not serif) */}
-            <p style={{ fontFamily: SANS, fontSize: 'clamp(1rem, 1.6vw, 1.15rem)',
-              fontWeight: 400, fontStyle: 'italic',
-              color: 'rgba(240,236,230,0.7)', lineHeight: 1.65, maxWidth: 520,
-              marginBottom: 20, ...fu(4, 30) }}>
-              {c.subhead}
+            {/* Subline */}
+            <p style={{ fontFamily: SANS, fontSize: 16, fontWeight: 400, lineHeight: 1.75, color: 'rgba(240,236,230,0.58)', maxWidth: 540, margin: '0 0 14px', ...anim(4, 30) }}>
+              {c.subline}
             </p>
 
-            <div style={{ height: 1, background: 'rgba(240,232,220,0.12)',
-              maxWidth: 520, marginBottom: 20, ...fu(4, 55) }} />
+            {/* Thin rule */}
+            <div style={{ width: 64, height: 1, background: 'rgba(240,232,220,0.14)', margin: '20px 0', ...anim(4, 50) }}/>
 
-            {/* Body — SANS */}
-            <p style={{ fontFamily: SANS, fontSize: 15, fontWeight: 400,
-              color: 'rgba(240,236,230,0.52)', lineHeight: 1.85,
-              maxWidth: 500, marginBottom: 34, ...fu(4, 80) }}>
-              {c.body}
+            {/* Context */}
+            <p style={{ fontFamily: SANS, fontSize: 11, fontWeight: 500, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(240,232,220,0.28)', margin: '0 0 36px', ...anim(4, 70) }}>
+              {c.context}
             </p>
 
-            {/* CTA row */}
-            <div className="cta-row" style={{ display: 'flex', alignItems: 'center',
-              gap: 12, marginBottom: 56, ...fu(5) }}>
-              <button className="hp-btn-primary" onClick={() => onNavigate?.('webgis')}>
+            {/* CTAs */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', ...anim(5) }}>
+              <button className="hp-cta" onClick={() => onNavigate?.('webgis')}>
                 {c.cta} <ArrowRight size={14} />
               </button>
-              <button className="hp-btn-secondary" onClick={() => onNavigate?.('webgis')}>
-                {c.ctaSub}
+              <button className="hp-cta-ghost" onClick={() => onNavigate?.('guide')}>
+                {c.ctaSecondary}
+              </button>
+            </div>
+          </div>
+
+          {/* RIGHT — data card */}
+          <div style={{ ...anim(5, 100) }}>
+            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, overflow: 'hidden' }}>
+              {/* Card header */}
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#16a34a', boxShadow: '0 0 8px #16a34a88' }}/>
+                <span style={{ fontFamily: SANS, fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)' }}>
+                  {language === 'id' ? 'Parameter Aktif' : 'Active Parameters'}
+                </span>
+              </div>
+              {/* Parameter list */}
+              {[
+                { label: language === 'id' ? 'Tinggi Pasut' : 'Tidal Height', sub: 'TPXO9 · 15 constituents · MSL', color: '#0284c7' },
+                { label: language === 'id' ? 'Tinggi Gelombang' : 'Wave Height', sub: 'Open-Meteo Marine · ~15 km', color: '#0369a1' },
+                { label: language === 'id' ? 'Kecepatan Angin' : 'Wind Speed',   sub: 'Open-Meteo · 10 m altitude', color: '#0284c7' },
+                { label: language === 'id' ? 'Arus Permukaan' : 'Surface Current', sub: 'Open-Meteo Marine · ~8 km', color: '#0369a1' },
+                { label: language === 'id' ? 'Observasi Luwes' : 'Luwes Observation', sub: 'Pushidrosal · TOL −2.156 m', color: '#e8600a' },
+              ].map((p, i) => (
+                <div key={i} style={{ padding: '12px 20px', borderBottom: i < 4 ? '1px solid rgba(255,255,255,0.05)' : 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 3, height: 28, background: p.color, borderRadius: 2, flexShrink: 0 }}/>
+                  <div>
+                    <p style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.80)', margin: 0 }}>{p.label}</p>
+                    <p style={{ fontFamily: SANS, fontSize: 10, color: 'rgba(255,255,255,0.30)', margin: '2px 0 0', letterSpacing: '0.02em' }}>{p.sub}</p>
+                  </div>
+                  <div style={{ marginLeft: 'auto', width: 7, height: 7, borderRadius: '50%', background: p.color, opacity: 0.6 }}/>
+                </div>
+              ))}
+              {/* Badge */}
+              <div style={{ padding: '10px 20px', background: 'rgba(2,132,199,0.06)', borderTop: '1px solid rgba(2,132,199,0.12)' }}>
+                <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, color: '#38bdf8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  IHO S-104 Ed.2.0.0 Compliant
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom bleed */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 100, background: 'linear-gradient(to bottom, transparent, #f5f0e8)', zIndex: 4 }}/>
+      </section>
+
+      {/* ════════════ 2. PROBLEM ════════════ */}
+      <section className="sec-pad" style={{ background: '#f5f0e8', padding: '96px 64px' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto' }} ref={prob.ref}>
+          <div className="prob-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'start' }}>
+
+            {/* Left — text */}
+            <div style={secAnim(prob.inView)}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                <div style={{ width: 24, height: 1, background: '#e8600a' }}/>
+                <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c2410c' }}>{c.problemEyebrow}</span>
+              </div>
+              <h2 style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(1.8rem, 3.2vw, 2.8rem)', lineHeight: 1.12, color: '#0a1628', margin: '0 0 20px', letterSpacing: '-0.02em' }}>
+                {c.problemHead}
+              </h2>
+              <p style={{ fontFamily: SANS, fontSize: 15, fontWeight: 400, lineHeight: 1.80, color: '#4b5563', margin: 0 }}>
+                {c.problemBody}
+              </p>
+
+              {/* Source note */}
+              <p style={{ fontFamily: SANS, fontSize: 11, color: '#9ca3af', marginTop: 20, fontStyle: 'italic' }}>
+                Sources: IMIC Bakamla 2021–2023; Chuang et al. 2024; Rahantoknam 2022
+              </p>
+            </div>
+
+            {/* Right — stats */}
+            <div style={{ ...secAnim(prob.inView, 150), background: '#0a1628', borderRadius: 6, padding: '0 36px 12px', overflow: 'hidden', position: 'relative' }}>
+              {/* accent bar */}
+              <div style={{ height: 3, background: 'linear-gradient(90deg, #e8600a, #0284c7)', marginLeft: -36, marginRight: -36, marginBottom: 0 }}/>
+              <StatBlock n={c.stat1n} label={c.stat1l} active={prob.inView} accent />
+              <StatBlock n={c.stat2n} label={c.stat2l} active={prob.inView} />
+              <StatBlock n={c.stat3n} label={c.stat3l} active={prob.inView} accent />
+              {/* photo overlay */}
+              <div style={{ marginTop: 20, borderRadius: 4, overflow: 'hidden', height: 160, position: 'relative' }}>
+                <img src="https://images.unsplash.com/photo-1500267027473-b9f7c2cf46a8?w=800&q=75" alt="Seribu Islands aerial" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', filter: 'brightness(0.7) saturate(0.8)' }}/>
+                <div style={{ position: 'absolute', bottom: 10, left: 12 }}>
+                  <span style={{ fontFamily: SANS, fontSize: 10, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Kepulauan Seribu · Jakarta Bay</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════ 3. ACTIVITY DATA MATRIX ════════════ */}
+      <section className="sec-pad" style={{ background: '#fff', padding: '96px 64px' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto' }} ref={data.ref}>
+          {/* Header */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'end', marginBottom: 56 }}>
+            <div style={secAnim(data.inView)}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 24, height: 1, background: '#e8600a' }}/>
+                <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c2410c' }}>{c.dataEyebrow}</span>
+              </div>
+              <h2 style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(1.8rem, 3vw, 2.6rem)', lineHeight: 1.12, color: '#0a1628', margin: 0, letterSpacing: '-0.02em' }}>
+                {c.dataHead}
+              </h2>
+            </div>
+            <p style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.75, color: '#4b5563', ...secAnim(data.inView, 100) }}>
+              {c.dataBody}
+            </p>
+          </div>
+
+          {/* Activities + image */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 48, alignItems: 'start', ...secAnim(data.inView, 180) }}>
+            {/* Activity list */}
+            <div style={{ background: '#f8fafc', border: '1px solid #e8ecf0', borderRadius: 6, overflow: 'hidden' }}>
+              {/* Column headers */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', padding: '10px 20px', background: '#0a1628', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)' }}>
+                  {language === 'id' ? 'Aktivitas Wisata' : 'Tourism Activity'}
+                </span>
+                <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)' }}>
+                  {language === 'id' ? 'Data yang Diperlukan' : 'Required Parameters'}
+                </span>
+              </div>
+              {c.activities.map((act, i) => (
+                <div key={i} className="act-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 20px', borderBottom: i < c.activities.length - 1 ? '1px solid #f1f5f8' : 'none', background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                  <span style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: '#0f172a', minWidth: 140 }}>{act.name}</span>
+                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {act.params.map(p => <ParamBadge key={p} label={p} />)}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Side image + caption */}
+            <div>
+              <div style={{ borderRadius: 4, overflow: 'hidden', marginBottom: 16 }}>
+                <img src="https://images.unsplash.com/photo-1544551763-77ef2d0cfc6c?w=700&q=80" alt="Scuba diving Seribu Islands" style={{ width: '100%', height: 280, objectFit: 'cover', objectPosition: 'center', display: 'block', filter: 'saturate(0.85)' }}/>
+              </div>
+              <p style={{ fontFamily: SANS, fontSize: 11, color: '#94a3b8', lineHeight: 1.6, fontStyle: 'italic' }}>
+                {language === 'id'
+                  ? 'Kegiatan selam skuba di Kepulauan Seribu sangat dipengaruhi variasi pasut dan kecepatan arus.'
+                  : 'Scuba diving in the Seribu Islands is highly sensitive to tidal variation and current velocity.'}
+              </p>
+              {/* Mini badge */}
+              <div style={{ marginTop: 20, padding: '14px 16px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 4, borderLeft: '3px solid #16a34a' }}>
+                <p style={{ fontFamily: SANS, fontSize: 11, fontWeight: 700, color: '#15803d', margin: '0 0 4px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  {language === 'id' ? 'Akurasi Data' : 'Data Accuracy'}
+                </p>
+                <p style={{ fontFamily: SANS, fontSize: 12, color: '#166534', margin: 0, lineHeight: 1.5 }}>
+                  {language === 'id'
+                    ? 'Validasi silang TPXO vs. observasi Luwes diterapkan untuk setiap prediksi.'
+                    : 'TPXO predictions are cross-validated against Luwes station observations.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════ 4. FEATURES ════════════ */}
+      <section className="sec-pad" style={{ background: '#f5f0e8', padding: '96px 64px' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto' }} ref={feat.ref}>
+          <div style={{ maxWidth: 640, marginBottom: 56, ...secAnim(feat.inView) }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <div style={{ width: 24, height: 1, background: '#e8600a' }}/>
+              <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c2410c' }}>{c.featEyebrow}</span>
+            </div>
+            <h2 style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(1.8rem, 3vw, 2.6rem)', lineHeight: 1.12, color: '#0a1628', margin: 0, letterSpacing: '-0.02em' }}>
+              {c.featHead}
+            </h2>
+          </div>
+
+          <div className="feat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18, ...secAnim(feat.inView, 100) }}>
+            {c.features.map((f, i) => (
+              <div key={i} className="feat-card">
+                <div style={{ width: 36, height: 36, borderRadius: 4, background: '#fff5ed', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                  <FeatureIcon type={f.icon} />
+                </div>
+                {/* Feature number */}
+                <p style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, color: '#cbd5e1', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 6px' }}>
+                  {String(i + 1).padStart(2, '0')}
+                </p>
+                <h3 style={{ fontFamily: SANS, fontSize: 14, fontWeight: 700, color: '#0a1628', margin: '0 0 10px', letterSpacing: '-0.01em', lineHeight: 1.3 }}>
+                  {f.title}
+                </h3>
+                <p style={{ fontFamily: SANS, fontSize: 13, color: '#64748b', lineHeight: 1.70, margin: 0 }}>
+                  {f.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════ 5. STANDARDS / TECHNICAL ════════════ */}
+      <section className="sec-pad" style={{ background: '#0a1628', padding: '96px 64px', position: 'relative', overflow: 'hidden' }}>
+        {/* decorative grid lines */}
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '80px 80px', pointerEvents: 'none' }}/>
+        {/* accent glow */}
+        <div style={{ position: 'absolute', top: '50%', right: '10%', width: 500, height: 500, background: 'radial-gradient(circle, rgba(2,132,199,0.06) 0%, transparent 65%)', transform: 'translateY(-50%)', pointerEvents: 'none' }}/>
+
+        <div style={{ maxWidth: 1280, margin: '0 auto', position: 'relative', zIndex: 2 }} ref={std.ref}>
+          <div className="std-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
+
+            {/* Left */}
+            <div style={secAnim(std.inView)}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+                <div style={{ width: 24, height: 1, background: '#e8600a' }}/>
+                <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(232,128,26,0.75)' }}>{c.stdEyebrow}</span>
+              </div>
+              <h2 style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(1.8rem, 3vw, 2.6rem)', lineHeight: 1.12, color: '#f0ece6', margin: '0 0 20px', letterSpacing: '-0.02em' }}>
+                {c.stdHead}
+              </h2>
+              <p style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.78, color: 'rgba(240,236,230,0.55)', margin: '0 0 32px' }}>
+                {c.stdBody}
+              </p>
+              <button className="hp-cta" onClick={() => onNavigate?.('webgis')}>
+                {c.cta} <ArrowRight size={14} />
               </button>
             </div>
 
-            {/* Stats — value uses DISPLAY for visual weight, label SANS */}
-            <div style={{ display: 'flex', gap: 28, ...fu(5, 130) }}>
-              {[{n:c.s1n,l:c.s1l},{n:c.s2n,l:c.s2l},{n:c.s3n,l:c.s3l}].map((s, i) => (
-                <div key={i} style={{ paddingLeft: i > 0 ? 28 : 0,
-                  borderLeft: i > 0 ? '1px solid rgba(240,232,220,0.12)' : 'none' }}>
-                  {/* Stat number — DISPLAY only here for its numeral weight */}
-                  <p style={{ fontFamily: DISPLAY, fontSize: '2.3rem', fontWeight: 600,
-                    color: '#f07c30', lineHeight: 1, letterSpacing: '-0.02em', marginBottom: 6 }}>
-                    {s.n}
-                  </p>
-                  <p style={{ fontFamily: SANS, fontSize: 11, fontWeight: 500,
-                    letterSpacing: '0.07em', textTransform: 'uppercase',
-                    color: 'rgba(240,232,220,0.28)' }}>
-                    {s.l}
-                  </p>
+            {/* Right — standard cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, ...secAnim(std.inView, 150) }}>
+              {[
+                { code: 'IHO S-100', edition: 'Ed. 5.2.0 · 2024', desc: language === 'id' ? 'Universal Hydrographic Data Model — kerangka induk seluruh produk data maritim digital.' : 'Universal Hydrographic Data Model — the overarching framework for all digital maritime data products.' },
+                { code: 'IHO S-104', edition: 'Ed. 2.0.0 · Dec 2024', desc: language === 'id' ? 'Water Level Information for Surface Navigation — spesifikasi produk untuk data muka air, diadopsi Desember 2024.' : 'Water Level Information for Surface Navigation — product specification for water level data, adopted December 2024.' },
+                { code: 'TPXO9', edition: 'Oregon State University', desc: language === 'id' ? 'Model pasut global: 15 konstituen harmonik, resolusi 1/30°. Analisis harmonik mengikuti Schureman (1958) & Foreman (1977).' : 'Global tidal model: 15 harmonic constituents, 1/30° resolution. Harmonic analysis per Schureman (1958) & Foreman (1977).' },
+              ].map((s, i) => (
+                <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 4, padding: '18px 22px', display: 'flex', gap: 18, alignItems: 'flex-start' }}>
+                  <div style={{ flexShrink: 0, paddingTop: 2 }}>
+                    <div style={{ width: 3, height: 40, background: i === 2 ? '#e8600a' : '#0284c7', borderRadius: 2 }}/>
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
+                      <span style={{ fontFamily: SANS, fontSize: 13, fontWeight: 700, color: '#f0ece6', letterSpacing: '0.02em' }}>{s.code}</span>
+                      <span style={{ fontFamily: SANS, fontSize: 10, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>{s.edition}</span>
+                    </div>
+                    <p style={{ fontFamily: SANS, fontSize: 12, color: 'rgba(240,236,230,0.50)', lineHeight: 1.6, margin: 0 }}>{s.desc}</p>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
-
-          {/* Right — feature cards */}
-          <div className="feat-col" style={{ display: 'flex', flexDirection: 'column',
-            gap: 12, alignSelf: 'center', ...fu(5, 70) }}>
-            {c.features.map((f, i) => (
-              <div key={i} className="feat-card">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 10 }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 8,
-                    background: 'rgba(232,96,10,0.14)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {f.icon === 'waves'  && <Waves  size={16} style={{ color: '#f07c30' }} />}
-                    {f.icon === 'wind'   && <Wind   size={16} style={{ color: '#f07c30' }} />}
-                    {f.icon === 'anchor' && <Anchor size={16} style={{ color: '#f07c30' }} />}
-                  </div>
-                  {/* Card title — SANS, medium weight */}
-                  <p style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600,
-                    color: '#f0ece6', letterSpacing: '0.01em' }}>
-                    {f.title}
-                  </p>
-                </div>
-                <p style={{ fontFamily: SANS, fontSize: 13, fontWeight: 400,
-                  color: 'rgba(240,236,230,0.48)', lineHeight: 1.7 }}>
-                  {f.desc}
-                </p>
-              </div>
-            ))}
-
-            {/* Pull quote card */}
-            <div style={{ background: 'rgba(232,96,10,0.09)',
-              border: '1px solid rgba(232,96,10,0.24)', borderLeft: '3px solid #e8600a',
-              borderRadius: 10, padding: '18px 20px' }}>
-              <p style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700,
-                letterSpacing: '0.1em', textTransform: 'uppercase',
-                color: '#f07c30', marginBottom: 8 }}>
-                {c.pullTitle}
-              </p>
-              <p style={{ fontFamily: SANS, fontSize: 13, fontWeight: 400,
-                color: 'rgba(240,236,230,0.58)', lineHeight: 1.72 }}>
-                {c.pullBody}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Photo credit */}
-        <div style={{ position: 'absolute', bottom: 14, right: 24, zIndex: 6 }}>
-          <p style={{ fontFamily: SANS, fontSize: 10, fontWeight: 400,
-            letterSpacing: '0.06em', color: 'rgba(240,232,220,0.22)' }}>
-            {c.credit}
-          </p>
-        </div>
-
-        {/* Bleed to next section */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, zIndex: 3,
-          background: 'linear-gradient(to bottom, transparent, #f5f0e8)' }} />
-      </section>
-
-      {/* ════════════ WHY SECTION ════════════ */}
-      <section style={{ background: '#f5f0e8', padding: '88px 0 96px' }}>
-        <div className="section-pad" style={{ maxWidth: 1320, margin: '0 auto', padding: '0 48px' }}>
-
-          {/* Eyebrow */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-            <div style={{ width: 3, height: 20, background: '#e8600a', borderRadius: 2 }} />
-            <p style={{ fontFamily: SANS, fontSize: 11, fontWeight: 700,
-              letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c2410c' }}>
-              {c.why}
-            </p>
-          </div>
-
-          {/* Section header — DISPLAY for the large editorial headline */}
-          <div className="why-grid" style={{ display: 'grid',
-            gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'start', marginBottom: 56 }}>
-            <h2 style={{ fontFamily: DISPLAY,
-              fontSize: 'clamp(1.9rem, 3.2vw, 2.8rem)', fontWeight: 700, fontStyle: 'italic',
-              color: '#111827', lineHeight: 1.15, letterSpacing: '-0.02em', margin: 0 }}>
-              {c.whyHead}
-            </h2>
-            <p style={{ fontFamily: SANS, fontSize: 15, fontWeight: 400,
-              color: '#4b5563', lineHeight: 1.82, margin: 0, paddingTop: 4 }}>
-              {c.whyBody}
-            </p>
-          </div>
-
-          {/* Stats bar */}
-          <div className="stats-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)',
-            background: '#fff', borderRadius: 12, border: '1px solid rgba(0,0,0,0.07)',
-            overflow: 'hidden', marginBottom: 48,
-            boxShadow: '0 2px 16px rgba(0,0,0,0.06)' }}>
-            {[
-              {n: c.s1n, l: c.s1l},
-              {n: c.s2n + (language === 'en' ? ' days' : ' hari'), l: c.s2l},
-              {n: c.s3n, l: c.s3l},
-            ].map((s, i) => (
-              <div key={i} className="stat-cell">
-                {/* Display number — DISPLAY font for visual drama */}
-                <p style={{ fontFamily: DISPLAY, fontSize: '2.6rem', fontWeight: 700,
-                  color: '#92400e', lineHeight: 1, letterSpacing: '-0.02em', marginBottom: 8 }}>
-                  {s.n}
-                </p>
-                <p style={{ fontFamily: SANS, fontSize: 11, fontWeight: 500,
-                  letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9ca3af' }}>
-                  {s.l}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {/* Feature cards */}
-          <div className="info-grid" style={{ display: 'grid',
-            gridTemplateColumns: 'repeat(3,1fr)', gap: 18 }}>
-            {c.features.map((f, i) => (
-              <div key={i} className="info-card">
-                <div style={{ width: 42, height: 42, borderRadius: 9,
-                  background: i===0?'#e0f2fe': i===1?'#fef3c7':'#f0fdf4',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  marginBottom: 14 }}>
-                  {f.icon==='waves'  && <Waves  size={20} style={{ color: '#0284c7' }} />}
-                  {f.icon==='wind'   && <Wind   size={20} style={{ color: '#d97706' }} />}
-                  {f.icon==='anchor' && <Anchor size={20} style={{ color: '#16a34a' }} />}
-                </div>
-                {/* Card title — SANS semi-bold */}
-                <h3 style={{ fontFamily: SANS, fontSize: 15, fontWeight: 600,
-                  color: '#111827', marginBottom: 8, letterSpacing: '-0.01em' }}>
-                  {f.title}
-                </h3>
-                <p style={{ fontFamily: SANS, fontSize: 14, fontWeight: 400,
-                  color: '#6b7280', lineHeight: 1.72, margin: 0 }}>
-                  {f.desc}
-                </p>
-              </div>
-            ))}
-          </div>
-
         </div>
       </section>
 
       {/* ════════════ FOOTER ════════════ */}
-      <footer style={{ background: '#09131d', padding: '36px 48px 28px' }}>
-        <div style={{ maxWidth: 1320, margin: '0 auto',
-          display: 'flex', justifyContent: 'space-between',
-          alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-          <img
-            src="/logo.svg"
-            alt="Searibu"
-            style={{
-              height: 32,
-              width: 'auto',
-              display: 'block',
-              /* Invert to white on dark navy footer */
-              filter: 'brightness(0) invert(1)',
-              opacity: 0.85,
-            }}
-          />
-          <p style={{ fontFamily: SANS, fontSize: 12, fontWeight: 400,
-            color: 'rgba(240,232,220,0.28)', letterSpacing: '0.04em' }}>
-            &copy; 2025 Searibu — ITB Geodesy Team
-          </p>
+      <footer style={{ background: '#070f1a', padding: '32px 64px 28px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <img src="/logo.svg" alt="Searibu" style={{ height: 30, width: 'auto', filter: 'brightness(0) invert(1)', opacity: 0.75 }}/>
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ fontFamily: SANS, fontSize: 11, color: 'rgba(240,232,220,0.30)', margin: 0 }}>{c.footerSub}</p>
+            <p style={{ fontFamily: SANS, fontSize: 11, color: 'rgba(240,232,220,0.18)', margin: '3px 0 0' }}>&copy; 2025 Searibu</p>
+          </div>
         </div>
       </footer>
     </>
