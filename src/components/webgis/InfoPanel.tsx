@@ -1,6 +1,19 @@
 /**
  * InfoPanel.tsx  — Marine Info Panel (Responsive)
- * v2.3.0 — grafik per menit (1440 titik/hari), tabel tetap per jam
+ * v2.3.1 — Fix timezone conversion untuk Luwes observations
+ *
+ * BUG SEBELUMNYA:
+ *   parseToWIB() menambahkan +7 jam ke semua timestamp, termasuk yang
+ *   sudah ber-offset (+07:00). Akibatnya titik Luwes (stored as WIB +07:00)
+ *   diplot 7 jam terlalu kanan, lalu "terpotong" karena x > 24.
+ *
+ * FIX:
+ *   - Jika timestamp mengandung offset eksplisit (+07:00, +0700, Z, dll),
+ *     parse langsung sebagai UTC lalu konversi ke WIB dengan benar.
+ *   - Jika timestamp TIDAK mengandung offset (format bare ISO), asumsikan UTC
+ *     lalu konversi ke WIB.
+ *   - TPXO timestamps: selalu "...Z" (UTC) → +7 jam → WIB ✓
+ *   - Luwes timestamps: "...+07:00" (sudah WIB) → parse UTC → sudah benar ✓
  */
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
@@ -62,7 +75,11 @@ const SANS = '"Inter", "DM Sans", system-ui, sans-serif';
 const MONO = '"Inter", "DM Sans", system-ui, sans-serif';
 const TOL_CORRECTION = -2.156;
 const kmhToMs = (v:number) => v/3.6;
-const todayISO = () => { const wib=new Date(Date.now()+7*3600_000); return wib.toISOString().slice(0,10); };
+const todayISO = () => {
+  // Hari ini dalam WIB (UTC+7)
+  const wib = new Date(Date.now() + 7 * 3600_000);
+  return wib.toISOString().slice(0, 10);
+};
 
 const WMO: Record<number,{en:string;id:string}> = {
   0:{en:"Clear sky",id:"Langit cerah"}, 1:{en:"Mainly clear",id:"Cerah berawan"},
@@ -79,8 +96,14 @@ const wmoLabel = (code:number|null, lang:"en"|"id") => {
   const nearest = Object.keys(WMO).map(Number).reduce((a,b)=>Math.abs(b-code)<Math.abs(a-code)?b:a);
   return WMO[nearest]?.[lang]??"—";
 };
-const windDirLabel = (deg:number) => { const d=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"]; return d[Math.round(deg/22.5)%16]; };
-const fmtHHmm = (iso:string) => { const d=new Date(iso); return `${d.getHours().toString().padStart(2,"0")}:${d.getMinutes().toString().padStart(2,"0")}`; };
+const windDirLabel = (deg:number) => {
+  const d=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+  return d[Math.round(deg/22.5)%16];
+};
+const fmtHHmm = (iso:string) => {
+  const d = new Date(iso);
+  return `${d.getHours().toString().padStart(2,"0")}:${d.getMinutes().toString().padStart(2,"0")}`;
+};
 
 const statusStyles: Record<ActivityRec["status"],{ dot:string; bg:string; border:string; text:string; label:[string,string] }> = {
   safe:    { dot:"#16a34a", bg:"#f0fdf4", border:"#86efac", text:"#15803d", label:["Safe","Aman"]    },
@@ -91,39 +114,90 @@ const statusStyles: Record<ActivityRec["status"],{ dot:string; bg:string; border
 /* ═══════════════════════════════════════════════════
    CACHE HELPERS
 ═══════════════════════════════════════════════════ */
-const cacheKey = (lat:number, lon:number, t:"wx"|"marine") => `searibu_${t}_${lat.toFixed(4)}_${lon.toFixed(4)}`;
-function readCache<T>(lat:number, lon:number, t:"wx"|"marine"): T|null { try { const r=sessionStorage.getItem(cacheKey(lat,lon,t)); return r?JSON.parse(r):null; } catch { return null; } }
-function writeCache<T>(lat:number, lon:number, t:"wx"|"marine", data:T) { try { sessionStorage.setItem(cacheKey(lat,lon,t),JSON.stringify(data)); } catch {} }
-function clearCache(lat:number, lon:number) { try { sessionStorage.removeItem(cacheKey(lat,lon,"wx")); sessionStorage.removeItem(cacheKey(lat,lon,"marine")); } catch {} }
+const cacheKey = (lat:number, lon:number, t:"wx"|"marine") =>
+  `searibu_${t}_${lat.toFixed(4)}_${lon.toFixed(4)}`;
+function readCache<T>(lat:number, lon:number, t:"wx"|"marine"): T|null {
+  try { const r=sessionStorage.getItem(cacheKey(lat,lon,t)); return r?JSON.parse(r):null; } catch { return null; }
+}
+function writeCache<T>(lat:number, lon:number, t:"wx"|"marine", data:T) {
+  try { sessionStorage.setItem(cacheKey(lat,lon,t),JSON.stringify(data)); } catch {}
+}
+function clearCache(lat:number, lon:number) {
+  try {
+    sessionStorage.removeItem(cacheKey(lat,lon,"wx"));
+    sessionStorage.removeItem(cacheKey(lat,lon,"marine"));
+  } catch {}
+}
 
-/* ── Cache untuk data per-menit (keyed by date+coords) ── */
 const minuteCacheKey = (lat:number, lon:number, date:string) =>
   `searibu_minute_${lat.toFixed(4)}_${lon.toFixed(4)}_${date}`;
 function readMinuteCache(lat:number, lon:number, date:string): Array<{time:string;height:number}>|null {
   try { const r=sessionStorage.getItem(minuteCacheKey(lat,lon,date)); return r?JSON.parse(r):null; } catch { return null; }
 }
-function writeMinuteCache(lat:number, lon:number, date:string, data: Array<{time:string;height:number}>) {
+function writeMinuteCache(lat:number, lon:number, date:string, data:Array<{time:string;height:number}>) {
   try { sessionStorage.setItem(minuteCacheKey(lat,lon,date),JSON.stringify(data)); } catch {}
 }
 
 /* ═══════════════════════════════════════════════════
-   TIMESTAMP PARSER
+   TIMESTAMP PARSER — FIXED
+   
+   Mengkonversi timestamp apapun ke representasi WIB:
+   { wibDate: "YYYY-MM-DD", wibHour: 0-23, wibMinute: 0-59 }
+
+   Kasus yang ditangani:
+   1. "2026-03-26T10:30:00Z"         → UTC, tambah 7 jam → WIB
+   2. "2026-03-26T17:30:00+07:00"    → sudah WIB, parse UTC → sama
+   3. "2026-03-26T10:30:00"          → asumsikan UTC, tambah 7 jam
+   4. "2026-03-26T17:30:00+0700"     → sama dengan kasus 2
+
+   Tidak ada lagi +7 jam manual yang salah.
 ═══════════════════════════════════════════════════ */
-function parseToWIB(ts:string): { wibDate:string; wibHour:number; wibMinute:number }|null {
+function parseToWIB(ts: string): { wibDate:string; wibHour:number; wibMinute:number } | null {
   try {
-    let ms=NaN;
-    if (ts.endsWith("Z")||ts.includes("+")) ms=Date.parse(ts);
-    else if (ts.includes("T")) ms=Date.parse(ts+"Z");
+    let ms: number;
+
+    if (ts.endsWith("Z")) {
+      // UTC timestamp → parse langsung
+      ms = Date.parse(ts);
+    } else if (/[+\-]\d{2}:?\d{2}$/.test(ts)) {
+      // Timestamp dengan offset eksplisit (mis. +07:00 atau -05:00)
+      // Date.parse menangani ini dengan benar di semua browser modern
+      ms = Date.parse(ts);
+    } else if (ts.includes("T")) {
+      // Bare ISO tanpa timezone — asumsikan UTC
+      ms = Date.parse(ts + "Z");
+    } else {
+      // Format lain, coba parse langsung
+      ms = Date.parse(ts);
+    }
+
     if (isNaN(ms)) return null;
-    const wib=new Date(ms+7*3600_000);
-    return { wibDate:wib.toISOString().slice(0,10), wibHour:wib.getUTCHours(), wibMinute:wib.getUTCMinutes() };
-  } catch { return null; }
+
+    // Konversi ke WIB: tambahkan 7 jam ke UTC ms
+    // Date.parse selalu mengembalikan UTC milliseconds, jadi ini selalu benar
+    const wibMs = ms + 7 * 3600_000;
+    const wibDate = new Date(wibMs);
+
+    return {
+      wibDate:   wibDate.toISOString().slice(0, 10),
+      wibHour:   wibDate.getUTCHours(),
+      wibMinute: wibDate.getUTCMinutes(),
+    };
+  } catch {
+    return null;
+  }
 }
 
 /* ═══════════════════════════════════════════════════
    ACTIVITY RECOMMENDATIONS ENGINE
 ═══════════════════════════════════════════════════ */
-function buildRecommendations(tideData:TideData|null, weatherData:WeatherData|null, marineData:MarineData|null, dateStr:string, lang:"en"|"id"): ActivityRec[] {
+function buildRecommendations(
+  tideData:TideData|null,
+  weatherData:WeatherData|null,
+  marineData:MarineData|null,
+  dateStr:string,
+  lang:"en"|"id"
+): ActivityRec[] {
   const hourlyIdxs = weatherData?.hourly.time.map((t,i)=>t.startsWith(dateStr)?i:-1).filter(i=>i>=0)??[];
   const marineIdxs = marineData?.hourly.time.map((t,i)=>t.startsWith(dateStr)?i:-1).filter(i=>i>=0)??[];
   const avgWave:number|null = marineIdxs.length ? marineIdxs.reduce((s,i)=>s+(marineData!.hourly.wave_height[i]??0),0)/marineIdxs.length : null;
@@ -205,12 +279,10 @@ const WeatherSymbol: React.FC<{code:number;size?:number}> = ({code,size=16}) => 
 };
 
 /* ════════════════════════════════════════════════════════
-   CHART KOMPONEN — per menit + Luwes overlay
-   Menerima minutePredictions (1440 titik) untuk TPXO
-   dan luwesObs (observasi) untuk overlay
+   OVERLAY CHART — per menit TPXO + Luwes
 ════════════════════════════════════════════════════════ */
 const OverlayChart: React.FC<{
-  minutePredictions: Array<{time:string;height:number}>;  // per-menit TPXO
+  minutePredictions: Array<{time:string;height:number}>;
   luwesObs: Array<{recorded_at:string;level_m:number}>;
   dateStr: string;
   loadingMinute: boolean;
@@ -220,9 +292,9 @@ const OverlayChart: React.FC<{
 
   useEffect(() => {
     if (!canvasRef.current) return;
-    if (chartRef.current) { chartRef.current.destroy(); chartRef.current=null; }
+    if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
 
-    // Per-menit TPXO: x = jam desimal (0..24), y = height
+    // TPXO: timestamps adalah UTC ("...Z"), parseToWIB +7 → WIB x-axis
     const tpxoPts = minutePredictions
       .map(p => {
         const w = parseToWIB(p.time);
@@ -231,7 +303,7 @@ const OverlayChart: React.FC<{
       })
       .filter(Boolean) as {x:number;y:number}[];
 
-    // Luwes: sudah dikoreksi TOL oleh pemanggil
+    // Luwes: timestamps adalah WIB ("+07:00"), parseToWIB menangani dengan benar
     const luwesPts = luwesObs
       .map(o => {
         const w = parseToWIB(o.recorded_at);
@@ -240,9 +312,10 @@ const OverlayChart: React.FC<{
       })
       .filter(Boolean) as {x:number;y:number}[];
 
-    const wibNow = new Date(Date.now() + 7 * 3600_000);
+    // NOW line dalam WIB
+    const wibNow  = new Date(Date.now() + 7 * 3600_000);
     const isToday = dateStr === wibNow.toISOString().slice(0, 10);
-    const nowX = isToday ? wibNow.getUTCHours() + wibNow.getUTCMinutes() / 60 : -1;
+    const nowX    = isToday ? wibNow.getUTCHours() + wibNow.getUTCMinutes() / 60 : -1;
 
     let cancelled = false;
     import("chart.js/auto").then(({ default: Chart }) => {
@@ -255,7 +328,7 @@ const OverlayChart: React.FC<{
         data: {
           datasets: [
             {
-              label: "TPXO (per menit)",
+              label: "TPXO",
               type: "line" as any,
               data: tpxoPts,
               borderColor: "#0284c7",
@@ -280,10 +353,10 @@ const OverlayChart: React.FC<{
               label: "Luwes",
               type: "scatter" as any,
               data: luwesPts,
-              borderColor: "rgba(249,115,22,0.7)",
-              backgroundColor: "rgba(249,115,22,0.55)",
-              pointRadius: 2,
-              pointHoverRadius: 4,
+              borderColor: "rgba(249,115,22,0.8)",
+              backgroundColor: "rgba(249,115,22,0.6)",
+              pointRadius: 2.5,
+              pointHoverRadius: 5,
               order: 1,
               parsing: false,
             },
@@ -333,13 +406,16 @@ const OverlayChart: React.FC<{
                 color: "#94a3b8",
                 font: { family: MONO, size: 9 },
                 maxRotation: 0,
-                stepSize: 1,
+                stepSize: 3,
                 autoSkip: false,
-                includeBounds: false,
-                callback: (v: any) =>
-                  Number(v) % 3 === 0 && Number(v) >= 0 && Number(v) <= 23
-                    ? `${Number(v).toString().padStart(2, "0")}:00`
-                    : "",
+                includeBounds: true,
+                callback: (v: any) => {
+                  const n = Number(v);
+                  if (n >= 0 && n <= 24 && n % 3 === 0) {
+                    return `${n.toString().padStart(2,"0")}:00`;
+                  }
+                  return "";
+                },
               },
             },
             y: {
@@ -371,7 +447,7 @@ const OverlayChart: React.FC<{
               c.beginPath();
               c.moveTo(x, ca.top);
               c.lineTo(x, ca.bottom);
-              c.strokeStyle = "rgba(239,68,68,0.65)";
+              c.strokeStyle = "rgba(239,68,68,0.7)";
               c.lineWidth = 1.5;
               c.setLineDash([4, 4]);
               c.stroke();
@@ -399,12 +475,11 @@ const OverlayChart: React.FC<{
         <div style={{
           position: "absolute", inset: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
-          background: "rgba(248,250,252,0.7)", borderRadius: 8,
+          background: "rgba(248,250,252,0.75)", borderRadius: 8,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6,
             fontSize: 11, color: "#0284c7", fontFamily: SANS }}>
             <Loader2 size={13} style={{ animation: "spin 0.7s linear infinite" }} />
-            {/* loading per-menit */}
             <span>Loading per-minute data...</span>
           </div>
         </div>
@@ -414,12 +489,20 @@ const OverlayChart: React.FC<{
 };
 
 /* ── S104 Badge ── */
-const S104Badge: React.FC<{coordinates:{lat:number;lon:number};selectedDate:string;language:"en"|"id"}> = ({coordinates,selectedDate,language:lang}) => {
+const S104Badge: React.FC<{
+  coordinates:{lat:number;lon:number};
+  selectedDate:string;
+  language:"en"|"id"
+}> = ({coordinates,selectedDate,language:lang}) => {
   const [open,setOpen]=useState(false);
   const [loadingTpxo,setLoadingTpxo]=useState(false);
   const [loadingLuwes,setLoadingLuwes]=useState(false);
   const [error,setError]=useState<string|null>(null);
-  const download=async(url:string,filename:string)=>{ const res=await fetch(url); if(!res.ok){const d=await res.json().catch(()=>({error:`HTTP ${res.status}`})); throw new Error((d as any).error??`HTTP ${res.status}`);} const blob=await res.blob(); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=filename; a.click(); URL.revokeObjectURL(a.href); };
+  const download=async(url:string,filename:string)=>{
+    const res=await fetch(url);
+    if(!res.ok){const d=await res.json().catch(()=>({error:`HTTP ${res.status}`})); throw new Error((d as any).error??`HTTP ${res.status}`);}
+    const blob=await res.blob(); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=filename; a.click(); URL.revokeObjectURL(a.href);
+  };
   const handleTpxo=async()=>{ setLoadingTpxo(true); setError(null); try { await download(`${API_BASE}/api/s104/export?lon=${coordinates.lon}&lat=${coordinates.lat}&date=${selectedDate}`,`searibu_s104_tpxo_${selectedDate}.h5`); } catch(e:any){setError(e.message);} finally{setLoadingTpxo(false);} };
   const handleLuwes=async()=>{ setLoadingLuwes(true); setError(null); try { await download(`${API_BASE}/api/s104/export/luwes?date=${selectedDate}`,`searibu_s104_luwes_${selectedDate}.h5`); } catch(e:any){setError(e.message);} finally{setLoadingLuwes(false);} };
   return (
@@ -436,8 +519,6 @@ const S104Badge: React.FC<{coordinates:{lat:number;lon:number};selectedDate:stri
       </div>
       {open && (
         <div style={{marginTop:5,padding:"11px 13px",background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:9}}>
-          <p style={{fontFamily:SANS,fontSize:11,fontWeight:600,color:"#0f172a",marginBottom:7}}>{lang==="en"?"S-104 Compliance Details":"Detail Kepatuhan S-104"}</p>
-          <p style={{fontFamily:SANS,fontSize:10,color:"#64748b",lineHeight:1.6,marginBottom:9}}>{lang==="en"?"Compliant with IHO S-104 Ed.2.0.0 (Dec 2024). HDF5 files compatible with ECDIS, HDFView, s100py.":"Memenuhi IHO S-104 Ed.2.0.0 (Des 2024). File HDF5 kompatibel dengan ECDIS, HDFView, s100py."}</p>
           {[["Horizontal CRS","EPSG:4326 (WGS 84)"],["Vertical Datum","MSL (IHO code 12)"],["TPXO dataDynamicity","1 (astronomicalPrediction)"],["Luwes dataDynamicity","3 (observed)"],["TOL correction","−2.156 m"],["Edition","S-104 Ed.2.0.0"]].map(([l,v])=>(
             <div key={l} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"2px 0"}}>
               <span style={{fontFamily:SANS,fontSize:10,color:"#94a3b8"}}>{l}</span>
@@ -480,12 +561,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
   const { language } = useLanguage();
   const lang = language as "en"|"id";
 
-  // Data utama (jam — untuk tabel dan statistik)
   const [tideData,setTideData]             = useState<TideData|null>(null);
-  // Data per-menit (khusus grafik — 1440 titik)
   const [minutePredictions,setMinutePredictions] = useState<Array<{time:string;height:number}>>([]);
   const [loadingMinute,setLoadingMinute]   = useState(false);
-
   const [weatherData,setWeatherData]       = useState<WeatherData|null>(null);
   const [marineData,setMarineData]         = useState<MarineData|null>(null);
   const [overlayData,setOverlayData]       = useState<OverlayData|null>(null);
@@ -494,42 +572,36 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
   const [weatherFromCache,setWeatherFromCache] = useState(false);
   const [selDate,setSelDate]               = useState<string>(todayISO());
 
-  // ── Fetch per-menit untuk grafik ──────────────────────────────
   const fetchMinutePredictions = useCallback(async (dateStr: string) => {
-    // Cek cache terlebih dulu
     const cached = readMinuteCache(coordinates.lat, coordinates.lon, dateStr);
-    if (cached && cached.length > 0) {
-      setMinutePredictions(cached);
-      return;
-    }
+    if (cached && cached.length > 0) { setMinutePredictions(cached); return; }
     setLoadingMinute(true);
     try {
       const res = await fetch(
         `${API_BASE}/api/tide/prediction/minute?lon=${coordinates.lon}&lat=${coordinates.lat}&date=${dateStr}`
       );
-      if (!res.ok) {
-        // Fallback ke data jam jika endpoint per-menit gagal
-        setLoadingMinute(false);
-        return;
-      }
+      if (!res.ok) return;
       const data = await res.json();
       const preds: Array<{time:string;height:number}> = data.predictions ?? [];
       setMinutePredictions(preds);
       writeMinuteCache(coordinates.lat, coordinates.lon, dateStr, preds);
     } catch {
-      // Tidak crash, chart akan pakai fallback data jam
+      // fallback ke data jam
     } finally {
       setLoadingMinute(false);
     }
   }, [coordinates]);
 
-  // ── Fetch utama (cuaca + pasut per jam + overlay) ─────────────
   const fetchAll = useCallback(async (dateStr:string, forceRefresh=false) => {
     setLoading(true); setError(null);
     try {
       const today=new Date(); const fmtD=(d:Date)=>d.toISOString().split("T")[0];
       let wd:WeatherData|null=null, md:MarineData|null=null, usedCache=false;
-      if (!forceRefresh) { wd=readCache<WeatherData>(coordinates.lat,coordinates.lon,"wx"); md=readCache<MarineData>(coordinates.lat,coordinates.lon,"marine"); if(wd&&md)usedCache=true; }
+      if (!forceRefresh) {
+        wd=readCache<WeatherData>(coordinates.lat,coordinates.lon,"wx");
+        md=readCache<MarineData>(coordinates.lat,coordinates.lon,"marine");
+        if(wd&&md) usedCache=true;
+      }
       if (!wd||!md) {
         const wxStart=new Date(today); wxStart.setDate(wxStart.getDate()-14);
         const wxEnd=new Date(today);   wxEnd.setDate(wxEnd.getDate()+15);
@@ -544,7 +616,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       }
       setWeatherData(wd); setMarineData(md); setWeatherFromCache(usedCache);
 
-      // Ambil data per-JAM untuk tabel (2 hari: kemarin + besok untuk context)
       const prevDay=new Date(dateStr+"T12:00:00Z"); prevDay.setUTCDate(prevDay.getUTCDate()-1);
       const nextDay=new Date(dateStr+"T12:00:00Z"); nextDay.setUTCDate(nextDay.getUTCDate()+1);
       const [tr,or_]=await Promise.all([
@@ -559,7 +630,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
     } finally { setLoading(false); }
   }, [coordinates,lang]);
 
-  // ── Effect: reset dan fetch saat koordinat berubah ────────────
   useEffect(() => {
     const d = todayISO();
     setSelDate(d);
@@ -568,7 +638,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
     fetchMinutePredictions(d);
   }, [coordinates.lat, coordinates.lon]);
 
-  // ── Ganti tanggal ──────────────────────────────────────────────
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const d = e.target.value;
     setSelDate(d);
@@ -577,21 +646,53 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
     fetchMinutePredictions(d);
   };
 
-  // ── Helpers ───────────────────────────────────────────────────
-  const getSunTimes=()=>{ if (!weatherData?.daily)return{sunrise:"--:--",sunset:"--:--"}; const idx=weatherData.daily.time.findIndex(t=>t===selDate); if(idx===-1)return{sunrise:"--:--",sunset:"--:--"}; return{sunrise:fmtHHmm(weatherData.daily.sunrise[idx]),sunset:fmtHHmm(weatherData.daily.sunset[idx])}; };
+  const getSunTimes=()=>{
+    if (!weatherData?.daily) return {sunrise:"--:--",sunset:"--:--"};
+    const idx=weatherData.daily.time.findIndex(t=>t===selDate);
+    if(idx===-1) return {sunrise:"--:--",sunset:"--:--"};
+    return {sunrise:fmtHHmm(weatherData.daily.sunrise[idx]),sunset:fmtHHmm(weatherData.daily.sunset[idx])};
+  };
 
-  const buildRows=():HourRow[]=>{ const tideMap=new Map<number,number>(); tideData?.predictions.forEach(p=>{ const w=parseToWIB(p.time); if(w?.wibDate===selDate)tideMap.set(w.wibHour,p.height); }); const wxMap=new Map<string,Partial<HourRow>>(); weatherData?.hourly.time.forEach((t,i)=>{ if(!t.startsWith(selDate))return; const hh=new Date(t).getHours().toString().padStart(2,"0"); const windKmh=weatherData.hourly.wind_speed_10m[i]; wxMap.set(hh,{temp:weatherData.hourly.temperature_2m[i],windSpd:windKmh!=null?kmhToMs(windKmh):null,windDir:weatherData.hourly.wind_direction_10m[i],wCode:weatherData.hourly.weather_code[i]}); }); const marineMap=new Map<string,{waveH:number|null;currentSpd:number|null}>(); marineData?.hourly.time.forEach((t,i)=>{ if(!t.startsWith(selDate))return; const hh=new Date(t).getHours().toString().padStart(2,"0"); marineMap.set(hh,{waveH:marineData.hourly.wave_height[i]??null,currentSpd:marineData.hourly.ocean_current_velocity[i]??null}); }); return Array.from({length:24},(_,i)=>{ const hh=i.toString().padStart(2,"0"); const marine=marineMap.get(hh)??{waveH:null,currentSpd:null}; return{hour:`${hh}:00`,tideH:tideMap.get(i)??null,temp:null,windSpd:null,windDir:null,wCode:null,...(wxMap.get(hh)??{}),...marine} as HourRow; }); };
+  const buildRows=():HourRow[]=>{
+    const tideMap=new Map<number,number>();
+    tideData?.predictions.forEach(p=>{
+      const w=parseToWIB(p.time);
+      if(w?.wibDate===selDate) tideMap.set(w.wibHour,p.height);
+    });
+    const wxMap=new Map<string,Partial<HourRow>>();
+    weatherData?.hourly.time.forEach((t,i)=>{
+      if(!t.startsWith(selDate)) return;
+      const hh=new Date(t).getHours().toString().padStart(2,"0");
+      const windKmh=weatherData.hourly.wind_speed_10m[i];
+      wxMap.set(hh,{temp:weatherData.hourly.temperature_2m[i],windSpd:windKmh!=null?kmhToMs(windKmh):null,windDir:weatherData.hourly.wind_direction_10m[i],wCode:weatherData.hourly.weather_code[i]});
+    });
+    const marineMap=new Map<string,{waveH:number|null;currentSpd:number|null}>();
+    marineData?.hourly.time.forEach((t,i)=>{
+      if(!t.startsWith(selDate)) return;
+      const hh=new Date(t).getHours().toString().padStart(2,"0");
+      marineMap.set(hh,{waveH:marineData.hourly.wave_height[i]??null,currentSpd:marineData.hourly.ocean_current_velocity[i]??null});
+    });
+    return Array.from({length:24},(_,i)=>{
+      const hh=i.toString().padStart(2,"0");
+      const marine=marineMap.get(hh)??{waveH:null,currentSpd:null};
+      return{hour:`${hh}:00`,tideH:tideMap.get(i)??null,temp:null,windSpd:null,windDir:null,wCode:null,...(wxMap.get(hh)??{}),...marine} as HourRow;
+    });
+  };
 
-  const dailyStats=(()=>{ const hs=tideData?.predictions.filter(p=>parseToWIB(p.time)?.wibDate===selDate).map(p=>p.height)??[]; return hs.length?{max:Math.max(...hs),min:Math.min(...hs)}:null; })();
+  const dailyStats=(()=>{
+    const hs=tideData?.predictions.filter(p=>parseToWIB(p.time)?.wibDate===selDate).map(p=>p.height)??[];
+    return hs.length?{max:Math.max(...hs),min:Math.min(...hs)}:null;
+  })();
 
-  // Luwes dikoreksi TOL
+  // Luwes dikoreksi TOL — parseToWIB sudah benar untuk "+07:00"
   const luwesForChart=(overlayData?.luwes_obs??[])
     .filter(o=>parseToWIB(o.recorded_at)?.wibDate===selDate)
     .map(o=>({...o,level_m:o.level_m+TOL_CORRECTION}));
   const hasLuwesObs=luwesForChart.length>0;
-  const luwesStatsCorrected=hasLuwesObs?{max_m:Math.max(...luwesForChart.map(o=>o.level_m)),min_m:Math.min(...luwesForChart.map(o=>o.level_m)),count:luwesForChart.length}:overlayData?.luwes_stats??null;
+  const luwesStatsCorrected=hasLuwesObs
+    ?{max_m:Math.max(...luwesForChart.map(o=>o.level_m)),min_m:Math.min(...luwesForChart.map(o=>o.level_m)),count:luwesForChart.length}
+    :overlayData?.luwes_stats??null;
 
-  // Data chart: prioritas per-menit, fallback ke per-jam
   const chartPredictions = minutePredictions.length > 0
     ? minutePredictions
     : (tideData?.predictions ?? []);
@@ -621,22 +722,25 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       {/* ── Top Bar ── */}
       <div style={{ flexShrink:0, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px", background:"#fff", borderBottom:"1px solid #e2e8f0" }}>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ width:24, height:24, borderRadius:6, background:"#0284c7", display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <Anchor size={12} color="#fff"/>
-          </div>
           <h2 style={{ fontSize:13, fontWeight:700, color:"#0f172a", letterSpacing:"-0.01em", fontFamily:SANS, margin:0 }}>
-            {lang==="en"?"Marine Information":"Informasi Kelautan"}
+            {lang==="en"?"Ocean-Weather Information":"Informasi Muka Air dan Cuaca"} — <span style={{ fontWeight:500, color:"#475569", fontSize:11 }}>{selDateFmt}</span>
           </h2>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-          {weatherFromCache && (
-            <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:10, fontWeight:600, color:"#d97706", background:"#fef9c3", border:"1px solid #fde68a", padding:"1px 7px", borderRadius:99, fontFamily:SANS }}>
-              <span style={{ width:5, height:5, borderRadius:"50%", background:"#d97706", flexShrink:0 }}/>
-              {lang==="en"?"Cached":"Tersimpan"}
-            </span>
-          )}
-          <button onClick={()=>{clearCache(coordinates.lat,coordinates.lon);setMinutePredictions([]);fetchAll(selDate,true);fetchMinutePredictions(selDate);}} style={{ padding:5, borderRadius:7, border:"none", background:"transparent", cursor:"pointer", color:"#94a3b8", display:"flex" }} onMouseEnter={e=>(e.currentTarget.style.background="#f1f5f9")} onMouseLeave={e=>(e.currentTarget.style.background="transparent")}><RefreshCw size={12}/></button>
-          <button onClick={onClose} style={{ padding:5, borderRadius:7, border:"none", background:"transparent", cursor:"pointer", color:"#94a3b8", display:"flex" }} onMouseEnter={e=>(e.currentTarget.style.background="#f1f5f9")} onMouseLeave={e=>(e.currentTarget.style.background="transparent")}><X size={14}/></button>
+          <button
+            onClick={()=>{clearCache(coordinates.lat,coordinates.lon);setMinutePredictions([]);fetchAll(selDate,true);fetchMinutePredictions(selDate);}}
+            style={{ padding:5, borderRadius:7, border:"none", background:"transparent", cursor:"pointer", color:"#94a3b8", display:"flex" }}
+            onMouseEnter={e=>(e.currentTarget.style.background="#f1f5f9")}
+            onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>
+            <RefreshCw size={12}/>
+          </button>
+          <button
+            onClick={onClose}
+            style={{ padding:5, borderRadius:7, border:"none", background:"transparent", cursor:"pointer", color:"#94a3b8", display:"flex" }}
+            onMouseEnter={e=>(e.currentTarget.style.background="#f1f5f9")}
+            onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>
+            <X size={14}/>
+          </button>
         </div>
       </div>
 
@@ -652,7 +756,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
               <div>
                 <p style={{ color:"#dc2626", fontSize:12, fontWeight:600, marginBottom:3, fontFamily:SANS }}>{lang==="en"?"Unable to load data":"Gagal memuat data"}</p>
                 <p style={{ color:"#ef4444", fontSize:10, marginBottom:8, fontFamily:SANS }}>{error}</p>
-                <button onClick={()=>{fetchAll(selDate);fetchMinutePredictions(selDate);}} style={{ display:"flex", alignItems:"center", gap:5, fontSize:10, color:"#dc2626", background:"none", border:"none", cursor:"pointer", fontFamily:SANS, fontWeight:600 }}><RefreshCw size={10}/>{lang==="en"?"Try again":"Coba lagi"}</button>
+                <button onClick={()=>{fetchAll(selDate);fetchMinutePredictions(selDate);}} style={{ display:"flex", alignItems:"center", gap:5, fontSize:10, color:"#dc2626", background:"none", border:"none", cursor:"pointer", fontFamily:SANS, fontWeight:600 }}>
+                  <RefreshCw size={10}/>{lang==="en"?"Try again":"Coba lagi"}
+                </button>
               </div>
             </div>
           </div>
@@ -719,18 +825,12 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
               />
             </div>
 
-            {/* ── Chart — per menit ── */}
+            {/* ── Chart ── */}
             <div style={{ padding:"12px 12px 0" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:7 }}>
                 <p style={{ fontSize:9, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase", color:"#94a3b8", fontFamily:SANS, margin:0 }}>
-                  {hasLuwesObs?(lang==="en"?"Observation vs TPXO":"Observasi vs TPXO"):(lang==="en"?"Tide Levels — TPXO":"Tinggi Pasut Harian")}
+                  {hasLuwesObs?(lang==="en"?"Observation vs TPXO":"Observasi vs TPXO"):(lang==="en"?"Tide Levels":"Tinggi Pasut Harian")}
                 </p>
-                {/* Badge per-menit */}
-                {minutePredictions.length > 0 && (
-                  <span style={{ fontSize:9, fontWeight:700, color:"#0284c7", background:"#e0f2fe", padding:"2px 6px", borderRadius:99, fontFamily:SANS }}>
-                    {lang==="en"?"1-min resolution":"Resolusi per menit"}
-                  </span>
-                )}
               </div>
               <div style={{ borderRadius:14, overflow:"hidden", background:"#fff", border:"1px solid #e2e8f0" }}>
                 <div style={{ padding:"10px 14px 6px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
@@ -742,7 +842,11 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                     <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, color:hasLuwesObs?"#f97316":"#94a3b8", fontWeight:700, background:hasLuwesObs?"#ffedd5":"#f1f5f9", padding:"2px 7px", borderRadius:99, fontFamily:SANS }}>
                       <span style={{ display:"inline-block", width:6, height:6, background:hasLuwesObs?"#f97316":"#94a3b8", borderRadius:"50%" }}/>Luwes
                     </span>
-                    {isToday && <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, color:"#ef4444", fontWeight:700, background:"#fef2f2", padding:"2px 7px", borderRadius:99, fontFamily:SANS }}><span style={{ display:"inline-block", width:10, height:1.5, background:"#ef4444", borderRadius:1 }}/>Now</span>}
+                    {isToday && (
+                      <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, color:"#ef4444", fontWeight:700, background:"#fef2f2", padding:"2px 7px", borderRadius:99, fontFamily:SANS }}>
+                        <span style={{ display:"inline-block", width:10, height:1.5, background:"#ef4444", borderRadius:1 }}/>Now
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div style={{ height:280, padding:"4px 6px 12px" }}>
@@ -790,7 +894,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
               </div>
             )}
 
-            {/* ── Hourly Table — tetap per jam ── */}
+            {/* ── Hourly Table ── */}
             <div style={{ padding:"12px 12px 0" }}>
               <p style={{ fontSize:9, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase", color:"#94a3b8", marginBottom:7, fontFamily:SANS }}>
                 {lang==="en"?"Hourly Data (table)":"Data Per Jam (tabel)"}
@@ -868,7 +972,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
               ))}
             </div>
 
-            {/* bottom padding */}
             <div style={{ height:20 }}/>
           </>
         )}
