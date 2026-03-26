@@ -1,7 +1,6 @@
 /**
  * InfoPanel.tsx  — Marine Info Panel (Responsive)
- * Updated: fully responsive for mobile, tablet, desktop
- * Sistem Searibu — ITB Geodesy & Geomatics Engineering 2026
+ * v2.3.0 — grafik per menit (1440 titik/hari), tabel tetap per jam
  */
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
@@ -97,6 +96,16 @@ function readCache<T>(lat:number, lon:number, t:"wx"|"marine"): T|null { try { c
 function writeCache<T>(lat:number, lon:number, t:"wx"|"marine", data:T) { try { sessionStorage.setItem(cacheKey(lat,lon,t),JSON.stringify(data)); } catch {} }
 function clearCache(lat:number, lon:number) { try { sessionStorage.removeItem(cacheKey(lat,lon,"wx")); sessionStorage.removeItem(cacheKey(lat,lon,"marine")); } catch {} }
 
+/* ── Cache untuk data per-menit (keyed by date+coords) ── */
+const minuteCacheKey = (lat:number, lon:number, date:string) =>
+  `searibu_minute_${lat.toFixed(4)}_${lon.toFixed(4)}_${date}`;
+function readMinuteCache(lat:number, lon:number, date:string): Array<{time:string;height:number}>|null {
+  try { const r=sessionStorage.getItem(minuteCacheKey(lat,lon,date)); return r?JSON.parse(r):null; } catch { return null; }
+}
+function writeMinuteCache(lat:number, lon:number, date:string, data: Array<{time:string;height:number}>) {
+  try { sessionStorage.setItem(minuteCacheKey(lat,lon,date),JSON.stringify(data)); } catch {}
+}
+
 /* ═══════════════════════════════════════════════════
    TIMESTAMP PARSER
 ═══════════════════════════════════════════════════ */
@@ -176,11 +185,6 @@ const SkeletonHero = () => (
     </div>
   </div>
 );
-const SkeletonActivities = () => (
-  <div style={{margin:"12px 12px 0",display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
-    {[0,1,2,3].map(i=>(<div key={i} style={{borderRadius:9,padding:10,background:"#f1f5f9",border:"1px solid #e2e8f0"}}><div style={{display:"flex",gap:7,marginBottom:5}}><Shimmer w="22px" h="22px" r="5px"/><Shimmer w="60%" h="9px"/></div><Shimmer w="85%" h="7px"/></div>))}
-  </div>
-);
 const SkeletonChart = () => (
   <div style={{margin:"12px 12px 0",borderRadius:14,overflow:"hidden",border:"1px solid #e2e8f0"}}>
     <div style={{padding:"10px 14px 3px"}}><Shimmer w="55%" h="10px"/></div>
@@ -200,53 +204,213 @@ const WeatherSymbol: React.FC<{code:number;size?:number}> = ({code,size=16}) => 
   return <svg {...s} viewBox="0 0 24 24" stroke="#94a3b8" {...p}><path d="M3 8h18M3 12h18M3 16h18"/></svg>;
 };
 
-/* ── Overlay Chart ── */
-const OverlayChart: React.FC<{tpxoPredictions:Array<{time:string;height:number}>;luwesObs:Array<{recorded_at:string;level_m:number}>;dateStr:string}> = ({ tpxoPredictions, luwesObs, dateStr }) => {
+/* ════════════════════════════════════════════════════════
+   CHART KOMPONEN — per menit + Luwes overlay
+   Menerima minutePredictions (1440 titik) untuk TPXO
+   dan luwesObs (observasi) untuk overlay
+════════════════════════════════════════════════════════ */
+const OverlayChart: React.FC<{
+  minutePredictions: Array<{time:string;height:number}>;  // per-menit TPXO
+  luwesObs: Array<{recorded_at:string;level_m:number}>;
+  dateStr: string;
+  loadingMinute: boolean;
+}> = ({ minutePredictions, luwesObs, dateStr, loadingMinute }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef  = useRef<any>(null);
+
   useEffect(() => {
     if (!canvasRef.current) return;
     if (chartRef.current) { chartRef.current.destroy(); chartRef.current=null; }
-    const tpxoPts = tpxoPredictions.map(p=>{ const w=parseToWIB(p.time); return w&&w.wibDate===dateStr?{x:w.wibHour,y:p.height}:null; }).filter(Boolean) as {x:number;y:number}[];
-    const luwesPts = luwesObs.map(o=>{ const w=parseToWIB(o.recorded_at); return w&&w.wibDate===dateStr?{x:w.wibHour+w.wibMinute/60,y:o.level_m}:null; }).filter(Boolean) as {x:number;y:number}[];
-    const wibNow=new Date(Date.now()+7*3600_000);
-    const isToday=dateStr===wibNow.toISOString().slice(0,10);
-    const nowX=isToday?wibNow.getUTCHours()+wibNow.getUTCMinutes()/60:-1;
-    let cancelled=false;
-    import("chart.js/auto").then(({default:Chart})=>{
-      if (cancelled||!canvasRef.current) return;
-      const ctx=canvasRef.current.getContext("2d"); if (!ctx) return;
-      chartRef.current=new Chart(ctx,{
-        type:"scatter",
-        data:{ datasets:[
-          { label:"TPXO",type:"line" as any,data:tpxoPts,borderColor:"#0284c7",backgroundColor:(c:any)=>{ const {chart:{ctx:cx,chartArea:ca}}=c; if(!ca)return"rgba(2,132,199,0.07)"; const g=cx.createLinearGradient(0,ca.top,0,ca.bottom); g.addColorStop(0,"rgba(2,132,199,0.18)"); g.addColorStop(1,"rgba(2,132,199,0)"); return g; },borderWidth:2,fill:true,tension:0.4,pointRadius:0,pointHoverRadius:3,spanGaps:true,order:2,parsing:false },
-          { label:"Luwes",type:"scatter" as any,data:luwesPts,borderColor:"rgba(249,115,22,0.7)",backgroundColor:"rgba(249,115,22,0.55)",pointRadius:1.5,pointHoverRadius:3,order:1,parsing:false },
-        ]},
-        options:{
-          responsive:true,maintainAspectRatio:false,animation:false,
-          interaction:{mode:"nearest",intersect:false,axis:"x"},
-          plugins:{
-            legend:{display:false},
-            tooltip:{ backgroundColor:"#0f172a",titleColor:"#94a3b8",bodyColor:"#f1f5f9",padding:7,cornerRadius:6,titleFont:{family:MONO,size:10},bodyFont:{family:MONO,size:11},
-              callbacks:{
-                title:(items:any[])=>{ const x=items[0]?.parsed.x??0; const h=Math.floor(x),m=Math.round((x-h)*60); return `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}`; },
-                label:(c:any)=>{ const v=c.parsed.y; if(v==null)return null as any; return ` ${c.dataset.label}: ${Number(v).toFixed(3)} m`; },
+
+    // Per-menit TPXO: x = jam desimal (0..24), y = height
+    const tpxoPts = minutePredictions
+      .map(p => {
+        const w = parseToWIB(p.time);
+        if (!w || w.wibDate !== dateStr) return null;
+        return { x: w.wibHour + w.wibMinute / 60, y: p.height };
+      })
+      .filter(Boolean) as {x:number;y:number}[];
+
+    // Luwes: sudah dikoreksi TOL oleh pemanggil
+    const luwesPts = luwesObs
+      .map(o => {
+        const w = parseToWIB(o.recorded_at);
+        if (!w || w.wibDate !== dateStr) return null;
+        return { x: w.wibHour + w.wibMinute / 60, y: o.level_m };
+      })
+      .filter(Boolean) as {x:number;y:number}[];
+
+    const wibNow = new Date(Date.now() + 7 * 3600_000);
+    const isToday = dateStr === wibNow.toISOString().slice(0, 10);
+    const nowX = isToday ? wibNow.getUTCHours() + wibNow.getUTCMinutes() / 60 : -1;
+
+    let cancelled = false;
+    import("chart.js/auto").then(({ default: Chart }) => {
+      if (cancelled || !canvasRef.current) return;
+      const ctx = canvasRef.current.getContext("2d");
+      if (!ctx) return;
+
+      chartRef.current = new Chart(ctx, {
+        type: "scatter",
+        data: {
+          datasets: [
+            {
+              label: "TPXO (per menit)",
+              type: "line" as any,
+              data: tpxoPts,
+              borderColor: "#0284c7",
+              backgroundColor: (c: any) => {
+                const { chart: { ctx: cx, chartArea: ca } } = c;
+                if (!ca) return "rgba(2,132,199,0.07)";
+                const g = cx.createLinearGradient(0, ca.top, 0, ca.bottom);
+                g.addColorStop(0, "rgba(2,132,199,0.18)");
+                g.addColorStop(1, "rgba(2,132,199,0)");
+                return g;
+              },
+              borderWidth: 1.5,
+              fill: true,
+              tension: 0.3,
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              spanGaps: true,
+              order: 2,
+              parsing: false,
+            },
+            {
+              label: "Luwes",
+              type: "scatter" as any,
+              data: luwesPts,
+              borderColor: "rgba(249,115,22,0.7)",
+              backgroundColor: "rgba(249,115,22,0.55)",
+              pointRadius: 2,
+              pointHoverRadius: 4,
+              order: 1,
+              parsing: false,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          interaction: { mode: "nearest", intersect: false, axis: "x" },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: "#0f172a",
+              titleColor: "#94a3b8",
+              bodyColor: "#f1f5f9",
+              padding: 8,
+              cornerRadius: 7,
+              titleFont: { family: MONO, size: 10 },
+              bodyFont: { family: MONO, size: 11 },
+              callbacks: {
+                title: (items: any[]) => {
+                  const x = items[0]?.parsed.x ?? 0;
+                  const h = Math.floor(x);
+                  const m = Math.round((x - h) * 60);
+                  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")} WIB`;
+                },
+                label: (c: any) => {
+                  const v = c.parsed.y;
+                  if (v == null) return null as any;
+                  return ` ${c.dataset.label}: ${Number(v).toFixed(3)} m`;
+                },
               },
             },
           },
-          scales:{
-            x:{ type:"linear",min:0,max:24,grid:{color:(c:any)=>c.tick.value%3===0?"rgba(0,0,0,0.06)":"rgba(0,0,0,0.02)"},border:{display:false},
-              ticks:{color:"#94a3b8",font:{family:MONO,size:9},maxRotation:0,stepSize:1,autoSkip:false,includeBounds:false,callback:(v:any)=>Number(v)%3===0&&Number(v)>=0&&Number(v)<=23?`${Number(v).toString().padStart(2,"0")}:00`:""} },
-            y:{ grid:{color:"rgba(0,0,0,0.04)"},border:{display:false},ticks:{color:"#94a3b8",font:{family:MONO,size:9},callback:(v:any)=>`${Number(v).toFixed(2)} m`},
-              title:{display:true,text:"Water Level (m)",color:"#94a3b8",font:{size:8,family:MONO}} },
+          scales: {
+            x: {
+              type: "linear",
+              min: 0,
+              max: 24,
+              grid: {
+                color: (c: any) =>
+                  c.tick.value % 3 === 0 ? "rgba(0,0,0,0.06)" : "rgba(0,0,0,0.02)",
+              },
+              border: { display: false },
+              ticks: {
+                color: "#94a3b8",
+                font: { family: MONO, size: 9 },
+                maxRotation: 0,
+                stepSize: 1,
+                autoSkip: false,
+                includeBounds: false,
+                callback: (v: any) =>
+                  Number(v) % 3 === 0 && Number(v) >= 0 && Number(v) <= 23
+                    ? `${Number(v).toString().padStart(2, "0")}:00`
+                    : "",
+              },
+            },
+            y: {
+              grid: { color: "rgba(0,0,0,0.04)" },
+              border: { display: false },
+              ticks: {
+                color: "#94a3b8",
+                font: { family: MONO, size: 9 },
+                callback: (v: any) => `${Number(v).toFixed(2)} m`,
+              },
+              title: {
+                display: true,
+                text: "Water Level (m MSL)",
+                color: "#94a3b8",
+                font: { size: 8, family: MONO },
+              },
+            },
           },
         },
-        plugins:[{ id:"nowLine", afterDraw(chart:any){ if(nowX<0||nowX>24)return; const{ctx:c,chartArea:ca,scales}=chart; const x=scales.x.getPixelForValue(nowX); if(x<ca.left||x>ca.right)return; c.save(); c.beginPath(); c.moveTo(x,ca.top); c.lineTo(x,ca.bottom); c.strokeStyle="rgba(239,68,68,0.65)"; c.lineWidth=1.5; c.setLineDash([4,4]); c.stroke(); c.fillStyle="rgba(239,68,68,0.9)"; c.font=`bold 8px ${MONO}`; c.textAlign="center"; c.fillText("NOW",x,ca.top+9); c.restore(); } }],
+        plugins: [
+          {
+            id: "nowLine",
+            afterDraw(chart: any) {
+              if (nowX < 0 || nowX > 24) return;
+              const { ctx: c, chartArea: ca, scales } = chart;
+              const x = scales.x.getPixelForValue(nowX);
+              if (x < ca.left || x > ca.right) return;
+              c.save();
+              c.beginPath();
+              c.moveTo(x, ca.top);
+              c.lineTo(x, ca.bottom);
+              c.strokeStyle = "rgba(239,68,68,0.65)";
+              c.lineWidth = 1.5;
+              c.setLineDash([4, 4]);
+              c.stroke();
+              c.fillStyle = "rgba(239,68,68,0.9)";
+              c.font = `bold 8px ${MONO}`;
+              c.textAlign = "center";
+              c.fillText("NOW", x, ca.top + 9);
+              c.restore();
+            },
+          },
+        ],
       });
     });
-    return ()=>{ cancelled=true; if(chartRef.current){chartRef.current.destroy();chartRef.current=null;} };
-  }, [tpxoPredictions,luwesObs,dateStr]);
-  return <canvas ref={canvasRef} style={{width:"100%",height:"100%"}}/>;
+
+    return () => {
+      cancelled = true;
+      if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
+    };
+  }, [minutePredictions, luwesObs, dateStr]);
+
+  return (
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <canvas ref={canvasRef} style={{ width: "100%", height: "100%" }} />
+      {loadingMinute && (
+        <div style={{
+          position: "absolute", inset: 0,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(248,250,252,0.7)", borderRadius: 8,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6,
+            fontSize: 11, color: "#0284c7", fontFamily: SANS }}>
+            <Loader2 size={13} style={{ animation: "spin 0.7s linear infinite" }} />
+            {/* loading per-menit */}
+            <span>Loading per-minute data...</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 /* ── S104 Badge ── */
@@ -316,7 +480,12 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
   const { language } = useLanguage();
   const lang = language as "en"|"id";
 
+  // Data utama (jam — untuk tabel dan statistik)
   const [tideData,setTideData]             = useState<TideData|null>(null);
+  // Data per-menit (khusus grafik — 1440 titik)
+  const [minutePredictions,setMinutePredictions] = useState<Array<{time:string;height:number}>>([]);
+  const [loadingMinute,setLoadingMinute]   = useState(false);
+
   const [weatherData,setWeatherData]       = useState<WeatherData|null>(null);
   const [marineData,setMarineData]         = useState<MarineData|null>(null);
   const [overlayData,setOverlayData]       = useState<OverlayData|null>(null);
@@ -325,6 +494,36 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
   const [weatherFromCache,setWeatherFromCache] = useState(false);
   const [selDate,setSelDate]               = useState<string>(todayISO());
 
+  // ── Fetch per-menit untuk grafik ──────────────────────────────
+  const fetchMinutePredictions = useCallback(async (dateStr: string) => {
+    // Cek cache terlebih dulu
+    const cached = readMinuteCache(coordinates.lat, coordinates.lon, dateStr);
+    if (cached && cached.length > 0) {
+      setMinutePredictions(cached);
+      return;
+    }
+    setLoadingMinute(true);
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/tide/prediction/minute?lon=${coordinates.lon}&lat=${coordinates.lat}&date=${dateStr}`
+      );
+      if (!res.ok) {
+        // Fallback ke data jam jika endpoint per-menit gagal
+        setLoadingMinute(false);
+        return;
+      }
+      const data = await res.json();
+      const preds: Array<{time:string;height:number}> = data.predictions ?? [];
+      setMinutePredictions(preds);
+      writeMinuteCache(coordinates.lat, coordinates.lon, dateStr, preds);
+    } catch {
+      // Tidak crash, chart akan pakai fallback data jam
+    } finally {
+      setLoadingMinute(false);
+    }
+  }, [coordinates]);
+
+  // ── Fetch utama (cuaca + pasut per jam + overlay) ─────────────
   const fetchAll = useCallback(async (dateStr:string, forceRefresh=false) => {
     setLoading(true); setError(null);
     try {
@@ -344,6 +543,8 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
         usedCache=false;
       }
       setWeatherData(wd); setMarineData(md); setWeatherFromCache(usedCache);
+
+      // Ambil data per-JAM untuk tabel (2 hari: kemarin + besok untuk context)
       const prevDay=new Date(dateStr+"T12:00:00Z"); prevDay.setUTCDate(prevDay.getUTCDate()-1);
       const nextDay=new Date(dateStr+"T12:00:00Z"); nextDay.setUTCDate(nextDay.getUTCDate()+1);
       const [tr,or_]=await Promise.all([
@@ -358,17 +559,42 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
     } finally { setLoading(false); }
   }, [coordinates,lang]);
 
-  useEffect(() => { const d=todayISO(); setSelDate(d); fetchAll(d); }, [coordinates.lat,coordinates.lon]);
+  // ── Effect: reset dan fetch saat koordinat berubah ────────────
+  useEffect(() => {
+    const d = todayISO();
+    setSelDate(d);
+    setMinutePredictions([]);
+    fetchAll(d);
+    fetchMinutePredictions(d);
+  }, [coordinates.lat, coordinates.lon]);
 
+  // ── Ganti tanggal ──────────────────────────────────────────────
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const d = e.target.value;
+    setSelDate(d);
+    setMinutePredictions([]);
+    fetchAll(d);
+    fetchMinutePredictions(d);
+  };
+
+  // ── Helpers ───────────────────────────────────────────────────
   const getSunTimes=()=>{ if (!weatherData?.daily)return{sunrise:"--:--",sunset:"--:--"}; const idx=weatherData.daily.time.findIndex(t=>t===selDate); if(idx===-1)return{sunrise:"--:--",sunset:"--:--"}; return{sunrise:fmtHHmm(weatherData.daily.sunrise[idx]),sunset:fmtHHmm(weatherData.daily.sunset[idx])}; };
 
   const buildRows=():HourRow[]=>{ const tideMap=new Map<number,number>(); tideData?.predictions.forEach(p=>{ const w=parseToWIB(p.time); if(w?.wibDate===selDate)tideMap.set(w.wibHour,p.height); }); const wxMap=new Map<string,Partial<HourRow>>(); weatherData?.hourly.time.forEach((t,i)=>{ if(!t.startsWith(selDate))return; const hh=new Date(t).getHours().toString().padStart(2,"0"); const windKmh=weatherData.hourly.wind_speed_10m[i]; wxMap.set(hh,{temp:weatherData.hourly.temperature_2m[i],windSpd:windKmh!=null?kmhToMs(windKmh):null,windDir:weatherData.hourly.wind_direction_10m[i],wCode:weatherData.hourly.weather_code[i]}); }); const marineMap=new Map<string,{waveH:number|null;currentSpd:number|null}>(); marineData?.hourly.time.forEach((t,i)=>{ if(!t.startsWith(selDate))return; const hh=new Date(t).getHours().toString().padStart(2,"0"); marineMap.set(hh,{waveH:marineData.hourly.wave_height[i]??null,currentSpd:marineData.hourly.ocean_current_velocity[i]??null}); }); return Array.from({length:24},(_,i)=>{ const hh=i.toString().padStart(2,"0"); const marine=marineMap.get(hh)??{waveH:null,currentSpd:null}; return{hour:`${hh}:00`,tideH:tideMap.get(i)??null,temp:null,windSpd:null,windDir:null,wCode:null,...(wxMap.get(hh)??{}),...marine} as HourRow; }); };
 
   const dailyStats=(()=>{ const hs=tideData?.predictions.filter(p=>parseToWIB(p.time)?.wibDate===selDate).map(p=>p.height)??[]; return hs.length?{max:Math.max(...hs),min:Math.min(...hs)}:null; })();
 
-  const luwesForChart=(overlayData?.luwes_obs??[]).filter(o=>parseToWIB(o.recorded_at)?.wibDate===selDate).map(o=>({...o,level_m:o.level_m+TOL_CORRECTION}));
+  // Luwes dikoreksi TOL
+  const luwesForChart=(overlayData?.luwes_obs??[])
+    .filter(o=>parseToWIB(o.recorded_at)?.wibDate===selDate)
+    .map(o=>({...o,level_m:o.level_m+TOL_CORRECTION}));
   const hasLuwesObs=luwesForChart.length>0;
   const luwesStatsCorrected=hasLuwesObs?{max_m:Math.max(...luwesForChart.map(o=>o.level_m)),min_m:Math.min(...luwesForChart.map(o=>o.level_m)),count:luwesForChart.length}:overlayData?.luwes_stats??null;
+
+  // Data chart: prioritas per-menit, fallback ke per-jam
+  const chartPredictions = minutePredictions.length > 0
+    ? minutePredictions
+    : (tideData?.predictions ?? []);
 
   const {sunrise,sunset}=getSunTimes();
   const rows=buildRows();
@@ -380,7 +606,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
   const isToday=selDate===todayISO();
   const activities=buildRecommendations(tideData,weatherData,marineData,selDate,lang);
   const selDateFmt=new Date(selDate+"T12:00:00Z").toLocaleDateString(lang==="en"?"en-US":"id-ID",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
-  const handleDateChange=(e:React.ChangeEvent<HTMLInputElement>)=>{ const d=e.target.value; setSelDate(d); fetchAll(d); };
 
   return (
     <div style={{ width:"100%", height:"100%", display:"flex", flexDirection:"column", borderLeft:"1px solid #e2e8f0", fontFamily:SANS, background:"#f8fafc" }}>
@@ -410,7 +635,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
               {lang==="en"?"Cached":"Tersimpan"}
             </span>
           )}
-          <button onClick={()=>{clearCache(coordinates.lat,coordinates.lon);fetchAll(selDate,true);}} style={{ padding:5, borderRadius:7, border:"none", background:"transparent", cursor:"pointer", color:"#94a3b8", display:"flex" }} onMouseEnter={e=>(e.currentTarget.style.background="#f1f5f9")} onMouseLeave={e=>(e.currentTarget.style.background="transparent")}><RefreshCw size={12}/></button>
+          <button onClick={()=>{clearCache(coordinates.lat,coordinates.lon);setMinutePredictions([]);fetchAll(selDate,true);fetchMinutePredictions(selDate);}} style={{ padding:5, borderRadius:7, border:"none", background:"transparent", cursor:"pointer", color:"#94a3b8", display:"flex" }} onMouseEnter={e=>(e.currentTarget.style.background="#f1f5f9")} onMouseLeave={e=>(e.currentTarget.style.background="transparent")}><RefreshCw size={12}/></button>
           <button onClick={onClose} style={{ padding:5, borderRadius:7, border:"none", background:"transparent", cursor:"pointer", color:"#94a3b8", display:"flex" }} onMouseEnter={e=>(e.currentTarget.style.background="#f1f5f9")} onMouseLeave={e=>(e.currentTarget.style.background="transparent")}><X size={14}/></button>
         </div>
       </div>
@@ -427,7 +652,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
               <div>
                 <p style={{ color:"#dc2626", fontSize:12, fontWeight:600, marginBottom:3, fontFamily:SANS }}>{lang==="en"?"Unable to load data":"Gagal memuat data"}</p>
                 <p style={{ color:"#ef4444", fontSize:10, marginBottom:8, fontFamily:SANS }}>{error}</p>
-                <button onClick={()=>fetchAll(selDate)} style={{ display:"flex", alignItems:"center", gap:5, fontSize:10, color:"#dc2626", background:"none", border:"none", cursor:"pointer", fontFamily:SANS, fontWeight:600 }}><RefreshCw size={10}/>{lang==="en"?"Try again":"Coba lagi"}</button>
+                <button onClick={()=>{fetchAll(selDate);fetchMinutePredictions(selDate);}} style={{ display:"flex", alignItems:"center", gap:5, fontSize:10, color:"#dc2626", background:"none", border:"none", cursor:"pointer", fontFamily:SANS, fontWeight:600 }}><RefreshCw size={10}/>{lang==="en"?"Try again":"Coba lagi"}</button>
               </div>
             </div>
           </div>
@@ -442,7 +667,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                   {Math.abs(coordinates.lat).toFixed(4)}°{coordinates.lat>=0?"N":"S"}&ensp;{Math.abs(coordinates.lon).toFixed(4)}°{coordinates.lon>=0?"E":"W"}
                 </p>
               </div>
-              {/* Sun + Weather */}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6, padding:"12px 16px 8px" }}>
                 <div>
                   <div style={{ display:"flex", alignItems:"center", gap:3, marginBottom:5 }}>
@@ -468,7 +692,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                   </div>
                 ) : <div/>}
               </div>
-              {/* Wind + Wave + Current */}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:0, padding:"8px 16px 12px", borderTop:"1px solid rgba(255,255,255,0.07)" }}>
                 {[
                   { icon:<Wind size={9} color="rgba(255,255,255,0.42)"/>, label:lang==="en"?"Wind":"Angin", val:currentWindMs!=null?<><p style={{fontFamily:MONO,color:"#fff",fontSize:16,fontWeight:700,lineHeight:1}}>{currentWindMs.toFixed(1)}<span style={{fontSize:10,color:"rgba(255,255,255,0.45)",fontWeight:500,marginLeft:2}}>m/s</span></p><p style={{color:"rgba(255,255,255,0.32)",fontSize:9,marginTop:2,fontFamily:SANS}}>{windDirLabel(current!.wind_direction_10m)}</p></>:<p style={{fontFamily:MONO,color:"rgba(255,255,255,0.28)",fontSize:13}}>—</p> },
@@ -496,11 +719,19 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
               />
             </div>
 
-            {/* ── Chart ── */}
+            {/* ── Chart — per menit ── */}
             <div style={{ padding:"12px 12px 0" }}>
-              <p style={{ fontSize:9, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase", color:"#94a3b8", marginBottom:7, fontFamily:SANS }}>
-                {hasLuwesObs?(lang==="en"?"Observation vs TPXO":"Observasi vs TPXO"):(lang==="en"?"Tide Levels — TPXO":"Tinggi Pasut Harian")}
-              </p>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:7 }}>
+                <p style={{ fontSize:9, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase", color:"#94a3b8", fontFamily:SANS, margin:0 }}>
+                  {hasLuwesObs?(lang==="en"?"Observation vs TPXO":"Observasi vs TPXO"):(lang==="en"?"Tide Levels — TPXO":"Tinggi Pasut Harian")}
+                </p>
+                {/* Badge per-menit */}
+                {minutePredictions.length > 0 && (
+                  <span style={{ fontSize:9, fontWeight:700, color:"#0284c7", background:"#e0f2fe", padding:"2px 6px", borderRadius:99, fontFamily:SANS }}>
+                    {lang==="en"?"1-min resolution":"Resolusi per menit"}
+                  </span>
+                )}
+              </div>
               <div style={{ borderRadius:14, overflow:"hidden", background:"#fff", border:"1px solid #e2e8f0" }}>
                 <div style={{ padding:"10px 14px 6px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
                   <p style={{ fontSize:10, fontWeight:600, color:"#475569", fontFamily:SANS }}>{selDateFmt}</p>
@@ -515,7 +746,12 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                   </div>
                 </div>
                 <div style={{ height:280, padding:"4px 6px 12px" }}>
-                  <OverlayChart tpxoPredictions={tideData?.predictions??[]} luwesObs={luwesForChart} dateStr={selDate}/>
+                  <OverlayChart
+                    minutePredictions={chartPredictions}
+                    luwesObs={luwesForChart}
+                    dateStr={selDate}
+                    loadingMinute={loadingMinute}
+                  />
                 </div>
                 {overlayData && (
                   <div style={{ padding:"6px 14px", borderTop:"1px solid #f1f5f9", background:"#fafafa", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -554,9 +790,11 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
               </div>
             )}
 
-            {/* ── Hourly Table ── */}
+            {/* ── Hourly Table — tetap per jam ── */}
             <div style={{ padding:"12px 12px 0" }}>
-              <p style={{ fontSize:9, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase", color:"#94a3b8", marginBottom:7, fontFamily:SANS }}>{lang==="en"?"Hourly Data":"Data Per Jam"}</p>
+              <p style={{ fontSize:9, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase", color:"#94a3b8", marginBottom:7, fontFamily:SANS }}>
+                {lang==="en"?"Hourly Data (table)":"Data Per Jam (tabel)"}
+              </p>
               <div style={{ borderRadius:14, overflow:"hidden", background:"#fff", border:"1px solid #e2e8f0" }}>
                 <div style={{ display:"grid", gridTemplateColumns:"38px 22px 50px 36px 58px 42px 42px", padding:"5px 12px", background:"#f8fafc", borderBottom:"1px solid #f1f5f9", fontSize:9, fontWeight:600, letterSpacing:"0.04em", textTransform:"uppercase", color:"#94a3b8", fontFamily:SANS }}>
                   <span>{lang==="en"?"Time":"Waktu"}</span><span style={{textAlign:"center"}}>Wx</span><span style={{textAlign:"right"}}>{lang==="en"?"Tide":"Pasut"}</span><span style={{textAlign:"right"}}>°C</span><span style={{textAlign:"right"}}>Wind</span><span style={{textAlign:"right"}}>Wave</span><span style={{textAlign:"right"}}>Curr</span>
@@ -584,7 +822,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
               </div>
             </div>
 
-            {/* ── Activity Guide (compact pill grid) ── */}
+            {/* ── Activity Guide ── */}
             <div style={{ padding:"12px 12px 0" }}>
               <p style={{ fontSize:9, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase", color:"#94a3b8", marginBottom:7, fontFamily:SANS }}>
                 {lang==="en"?"Activity Guide":"Panduan Aktivitas"}
@@ -607,7 +845,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
 
             {/* ── IHO S-104 ── */}
             <div style={{ padding:"12px 12px 0" }}>
-              <p style={{ fontSize:9, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase", color:"#94a3b8", marginBottom:7, fontFamily:SANS }}>{lang==="en"?"IHO S-100 / S-104":"IHO S-100 / S-104"}</p>
+              <p style={{ fontSize:9, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase", color:"#94a3b8", marginBottom:7, fontFamily:SANS }}>IHO S-100 / S-104</p>
               <S104Badge coordinates={coordinates} selectedDate={selDate} language={lang}/>
             </div>
 
@@ -617,6 +855,8 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 [lang==="en"?"Tide model":"Model pasut", tideData?.metadata.model],
                 ["Datum", tideData?.metadata.datum],
                 ...(tideData?[[lang==="en"?"Nearest grid":"Grid terdekat",`${tideData.grid.lat.toFixed(3)}°, ${tideData.grid.lon.toFixed(3)}° · ${tideData.grid.distance_km.toFixed(1)} km`]]:[]),
+                [lang==="en"?"Chart resolution":"Resolusi grafik", minutePredictions.length > 0 ? "1 menit (1440 titik)" : "1 jam (24 titik)"],
+                [lang==="en"?"Table resolution":"Resolusi tabel", "1 jam (24 titik)"],
                 [lang==="en"?"Weather":"Cuaca", "Open-Meteo API"],
                 [lang==="en"?"Obs. station":"Stasiun obs.", overlayData?.imei?`IMEI ${overlayData.imei}`:"—"],
                 ["TOL", "-2.156 m (Luwes → MSL TPXO9)"],
@@ -627,6 +867,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 </div>
               ))}
             </div>
+
+            {/* bottom padding */}
+            <div style={{ height:20 }}/>
           </>
         )}
       </div>

@@ -9,40 +9,53 @@ interface BasemapToggleProps {
   onBasemapChange: (basemap: BasemapType) => void;
 }
 
-const SANS = '"Inter", "DM Sans", system-ui, sans-serif';
+const SANS = '"Plus Jakarta Sans", "Inter", system-ui, sans-serif';
 
 export const BasemapToggle: React.FC<BasemapToggleProps> = ({ currentBasemap, onBasemapChange }) => {
   const { language } = useLanguage();
   const labels = {
-    osm:       { en: 'Map',    id: 'Peta'    },
-    satellite: { en: 'Sat.',   id: 'Sat.'    },
+    osm:       { en: 'Map',   id: 'Peta' },
+    satellite: { en: 'Sat.',  id: 'Sat.' },
   };
 
   return (
-    <div style={{
-      position: 'absolute', bottom: 20, left: 16, zIndex: 1000,
-      background: 'rgba(255,255,255,0.97)', borderRadius: 8,
-      boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 4,
-      display: 'flex', gap: 3,
-      border: '1px solid rgba(0,0,0,0.07)',
-      backdropFilter: 'blur(8px)',
-    }}>
+    <div
+      style={{
+        position: 'absolute',
+        bottom: 16,
+        left: 12,
+        zIndex: 1000,
+        background: 'rgba(255,255,255,0.97)',
+        borderRadius: 10,
+        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+        padding: 3,
+        display: 'flex',
+        gap: 2,
+        border: '1px solid rgba(0,0,0,0.07)',
+        backdropFilter: 'blur(8px)',
+        /* Prevent scroll propagation when hovering */
+        overscrollBehavior: 'contain' as const,
+        touchAction: 'manipulation' as const,
+      }}
+      onWheel={e => e.stopPropagation()}
+      onTouchMove={e => e.stopPropagation()}
+    >
       {(['osm', 'satellite'] as BasemapType[]).map(type => (
         <button
           key={type}
           onClick={() => onBasemapChange(type)}
           style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '7px 12px', borderRadius: 5, border: 'none', cursor: 'pointer',
-            fontFamily: SANS, fontSize: 12, fontWeight: 600,
-            letterSpacing: '0.01em', transition: 'background 0.2s ease, color 0.2s ease',
+            display: 'flex', alignItems: 'center', gap: 4,
+            padding: '6px 10px', borderRadius: 7, border: 'none', cursor: 'pointer',
+            fontFamily: SANS, fontSize: 11, fontWeight: 600,
+            letterSpacing: '0.01em', transition: 'background 0.18s ease, color 0.18s ease',
             background: currentBasemap === type ? '#0284c7' : 'transparent',
             color: currentBasemap === type ? '#fff' : '#374151',
             boxShadow: currentBasemap === type ? '0 2px 7px rgba(2,132,199,0.28)' : 'none',
           }}
         >
-          {type === 'osm' ? <Map size={13} /> : <Satellite size={13} />}
-          {labels[type][language]}
+          {type === 'osm' ? <Map size={12} /> : <Satellite size={12} />}
+          {labels[type][language as 'en' | 'id']}
         </button>
       ))}
     </div>

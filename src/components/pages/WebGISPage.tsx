@@ -23,6 +23,8 @@ export const WebGISPage: React.FC = () => {
   return (
     <>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+
         .webgis-wrapper {
           display: flex;
           height: calc(100vh - 62px);
@@ -30,38 +32,65 @@ export const WebGISPage: React.FC = () => {
           overflow: hidden;
           margin-top: 62px;
           position: relative;
-          background: #f8fafc;
+          background: #0a1628;
+          /* Critical: contain all scroll inside this element */
+          overscroll-behavior: contain;
+          overscroll-behavior-x: contain;
+          overscroll-behavior-y: contain;
+          touch-action: none;
         }
+
         html, body, #root { background: #f8fafc !important; overscroll-behavior: none; }
 
-        /* Desktop: side-by-side panel */
+        /* ── Desktop: side-by-side panel ── */
         @media (min-width: 769px) {
           .webgis-map-area {
             position: relative;
             flex: 1;
             min-width: 0;
+            overflow: hidden;
+            overscroll-behavior: contain;
+            touch-action: pan-x pan-y;
           }
           .webgis-panel-desktop {
-            width: var(--panel-w, 520px);
-            min-width: var(--panel-w, 520px);
-            transition: width 0.35s cubic-bezier(0.4,0,0.2,1), min-width 0.35s cubic-bezier(0.4,0,0.2,1);
+            width: 520px;
+            min-width: 520px;
+            max-width: 520px;
+            transition: width 0.35s cubic-bezier(0.4,0,0.2,1),
+                        min-width 0.35s cubic-bezier(0.4,0,0.2,1),
+                        max-width 0.35s cubic-bezier(0.4,0,0.2,1);
             overflow: hidden;
             flex-shrink: 0;
             background: #f8fafc;
+            height: 100%;
           }
           .webgis-panel-desktop.closed {
             width: 0 !important;
             min-width: 0 !important;
+            max-width: 0 !important;
           }
           .webgis-panel-mobile { display: none !important; }
         }
 
-        /* Mobile/Tablet: bottom sheet overlay */
+        /* ── Tablet ── */
+        @media (min-width: 769px) and (max-width: 1024px) {
+          .webgis-panel-desktop {
+            width: 400px;
+            min-width: 400px;
+            max-width: 400px;
+          }
+        }
+
+        /* ── Mobile: bottom sheet overlay ── */
         @media (max-width: 768px) {
           .webgis-map-area {
             position: relative;
             flex: 1;
             min-width: 0;
+            width: 100%;
+            overflow: hidden;
+            overscroll-behavior: contain;
+            touch-action: pan-x pan-y;
           }
           .webgis-panel-desktop { display: none !important; }
           .webgis-panel-mobile {
@@ -70,13 +99,14 @@ export const WebGISPage: React.FC = () => {
             right: 0;
             bottom: 0;
             z-index: 500;
-            height: 70vh;
-            max-height: 70vh;
+            height: 72vh;
+            max-height: 72vh;
             transform: translateY(100%);
             transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
-            border-radius: 20px 20px 0 0;
+            border-radius: 18px 18px 0 0;
             overflow: hidden;
             box-shadow: 0 -8px 40px rgba(0,0,0,0.18);
+            background: #f8fafc;
           }
           .webgis-panel-mobile.open {
             transform: translateY(0);
@@ -91,13 +121,14 @@ export const WebGISPage: React.FC = () => {
             background: rgba(0,0,0,0.15);
             border-radius: 2px;
             z-index: 10;
+            cursor: grab;
           }
         }
 
         @media (max-width: 480px) {
           .webgis-panel-mobile {
-            height: 80vh;
-            max-height: 80vh;
+            height: 82vh;
+            max-height: 82vh;
           }
         }
       `}</style>
@@ -105,8 +136,13 @@ export const WebGISPage: React.FC = () => {
       <div className="webgis-wrapper">
         {/* Map area */}
         <div className="webgis-map-area">
+          {/* BasemapToggle is rendered inside MapContainer's absolute positioning space */}
           <BasemapToggle currentBasemap={basemap} onBasemapChange={setBasemap} />
-          <MapContainer basemap={basemap} onGridClick={handleGridClick} onCoordinateSearch={handleGridClick} />
+          <MapContainer
+            basemap={basemap}
+            onGridClick={handleGridClick}
+            onCoordinateSearch={handleGridClick}
+          />
         </div>
 
         {/* Desktop: side panel */}
