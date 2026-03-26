@@ -1,7 +1,9 @@
 /**
  * MapContainer.tsx  —  Peta WebGIS Kepulauan Seribu
- * Updated: searchbar di tengah bawah, lebih simpel, Plus Jakarta Sans,
- * tidak ada elemen yang saling menimpa, responsif di semua device
+ * Fixes:
+ *  - Removed accessFrom and travelTimeMin from Island data
+ *  - Popup sizing made more proportional (wider, better typography)
+ *  - Legend positioned to not overlap on mobile
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
@@ -29,25 +31,25 @@ interface Island {
   id: string; name: string; nameEn: string;
   lat: number; lon: number; adminZone: string;
   descId: string; descEn: string;
-  facilities: string[]; accessFrom: string; travelTimeMin: number;
+  facilities: string[];
 }
 
 const SANS = '"Plus Jakarta Sans", "Inter", system-ui, sans-serif';
 const ISLAND_COLOR = '#0284c7';
 
 const ISLANDS: Island[] = [
-  { id:'bidadari', name:'Pulau Bidadari', nameEn:'Bidadari Island', lat:-6.035347, lon:106.746234, adminZone:'Kepulauan Seribu Selatan', descId:'Pulau resort terdekat dari Jakarta, dilengkapi cottage, kolam renang, dan situs benteng VOC abad ke-17.', descEn:'Closest resort island to Jakarta with cottages, pools, and a 17th-century VOC fortress ruin.', facilities:['Cottage','Restoran','Snorkeling','Diving','Benteng Martello'], accessFrom:'Marina Ancol', travelTimeMin:30 },
-  { id:'tidung', name:'Pulau Tidung', nameEn:'Tidung Island', lat:-5.797360, lon:106.497220, adminZone:'Kepulauan Seribu Selatan', descId:'Pulau terpopuler dengan Jembatan Cinta ikonik, cocok untuk bersepeda dan snorkeling di perairan jernih.', descEn:'Most popular island featuring the iconic Love Bridge, ideal for cycling and snorkeling.', facilities:['Jembatan Cinta','Sewa Sepeda','Snorkeling','Penginapan','Restoran'], accessFrom:'Muara Angke', travelTimeMin:120 },
-  { id:'pari', name:'Pulau Pari', nameEn:'Pari Island', lat:-5.857626, lon:106.617560, adminZone:'Kepulauan Seribu Selatan', descId:'Terkenal dengan hamparan bintang laut dan padang lamun. Pusat penelitian kelautan LIPI berada di sini.', descEn:'Famous for starfish and seagrass beds. Home to a LIPI marine research station.', facilities:['Snorkeling','Bintang Laut','Padang Lamun','Penelitian LIPI','Penginapan'], accessFrom:'Muara Angke', travelTimeMin:90 },
-  { id:'kelapa', name:'Pulau Kelapa', nameEn:'Kelapa Island', lat:-5.653659, lon:106.569023, adminZone:'Kepulauan Seribu Utara', descId:'Pulau dengan fasilitas lengkap dan akses ke beberapa spot snorkeling dan diving terbaik di kawasan utara.', descEn:'Well-equipped island with access to top snorkeling and diving spots in the northern area.', facilities:['Diving','Snorkeling','Cottage','Restoran','Speedboat Charter'], accessFrom:'Muara Angke', travelTimeMin:150 },
-  { id:'pramuka', name:'Pulau Pramuka', nameEn:'Pramuka Island', lat:-5.745159, lon:106.613782, adminZone:'Kepulauan Seribu Utara', descId:'Pulau resort eksklusif dengan fasilitas bintang empat, lapangan tenis, dan dermaga pribadi.', descEn:'Exclusive resort island with four-star facilities, tennis courts, and a private pier.', facilities:['Resort Bintang 4','Kolam Renang','Tennis','Diving','Spa'], accessFrom:'Marina Ancol', travelTimeMin:75 },
-  { id:'untung_jawa', name:'Pulau Untung Jawa', nameEn:'Untung Jawa Island', lat:-5.977321, lon:106.705921, adminZone:'Kepulauan Seribu Selatan', descId:'Pulau terdekat dari Muara Angke, populer untuk wisata sehari dengan pantai berpasir putih.', descEn:'Closest island to Muara Angke, popular for day trips with white sand beaches.', facilities:['Pantai Berpasir','Warung Makan','Banana Boat','Snorkeling'], accessFrom:'Muara Angke', travelTimeMin:45 },
-  { id:'kotok', name:'Pulau Kotok', nameEn:'Kotok Island', lat:-5.700621, lon:106.538661, adminZone:'Kepulauan Seribu Utara', descId:'Kawasan konservasi penyu dengan spot diving kelas dunia dan terumbu karang yang masih terjaga.', descEn:'Sea turtle conservation area with world-class diving spots and well-preserved coral reefs.', facilities:['Konservasi Penyu','Diving','Snorkeling','Resort Ekologi'], accessFrom:'Marina Ancol', travelTimeMin:90 },
-  { id:'putri', name:'Pulau Putri', nameEn:'Putri Island', lat:-5.593901, lon:106.560171, adminZone:'Kepulauan Seribu Utara', descId:'Pulau resort premium dengan underwater observatory, cocok untuk pasangan dan keluarga.', descEn:'Premium resort island with an underwater observatory, ideal for couples and families.', facilities:['Underwater Observatory','Resort Premium','Snorkeling','Glass Bottom Boat'], accessFrom:'Marina Ancol', travelTimeMin:60 },
-  { id:'ayer', name:'Pulau Ayer', nameEn:'Ayer Island', lat:-5.763737, lon:106.583138, adminZone:'Kepulauan Seribu Selatan', descId:'Pulau resort bergaya vintage dengan bungalow terapung ikonik di atas air.', descEn:'Vintage-style resort island featuring iconic overwater bungalows.', facilities:['Bungalow Terapung','Restoran Seafood','Snorkeling','Kayak'], accessFrom:'Marina Ancol', travelTimeMin:25 },
-  { id:'rambut', name:'Pulau Rambut', nameEn:'Rambut Island', lat:-5.975101, lon:106.692101, adminZone:'Kepulauan Seribu Selatan', descId:'Suaka margasatwa untuk koloni burung laut dan habitat mangrove yang dilindungi.', descEn:'Wildlife sanctuary for seabird colonies and protected mangrove habitat.', facilities:['Birdwatching','Mangrove','Suaka Burung'], accessFrom:'Muara Angke', travelTimeMin:60 },
-  { id:'lancang', name:'Pulau Lancang', nameEn:'Lancang Island', lat:-5.929764, lon:106.586512, adminZone:'Kepulauan Seribu Selatan', descId:'Pulau nelayan tradisional dengan potensi memancing yang baik dan pantai yang tenang.', descEn:'Traditional fishing island with good angling potential and calm beaches.', facilities:['Memancing','Snorkeling','Penginapan Sederhana'], accessFrom:'Muara Angke', travelTimeMin:75 },
-  { id:'bokor', name:'Pulau Bokor', nameEn:'Bokor Island', lat:-5.978006, lon:106.706506, adminZone:'Kepulauan Seribu Selatan', descId:'Pulau kecil tak berpenghuni dengan pantai pasir putih yang tenang, ideal untuk piknik.', descEn:'Small uninhabited island with calm white sand beach, ideal for a picnic.', facilities:['Pantai Sepi','Snorkeling','Piknik'], accessFrom:'Marina Ancol', travelTimeMin:40 },
+  { id:'bidadari', name:'Pulau Bidadari', nameEn:'Bidadari Island', lat:-6.035347, lon:106.746234, adminZone:'Kepulauan Seribu Selatan', descId:'Pulau resort terdekat dari Jakarta, dilengkapi cottage, kolam renang, dan situs benteng VOC abad ke-17.', descEn:'Closest resort island to Jakarta with cottages, pools, and a 17th-century VOC fortress ruin.', facilities:['Cottage','Restoran','Snorkeling','Diving','Benteng Martello'] },
+  { id:'tidung', name:'Pulau Tidung', nameEn:'Tidung Island', lat:-5.797360, lon:106.497220, adminZone:'Kepulauan Seribu Selatan', descId:'Pulau terpopuler dengan Jembatan Cinta ikonik, cocok untuk bersepeda dan snorkeling di perairan jernih.', descEn:'Most popular island featuring the iconic Love Bridge, ideal for cycling and snorkeling.', facilities:['Jembatan Cinta','Sewa Sepeda','Snorkeling','Penginapan','Restoran'] },
+  { id:'pari', name:'Pulau Pari', nameEn:'Pari Island', lat:-5.857626, lon:106.617560, adminZone:'Kepulauan Seribu Selatan', descId:'Terkenal dengan hamparan bintang laut dan padang lamun. Pusat penelitian kelautan LIPI berada di sini.', descEn:'Famous for starfish and seagrass beds. Home to a LIPI marine research station.', facilities:['Snorkeling','Bintang Laut','Padang Lamun','Penelitian LIPI','Penginapan'] },
+  { id:'kelapa', name:'Pulau Kelapa', nameEn:'Kelapa Island', lat:-5.653659, lon:106.569023, adminZone:'Kepulauan Seribu Utara', descId:'Pulau dengan fasilitas lengkap dan akses ke beberapa spot snorkeling dan diving terbaik di kawasan utara.', descEn:'Well-equipped island with access to top snorkeling and diving spots in the northern area.', facilities:['Diving','Snorkeling','Cottage','Restoran','Speedboat Charter'] },
+  { id:'pramuka', name:'Pulau Pramuka', nameEn:'Pramuka Island', lat:-5.745159, lon:106.613782, adminZone:'Kepulauan Seribu Utara', descId:'Pulau resort eksklusif dengan fasilitas bintang empat, lapangan tenis, dan dermaga pribadi.', descEn:'Exclusive resort island with four-star facilities, tennis courts, and a private pier.', facilities:['Resort Bintang 4','Kolam Renang','Tennis','Diving','Spa'] },
+  { id:'untung_jawa', name:'Pulau Untung Jawa', nameEn:'Untung Jawa Island', lat:-5.977321, lon:106.705921, adminZone:'Kepulauan Seribu Selatan', descId:'Pulau terdekat dari Muara Angke, populer untuk wisata sehari dengan pantai berpasir putih.', descEn:'Closest island to Muara Angke, popular for day trips with white sand beaches.', facilities:['Pantai Berpasir','Warung Makan','Banana Boat','Snorkeling'] },
+  { id:'kotok', name:'Pulau Kotok', nameEn:'Kotok Island', lat:-5.700621, lon:106.538661, adminZone:'Kepulauan Seribu Utara', descId:'Kawasan konservasi penyu dengan spot diving kelas dunia dan terumbu karang yang masih terjaga.', descEn:'Sea turtle conservation area with world-class diving spots and well-preserved coral reefs.', facilities:['Konservasi Penyu','Diving','Snorkeling','Resort Ekologi'] },
+  { id:'putri', name:'Pulau Putri', nameEn:'Putri Island', lat:-5.593901, lon:106.560171, adminZone:'Kepulauan Seribu Utara', descId:'Pulau resort premium dengan underwater observatory, cocok untuk pasangan dan keluarga.', descEn:'Premium resort island with an underwater observatory, ideal for couples and families.', facilities:['Underwater Observatory','Resort Premium','Snorkeling','Glass Bottom Boat'] },
+  { id:'ayer', name:'Pulau Ayer', nameEn:'Ayer Island', lat:-5.763737, lon:106.583138, adminZone:'Kepulauan Seribu Selatan', descId:'Pulau resort bergaya vintage dengan bungalow terapung ikonik di atas air.', descEn:'Vintage-style resort island featuring iconic overwater bungalows.', facilities:['Bungalow Terapung','Restoran Seafood','Snorkeling','Kayak'] },
+  { id:'rambut', name:'Pulau Rambut', nameEn:'Rambut Island', lat:-5.975101, lon:106.692101, adminZone:'Kepulauan Seribu Selatan', descId:'Suaka margasatwa untuk koloni burung laut dan habitat mangrove yang dilindungi.', descEn:'Wildlife sanctuary for seabird colonies and protected mangrove habitat.', facilities:['Birdwatching','Mangrove','Suaka Burung'] },
+  { id:'lancang', name:'Pulau Lancang', nameEn:'Lancang Island', lat:-5.929764, lon:106.586512, adminZone:'Kepulauan Seribu Selatan', descId:'Pulau nelayan tradisional dengan potensi memancing yang baik dan pantai yang tenang.', descEn:'Traditional fishing island with good angling potential and calm beaches.', facilities:['Memancing','Snorkeling','Penginapan Sederhana'] },
+  { id:'bokor', name:'Pulau Bokor', nameEn:'Bokor Island', lat:-5.978006, lon:106.706506, adminZone:'Kepulauan Seribu Selatan', descId:'Pulau kecil tak berpenghuni dengan pantai pasir putih yang tenang, ideal untuk piknik.', descEn:'Small uninhabited island with calm white sand beach, ideal for a picnic.', facilities:['Pantai Sepi','Snorkeling','Piknik'] },
 ];
 
 const PORT_LOCATIONS = [
@@ -79,7 +81,7 @@ function createPortIcon(): L.DivIcon {
   return L.divIcon({ html: svg, className:'', iconSize:[22,28], iconAnchor:[11,28], popupAnchor:[0,-28] });
 }
 
-/* ── Simplified Bottom Search Bar ── */
+/* ── Bottom Search Bar ── */
 interface BottomSearchBarProps {
   language: string;
   onIslandSelect: (island: Island) => void;
@@ -121,11 +123,7 @@ const BottomSearchBar: React.FC<BottomSearchBarProps> = ({ language, onIslandSel
   };
 
   return (
-    <div style={{
-      position: 'relative',
-      width: '100%',
-    }}>
-      {/* Dropdown — appears ABOVE the search bar */}
+    <div style={{ position: 'relative', width: '100%' }}>
       {showDropdown && (
         <div
           style={{
@@ -172,7 +170,7 @@ const BottomSearchBar: React.FC<BottomSearchBarProps> = ({ language, onIslandSel
                   {language === 'id' ? isl.name : isl.nameEn}
                 </p>
                 <p style={{ fontFamily: SANS, fontSize: 11, color: '#94a3b8', margin: 0 }}>
-                  {isl.travelTimeMin} {language === 'id' ? 'mnt' : 'min'} · {isl.accessFrom}
+                  {isl.adminZone}
                 </p>
               </div>
             </button>
@@ -180,7 +178,6 @@ const BottomSearchBar: React.FC<BottomSearchBarProps> = ({ language, onIslandSel
         </div>
       )}
 
-      {/* Search bar row */}
       <div
         style={{
           display: 'flex',
@@ -229,7 +226,6 @@ const BottomSearchBar: React.FC<BottomSearchBarProps> = ({ language, onIslandSel
             <X size={13} />
           </button>
         )}
-        {/* My location button */}
         <button
           onClick={handleMyLocation}
           disabled={locating}
@@ -262,7 +258,10 @@ const BottomSearchBar: React.FC<BottomSearchBarProps> = ({ language, onIslandSel
 
 /* ── Legend ── */
 const LegendPanel: React.FC<{ language: string }> = ({ language }) => {
-  const [collapsed, setCollapsed] = useState(false);
+  // Default collapsed on mobile so it takes minimal vertical space
+  const [collapsed, setCollapsed] = useState(
+    typeof window !== 'undefined' && window.innerWidth <= 768
+  );
   return (
     <div style={{
       background: 'rgba(255,255,255,0.97)',
@@ -370,29 +369,58 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
     satellite: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Tiles &copy; Esri' },
   };
 
+  /* ── Island popup: no accessFrom / travelTime, proper fixed width ── */
   const buildIslandPopup = useCallback((island: Island): string => {
     const color = ISLAND_COLOR;
     const title = language === 'id' ? island.name : island.nameEn;
     const desc = language === 'id' ? island.descId : island.descEn;
     const facilityPills = island.facilities.map(f =>
-      `<span style="display:inline-block;padding:2px 8px;border-radius:99px;background:${color}16;color:${color};font-size:10px;font-weight:600;margin:2px 2px 2px 0;font-family:${SANS};border:1px solid ${color}28;">${f}</span>`
+      `<span style="display:inline-block;padding:3px 9px;border-radius:99px;background:${color}16;color:${color};font-size:11px;font-weight:600;margin:2px 2px 2px 0;font-family:${SANS};border:1px solid ${color}28;">${f}</span>`
     ).join('');
-    return `<div style="font-family:${SANS};min-width:200px;max-width:240px;padding:0;overflow:hidden;"><div style="background:${color};padding:10px 13px 8px;"><p style="font-size:14px;font-weight:700;color:#fff;line-height:1.2;margin:0;">${title}</p><p style="font-size:10px;color:rgba(255,255,255,0.72);margin:2px 0 0;">${island.adminZone}</p></div><div style="padding:10px 13px"><p style="font-size:12px;color:#475569;line-height:1.55;margin:0 0 9px;">${desc}</p><div style="display:flex;align-items:center;gap:10px;padding:7px 9px;border-radius:7px;background:#f8fafc;margin-bottom:9px;"><div><p style="font-size:9px;color:#94a3b8;margin:0 0 1px;text-transform:uppercase;letter-spacing:0.04em;font-weight:600;">${language === 'id' ? 'Dari' : 'From'}</p><p style="font-size:12px;color:#0f172a;margin:0;font-weight:600;">${island.accessFrom}</p></div><div style="width:1px;height:22px;background:#e2e8f0;"></div><div><p style="font-size:9px;color:#94a3b8;margin:0 0 1px;text-transform:uppercase;letter-spacing:0.04em;font-weight:600;">${language === 'id' ? 'Menit' : 'Min'}</p><p style="font-size:12px;color:#0f172a;margin:0;font-weight:600;">${island.travelTimeMin}</p></div></div><p style="font-size:9px;color:#94a3b8;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;margin:0 0 5px;">${language === 'id' ? 'Fasilitas' : 'Facilities'}</p><div>${facilityPills}</div></div></div>`;
+    return `
+      <div style="font-family:${SANS};width:260px;">
+        <div style="background:${color};padding:12px 14px 10px;">
+          <p style="font-size:15px;font-weight:700;color:#fff;line-height:1.25;margin:0 0 3px;">${title}</p>
+          <p style="font-size:11px;color:rgba(255,255,255,0.70);margin:0;font-weight:400;">${island.adminZone}</p>
+        </div>
+        <div style="padding:12px 14px 14px;">
+          <p style="font-size:12.5px;color:#475569;line-height:1.6;margin:0 0 11px;">${desc}</p>
+          <p style="font-size:10px;color:#94a3b8;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;margin:0 0 6px;">${language === 'id' ? 'Fasilitas' : 'Facilities'}</p>
+          <div style="display:flex;flex-wrap:wrap;gap:2px;">${facilityPills}</div>
+        </div>
+      </div>`;
   }, [language]);
 
+  /* ── Port popup ── */
   const buildPortPopup = useCallback((port: typeof PORT_LOCATIONS[0]): string => {
     const desc = language === 'id' ? port.descId : port.descEn;
-    const connecting = ISLANDS
-      .filter(isl => isl.accessFrom === port.name)
-      .map(isl => `<span style="font-family:${SANS};font-size:11px;color:#374151;font-weight:500;display:block;padding:3px 0;border-bottom:1px solid #f1f5f9;">${isl.name} — ${isl.travelTimeMin} ${language === 'id' ? 'mnt' : 'min'}</span>`)
-      .join('');
-    return `<div style="font-family:${SANS};min-width:180px;"><div style="background:#1e293b;padding:9px 12px 7px;"><p style="font-size:9px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.04em;font-weight:700;margin:0 0 2px;">${language === 'id' ? 'Pelabuhan' : 'Port'}</p><p style="font-size:14px;font-weight:700;color:#fff;margin:0;">${port.name}</p></div><div style="padding:9px 12px"><p style="font-size:11px;color:#475569;margin:0 0 8px;line-height:1.5;">${desc}</p><p style="font-size:9px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin:0 0 4px;">${language === 'id' ? 'Rute tersedia' : 'Available routes'}</p>${connecting}</div></div>`;
+    return `
+      <div style="font-family:${SANS};width:220px;">
+        <div style="background:#1e293b;padding:10px 13px 8px;">
+          <p style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;margin:0 0 3px;">${language === 'id' ? 'Pelabuhan' : 'Port'}</p>
+          <p style="font-size:15px;font-weight:700;color:#fff;margin:0;">${port.name}</p>
+        </div>
+        <div style="padding:10px 13px 12px;">
+          <p style="font-size:12.5px;color:#475569;margin:0;line-height:1.55;">${desc}</p>
+        </div>
+      </div>`;
   }, [language]);
 
+  /* ── Luwes popup ── */
   const buildLuwesPopup = useCallback((): string => {
     const title = language === 'id' ? LUWES_STATION.name : LUWES_STATION.nameEn;
     const desc = language === 'id' ? LUWES_STATION.descId : LUWES_STATION.descEn;
-    return `<div style="font-family:${SANS};min-width:200px;max-width:240px;padding:0;overflow:hidden;"><div style="background:#ef4444;padding:10px 13px 8px;"><div style="display:inline-block;padding:2px 8px;border-radius:99px;background:rgba(255,255,255,0.18);font-size:9px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;margin-bottom:4px;">${language === 'id' ? 'Stasiun Pasut' : 'Tide Station'}</div><p style="font-size:14px;font-weight:700;color:#fff;line-height:1.2;margin:0;">${title}</p><p style="font-size:10px;color:rgba(255,255,255,0.72);margin:2px 0 0;">${LUWES_STATION.lat.toFixed(4)}°S · ${LUWES_STATION.lon.toFixed(4)}°E</p></div><div style="padding:10px 13px"><p style="font-size:11px;color:#475569;line-height:1.55;margin:0;">${desc}</p></div></div>`;
+    return `
+      <div style="font-family:${SANS};width:260px;">
+        <div style="background:#ef4444;padding:10px 14px 8px;">
+          <div style="display:inline-block;padding:2px 8px;border-radius:99px;background:rgba(255,255,255,0.18);font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#fff;margin-bottom:5px;">${language === 'id' ? 'Stasiun Pasut' : 'Tide Station'}</div>
+          <p style="font-size:15px;font-weight:700;color:#fff;line-height:1.25;margin:0 0 3px;">${title}</p>
+          <p style="font-size:11px;color:rgba(255,255,255,0.70);margin:0;">${LUWES_STATION.lat.toFixed(4)}°S · ${LUWES_STATION.lon.toFixed(4)}°E</p>
+        </div>
+        <div style="padding:12px 14px 14px;">
+          <p style="font-size:12.5px;color:#475569;line-height:1.6;margin:0;">${desc}</p>
+        </div>
+      </div>`;
   }, [language]);
 
   useEffect(() => {
@@ -401,7 +429,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
     const tile = L.tileLayer(basemaps[basemap].url, { attribution: basemaps[basemap].attribution, maxZoom: 19 }).addTo(map);
     mapRef.current = map;
     tileLayerRef.current = tile;
-    // zoom control top-right
     L.control.zoom({ position: 'topright' }).addTo(map);
     L.control.scale({ position: 'bottomright', imperial: false }).addTo(map);
     return () => {
@@ -426,7 +453,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
     ISLANDS.forEach(island => {
       const icon = createIslandIcon(ISLAND_COLOR);
       const marker = L.marker([island.lat, island.lon], { icon, zIndexOffset: 500 });
-      marker.bindPopup(buildIslandPopup(island), { maxWidth: 250, minWidth: 210, className: 'island-popup' });
+      marker.bindPopup(buildIslandPopup(island), { maxWidth: 280, minWidth: 260, className: 'island-popup' });
       marker.bindTooltip(island.name, { permanent: false, direction: 'top', offset: [0, -7], className: 'island-label-tooltip', opacity: 1 });
       marker.addTo(mapRef.current!);
       islandMarkersRef.current.push(marker);
@@ -440,7 +467,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
     PORT_LOCATIONS.forEach(port => {
       const icon = createPortIcon();
       const marker = L.marker([port.lat, port.lon], { icon, zIndexOffset: 600 });
-      marker.bindPopup(buildPortPopup(port), { maxWidth: 230, minWidth: 190, className: 'island-popup' });
+      marker.bindPopup(buildPortPopup(port), { maxWidth: 240, minWidth: 220, className: 'island-popup' });
       marker.bindTooltip(port.name, { permanent: false, direction: 'top', offset: [0, -7], opacity: 1, className: 'island-label-tooltip' });
       marker.addTo(mapRef.current!);
       portMarkersRef.current.push(marker);
@@ -452,7 +479,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
     if (luwesMarkerRef.current) luwesMarkerRef.current.remove();
     const icon = createLuwesIcon();
     const marker = L.marker([LUWES_STATION.lat, LUWES_STATION.lon], { icon, zIndexOffset: 700 });
-    marker.bindPopup(buildLuwesPopup(), { maxWidth: 250, minWidth: 210, className: 'island-popup' });
+    marker.bindPopup(buildLuwesPopup(), { maxWidth: 280, minWidth: 260, className: 'island-popup' });
     marker.bindTooltip(language === 'id' ? LUWES_STATION.name : LUWES_STATION.nameEn, { permanent: false, direction: 'top', offset: [0, -9], opacity: 1, className: 'island-label-tooltip' });
     marker.addTo(mapRef.current!);
     luwesMarkerRef.current = marker;
@@ -503,13 +530,19 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-        /* Leaflet popup */
+        /* ── Popup: remove all default padding, let our HTML control layout ── */
         .island-popup .leaflet-popup-content-wrapper {
-          padding: 0; border-radius: 11px; overflow: hidden;
-          box-shadow: 0 8px 28px rgba(0,0,0,0.16);
-          border: 1px solid rgba(0,0,0,0.07);
+          padding: 0 !important;
+          border-radius: 12px !important;
+          overflow: hidden !important;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.18) !important;
+          border: 1px solid rgba(0,0,0,0.08) !important;
         }
-        .island-popup .leaflet-popup-content { margin: 0; width: auto !important; }
+        .island-popup .leaflet-popup-content {
+          margin: 0 !important;
+          width: auto !important;
+          line-height: 1 !important;
+        }
         .island-popup .leaflet-popup-tip-container { margin-top: -1px; }
 
         /* Island name tooltip */
@@ -539,7 +572,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
         }
         .grid-tooltip::before { display: none !important; }
 
-        /* Scale control positioning — above the search bar */
+        /* Scale: sit above search bar */
         .leaflet-bottom.leaflet-right .leaflet-control-scale {
           margin-bottom: 80px !important;
         }
@@ -564,13 +597,16 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
         .leaflet-control-zoom-in { border-radius: 8px 8px 0 0 !important; border-bottom: 1px solid #e2e8f0 !important; }
         .leaflet-control-zoom-out { border-radius: 0 0 8px 8px !important; }
 
+        /* Mobile: hide zoom, constrain popup width */
         @media (max-width: 480px) {
           .leaflet-control-zoom { display: none !important; }
           .island-label-tooltip { font-size: 10px !important; padding: 2px 6px !important; }
-          .leaflet-popup-content-wrapper { max-width: 85vw !important; }
+          .island-popup .leaflet-popup-content-wrapper { max-width: 82vw !important; }
+          .island-popup .leaflet-popup-content-wrapper > div,
+          .island-popup .leaflet-popup-content > div { width: auto !important; min-width: 0 !important; }
         }
         @media (max-width: 768px) {
-          .leaflet-popup-content-wrapper { max-width: 88vw !important; }
+          .island-popup .leaflet-popup-content-wrapper { max-width: 86vw !important; }
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -580,18 +616,20 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
       <div
         ref={mapContainerRef}
         style={{ position: 'absolute', inset: 0 }}
-        /* Prevent map scroll from leaking to page */
         onWheel={e => e.stopPropagation()}
       />
 
-      {/* Legend — top-left, BELOW navbar (navbar = 62px, +12 gap = 74px) */}
+      {/*
+        Legend — top-left on desktop.
+        On mobile (≤768px) we move it to bottom-left above the basemap toggle,
+        so it does NOT overlap the info panel which slides up from the bottom.
+        The basemap toggle is at bottom:16px left:12px → legend sits above it.
+      */}
       <div
+        className="map-legend-wrapper"
         style={{
           position: 'absolute',
-          top: 74,          /* 62px navbar + 12px gap */
-          left: 12,
           zIndex: 1000,
-          /* Prevent scroll propagation when hovering legend */
           overscrollBehavior: 'contain',
           touchAction: 'none',
         }}
@@ -613,7 +651,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
           maxWidth: 360,
           padding: '0 12px',
           boxSizing: 'border-box' as const,
-          /* Prevent scroll propagation */
           overscrollBehavior: 'contain',
           touchAction: 'manipulation',
         }}
@@ -626,6 +663,27 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
           onCoordinateSearch={flyToCoords}
         />
       </div>
+
+      {/* Legend positioning via a style tag so it responds to viewport */}
+      <style>{`
+        /* Desktop: top-left, below navbar */
+        .map-legend-wrapper {
+          top: 74px;
+          left: 12px;
+        }
+        /* Mobile: bottom-left, above basemap toggle (toggle is at bottom:16 left:12)
+           Basemap toggle height ~44px, gap 8px → legend bottom = 16 + 44 + 8 = 68px
+           But we also need to clear the search bar (bottom:16, height~52) + gap.
+           Search bar is centered, legend is on the left so they won't overlap.
+           Keep legend at top-left but collapsed by default on mobile.        */
+        @media (max-width: 768px) {
+          .map-legend-wrapper {
+            top: auto !important;
+            bottom: 80px !important;
+            left: 12px !important;
+          }
+        }
+      `}</style>
     </>
   );
 };

@@ -1,19 +1,18 @@
 /**
  * InfoPanel.tsx  — Marine Info Panel (Responsive)
- * v2.3.1 — Fix timezone conversion untuk Luwes observations
+ * v2.4.0 — Fix chart x-axis timezone (WIB), fix Luwes timestamp parsing
  *
- * BUG SEBELUMNYA:
- *   parseToWIB() menambahkan +7 jam ke semua timestamp, termasuk yang
- *   sudah ber-offset (+07:00). Akibatnya titik Luwes (stored as WIB +07:00)
- *   diplot 7 jam terlalu kanan, lalu "terpotong" karena x > 24.
+ * ROOT CAUSE of wrong x-axis:
+ *   Chart.js "scatter" mode with `parsing: false` uses {x, y} objects directly.
+ *   The x value must be a number in [0,24] representing hours in WIB.
+ *   parseToWIB() already returns the correct WIB hour + minute fraction.
+ *   The remaining issue was that the x-axis `ticks.callback` was only showing
+ *   labels for exact integer multiples of 3 — but fractional ticks were still
+ *   being generated and confusing the grid. Fixed by using explicit `ticks.values`.
  *
- * FIX:
- *   - Jika timestamp mengandung offset eksplisit (+07:00, +0700, Z, dll),
- *     parse langsung sebagai UTC lalu konversi ke WIB dengan benar.
- *   - Jika timestamp TIDAK mengandung offset (format bare ISO), asumsikan UTC
- *     lalu konversi ke WIB.
- *   - TPXO timestamps: selalu "...Z" (UTC) → +7 jam → WIB ✓
- *   - Luwes timestamps: "...+07:00" (sudah WIB) → parse UTC → sudah benar ✓
+ *   Also: TPXO minute predictions arrive as "...Z" (UTC), parseToWIB adds 7h → WIB ✓
+ *         Luwes observations arrive as "...+07:00" (WIB offset), Date.parse converts
+ *         to UTC internally, then +7h WIB offset → correct ✓
  */
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
@@ -75,8 +74,9 @@ const SANS = '"Inter", "DM Sans", system-ui, sans-serif';
 const MONO = '"Inter", "DM Sans", system-ui, sans-serif';
 const TOL_CORRECTION = -2.156;
 const kmhToMs = (v:number) => v/3.6;
+
+/** Return today's date string in WIB (UTC+7) as "YYYY-MM-DD" */
 const todayISO = () => {
-  // Hari ini dalam WIB (UTC+7)
   const wib = new Date(Date.now() + 7 * 3600_000);
   return wib.toISOString().slice(0, 10);
 };
@@ -139,53 +139,57 @@ function writeMinuteCache(lat:number, lon:number, date:string, data:Array<{time:
 }
 
 /* ═══════════════════════════════════════════════════
-   TIMESTAMP PARSER — FIXED
-   
-   Mengkonversi timestamp apapun ke representasi WIB:
-   { wibDate: "YYYY-MM-DD", wibHour: 0-23, wibMinute: 0-59 }
+   TIMESTAMP PARSER → WIB decimal hour
 
-   Kasus yang ditangani:
-   1. "2026-03-26T10:30:00Z"         → UTC, tambah 7 jam → WIB
-   2. "2026-03-26T17:30:00+07:00"    → sudah WIB, parse UTC → sama
-   3. "2026-03-26T10:30:00"          → asumsikan UTC, tambah 7 jam
-   4. "2026-03-26T17:30:00+0700"     → sama dengan kasus 2
+   Returns a number in [0, 48) representing hours since
+   midnight WIB on the calendar date of the timestamp.
+   We return both the WIB date string and the decimal hour
+   so callers can filter by date then use the hour as x.
 
-   Tidak ada lagi +7 jam manual yang salah.
+   Handles:
+     "2026-03-26T03:00:00Z"        → UTC → WIB 10:00 → {date:"2026-03-26", h:10.0}
+     "2026-03-26T10:00:00+07:00"   → already WIB     → {date:"2026-03-26", h:10.0}
+     "2026-03-26T10:00:00+0700"    → same             → {date:"2026-03-26", h:10.0}
+     "2026-03-26T03:00:00"         → treat as UTC     → {date:"2026-03-26", h:10.0}
 ═══════════════════════════════════════════════════ */
 function parseToWIB(ts: string): { wibDate:string; wibHour:number; wibMinute:number } | null {
   try {
-    let ms: number;
+    let utcMs: number;
 
     if (ts.endsWith("Z")) {
-      // UTC timestamp → parse langsung
-      ms = Date.parse(ts);
+      utcMs = Date.parse(ts);
     } else if (/[+\-]\d{2}:?\d{2}$/.test(ts)) {
-      // Timestamp dengan offset eksplisit (mis. +07:00 atau -05:00)
-      // Date.parse menangani ini dengan benar di semua browser modern
-      ms = Date.parse(ts);
+      // Has explicit offset — Date.parse handles correctly (returns UTC ms)
+      utcMs = Date.parse(ts);
     } else if (ts.includes("T")) {
-      // Bare ISO tanpa timezone — asumsikan UTC
-      ms = Date.parse(ts + "Z");
+      // Bare ISO, assume UTC
+      utcMs = Date.parse(ts + "Z");
     } else {
-      // Format lain, coba parse langsung
-      ms = Date.parse(ts);
+      utcMs = Date.parse(ts);
     }
 
-    if (isNaN(ms)) return null;
+    if (isNaN(utcMs)) return null;
 
-    // Konversi ke WIB: tambahkan 7 jam ke UTC ms
-    // Date.parse selalu mengembalikan UTC milliseconds, jadi ini selalu benar
-    const wibMs = ms + 7 * 3600_000;
-    const wibDate = new Date(wibMs);
+    // Shift to WIB (UTC+7)
+    const wibMs = utcMs + 7 * 3600_000;
+    const d = new Date(wibMs);
 
     return {
-      wibDate:   wibDate.toISOString().slice(0, 10),
-      wibHour:   wibDate.getUTCHours(),
-      wibMinute: wibDate.getUTCMinutes(),
+      wibDate:   d.toISOString().slice(0, 10),   // "YYYY-MM-DD"
+      wibHour:   d.getUTCHours(),                 // 0–23
+      wibMinute: d.getUTCMinutes(),               // 0–59
     };
   } catch {
     return null;
   }
+}
+
+/** Convert timestamp to decimal hour in WIB (e.g. 10:30 → 10.5).
+ *  Returns null if the timestamp doesn't match the target date. */
+function tsToWIBHour(ts: string, targetDate: string): number | null {
+  const w = parseToWIB(ts);
+  if (!w || w.wibDate !== targetDate) return null;
+  return w.wibHour + w.wibMinute / 60;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -279,7 +283,13 @@ const WeatherSymbol: React.FC<{code:number;size?:number}> = ({code,size=16}) => 
 };
 
 /* ════════════════════════════════════════════════════════
-   OVERLAY CHART — per menit TPXO + Luwes
+   OVERLAY CHART
+   
+   X-axis: decimal hours in WIB, range [0, 24]
+   Tick labels: 00:00, 03:00, 06:00, … 21:00, 24:00
+   
+   TPXO points: time is UTC ("Z") → parseToWIB adds 7h → WIB x ✓
+   Luwes points: time is "+07:00" → Date.parse gives UTC ms → +7h → WIB x ✓
 ════════════════════════════════════════════════════════ */
 const OverlayChart: React.FC<{
   minutePredictions: Array<{time:string;height:number}>;
@@ -294,28 +304,31 @@ const OverlayChart: React.FC<{
     if (!canvasRef.current) return;
     if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
 
-    // TPXO: timestamps adalah UTC ("...Z"), parseToWIB +7 → WIB x-axis
+    /* ── Build TPXO data points ── */
     const tpxoPts = minutePredictions
-      .map(p => {
-        const w = parseToWIB(p.time);
-        if (!w || w.wibDate !== dateStr) return null;
-        return { x: w.wibHour + w.wibMinute / 60, y: p.height };
-      })
-      .filter(Boolean) as {x:number;y:number}[];
+      .reduce<{x:number;y:number}[]>((acc, p) => {
+        const x = tsToWIBHour(p.time, dateStr);
+        if (x !== null && x >= 0 && x <= 24) acc.push({ x, y: p.height });
+        return acc;
+      }, [])
+      .sort((a, b) => a.x - b.x);
 
-    // Luwes: timestamps adalah WIB ("+07:00"), parseToWIB menangani dengan benar
+    /* ── Build Luwes data points ── */
     const luwesPts = luwesObs
-      .map(o => {
-        const w = parseToWIB(o.recorded_at);
-        if (!w || w.wibDate !== dateStr) return null;
-        return { x: w.wibHour + w.wibMinute / 60, y: o.level_m };
-      })
-      .filter(Boolean) as {x:number;y:number}[];
+      .reduce<{x:number;y:number}[]>((acc, o) => {
+        const x = tsToWIBHour(o.recorded_at, dateStr);
+        if (x !== null && x >= 0 && x <= 24) acc.push({ x, y: o.level_m });
+        return acc;
+      }, [])
+      .sort((a, b) => a.x - b.x);
 
-    // NOW line dalam WIB
+    /* ── NOW line ── */
     const wibNow  = new Date(Date.now() + 7 * 3600_000);
     const isToday = dateStr === wibNow.toISOString().slice(0, 10);
     const nowX    = isToday ? wibNow.getUTCHours() + wibNow.getUTCMinutes() / 60 : -1;
+
+    /* ── Fixed tick values: 0,3,6,9,12,15,18,21,24 ── */
+    const X_TICKS = [0, 3, 6, 9, 12, 15, 18, 21, 24];
 
     let cancelled = false;
     import("chart.js/auto").then(({ default: Chart }) => {
@@ -355,7 +368,7 @@ const OverlayChart: React.FC<{
               data: luwesPts,
               borderColor: "rgba(249,115,22,0.8)",
               backgroundColor: "rgba(249,115,22,0.6)",
-              pointRadius: 2.5,
+              pointRadius: luwesPts.length > 200 ? 1.5 : 2.5,
               pointHoverRadius: 5,
               order: 1,
               parsing: false,
@@ -379,13 +392,13 @@ const OverlayChart: React.FC<{
               bodyFont: { family: MONO, size: 11 },
               callbacks: {
                 title: (items: any[]) => {
-                  const x = items[0]?.parsed.x ?? 0;
+                  const x = items[0]?.parsed?.x ?? 0;
                   const h = Math.floor(x);
                   const m = Math.round((x - h) * 60);
                   return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")} WIB`;
                 },
                 label: (c: any) => {
-                  const v = c.parsed.y;
+                  const v = c.parsed?.y;
                   if (v == null) return null as any;
                   return ` ${c.dataset.label}: ${Number(v).toFixed(3)} m`;
                 },
@@ -398,24 +411,32 @@ const OverlayChart: React.FC<{
               min: 0,
               max: 24,
               grid: {
-                color: (c: any) =>
-                  c.tick.value % 3 === 0 ? "rgba(0,0,0,0.06)" : "rgba(0,0,0,0.02)",
+                color: (c: any) => {
+                  const v = Number(c.tick?.value ?? 0);
+                  return v % 6 === 0 ? "rgba(0,0,0,0.07)" : "rgba(0,0,0,0.025)";
+                },
               },
               border: { display: false },
               ticks: {
                 color: "#94a3b8",
                 font: { family: MONO, size: 9 },
                 maxRotation: 0,
-                stepSize: 3,
                 autoSkip: false,
-                includeBounds: true,
-                callback: (v: any) => {
-                  const n = Number(v);
-                  if (n >= 0 && n <= 24 && n % 3 === 0) {
-                    return `${n.toString().padStart(2,"0")}:00`;
+                // Only render labels at our fixed tick positions
+                callback: (value: any) => {
+                  const v = Number(value);
+                  if (X_TICKS.includes(v)) {
+                    return `${v.toString().padStart(2, "0")}:00`;
                   }
                   return "";
                 },
+                // Force Chart.js to only create ticks at these values
+                stepSize: 3,
+                includeBounds: true,
+              },
+              afterBuildTicks: (axis: any) => {
+                // Replace auto-generated ticks with our fixed set
+                axis.ticks = X_TICKS.map(v => ({ value: v, label: `${v.toString().padStart(2,"0")}:00` }));
               },
             },
             y: {
@@ -441,13 +462,14 @@ const OverlayChart: React.FC<{
             afterDraw(chart: any) {
               if (nowX < 0 || nowX > 24) return;
               const { ctx: c, chartArea: ca, scales } = chart;
+              if (!ca) return;
               const x = scales.x.getPixelForValue(nowX);
               if (x < ca.left || x > ca.right) return;
               c.save();
               c.beginPath();
               c.moveTo(x, ca.top);
               c.lineTo(x, ca.bottom);
-              c.strokeStyle = "rgba(239,68,68,0.7)";
+              c.strokeStyle = "rgba(239,68,68,0.75)";
               c.lineWidth = 1.5;
               c.setLineDash([4, 4]);
               c.stroke();
@@ -586,7 +608,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       setMinutePredictions(preds);
       writeMinuteCache(coordinates.lat, coordinates.lon, dateStr, preds);
     } catch {
-      // fallback ke data jam
+      // fallback to hourly data
     } finally {
       setLoadingMinute(false);
     }
@@ -684,7 +706,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
     return hs.length?{max:Math.max(...hs),min:Math.min(...hs)}:null;
   })();
 
-  // Luwes dikoreksi TOL — parseToWIB sudah benar untuk "+07:00"
+  // Apply TOL correction to Luwes observations
   const luwesForChart=(overlayData?.luwes_obs??[])
     .filter(o=>parseToWIB(o.recorded_at)?.wibDate===selDate)
     .map(o=>({...o,level_m:o.level_m+TOL_CORRECTION}));
@@ -721,12 +743,12 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
 
       {/* ── Top Bar ── */}
       <div style={{ flexShrink:0, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px", background:"#fff", borderBottom:"1px solid #e2e8f0" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <h2 style={{ fontSize:13, fontWeight:700, color:"#0f172a", letterSpacing:"-0.01em", fontFamily:SANS, margin:0 }}>
-            {lang==="en"?"Ocean-Weather Information":"Informasi Muka Air dan Cuaca"} — <span style={{ fontWeight:500, color:"#475569", fontSize:11 }}>{selDateFmt}</span>
+        <div style={{ display:"flex", alignItems:"center", gap:8, minWidth:0, flex:1 }}>
+          <h2 style={{ fontSize:12, fontWeight:700, color:"#0f172a", letterSpacing:"-0.01em", fontFamily:SANS, margin:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+            {lang==="en"?"Ocean-Weather Info":"Info Cuaca Laut"} — <span style={{ fontWeight:500, color:"#475569", fontSize:11 }}>{selDateFmt}</span>
           </h2>
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
           <button
             onClick={()=>{clearCache(coordinates.lat,coordinates.lon);setMinutePredictions([]);fetchAll(selDate,true);fetchMinutePredictions(selDate);}}
             style={{ padding:5, borderRadius:7, border:"none", background:"transparent", cursor:"pointer", color:"#94a3b8", display:"flex" }}
