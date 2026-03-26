@@ -1,29 +1,24 @@
 /**
  * InfoPanel.tsx  — Marine Info Panel (Responsive)
- * v2.6.0 — Root-cause fix: Open-Meteo returns bare local time, NOT UTC
+ * v2.7.0 — Fix: TPXO chart missing 00:00–06:59 WIB
  *
- * ROOT CAUSE (v2.5.0 still broken):
- *   Open-Meteo API called with `timezone=auto` returns hourly timestamps as
- *   bare local ISO strings, e.g. "2026-03-25T00:00" — NO timezone suffix.
- *   This string already represents midnight WIB (local time for Jakarta).
+ * ROOT CAUSE (v2.6.0):
+ *   Endpoint /api/tide/prediction/minute?date=YYYY-MM-DD generates predictions
+ *   starting from 00:00:00Z UTC of that date = 07:00 WIB. So the first 7 hours
+ *   of the WIB day (00:00–06:59 WIB = 17:00–23:59 UTC prevDay) are absent from
+ *   minutePredictions entirely.
  *
- *   Previous parseToWIB() appended "Z" to bare strings → treated as UTC →
- *   then added +7h → result was 07:00 WIB instead of 00:00 WIB.
- *   Hours 17–23 local got shifted to the next WIB date → filtered out.
- *   Net effect: only hours 00–16 local appeared, mapped to hours 07–23 WIB.
- *   Table and chart appeared to start at 07:00 WIB.
+ *   The hourly tideData IS fetched correctly (prevDay→nextDay range), so
+ *   parseToWIB correctly maps those UTC 17:00–23:59 entries to wibDate=targetDate,
+ *   hours 0–6. But chartPredictions was set to minutePredictions when available,
+ *   discarding the hourly data that covered those early hours.
  *
- * THREE TIMESTAMP FORMATS in this app:
- *   1. TPXO predictions  → "2026-03-24T17:00:00Z"        (UTC)
- *   2. Luwes observation → "2026-03-25T00:00:00+07:00"   (explicit WIB offset)
- *   3. Open-Meteo hourly → "2026-03-25T00:00"            (bare local = already WIB)
- *
- * FIX:
- *   • parseToWIB()    — unchanged, handles formats 1 & 2 correctly
- *   • parseLocalISO() — NEW, handles format 3: slice date+hour directly,
- *                       no Date.parse, no timezone arithmetic
- *   • buildRows()              — use parseLocalISO() for weatherData & marineData
- *   • buildRecommendations()   — same fix for index filtering
+ * FIX (frontend only — no backend changes):
+ *   1. buildChartPredictions() — merges hourly tideData (full 00–23 WIB) as
+ *      backbone, then overlays minutePredictions for higher resolution where
+ *      minute data exists. This guarantees 00:00 WIB is always present.
+ *   2. The merge is sorted by x (WIB decimal hour) so Chart.js draws correctly.
+ *   3. minutePredictions cache/fetch logic is unchanged.
  */
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
@@ -146,27 +141,10 @@ function writeMinuteCache(lat: number, lon: number, date: string, data: Array<{t
 
 /* ═══════════════════════════════════════════════════
    TIMESTAMP PARSERS
-
-   Three different formats arrive from different API sources:
-
-   Format 1 — TPXO predictions (backend, UTC):
-     "2026-03-24T17:00:00Z"
-     → need to add +7h to get WIB → use parseToWIB()
-
-   Format 2 — Luwes observations (backend, explicit WIB offset):
-     "2026-03-25T00:00:00+07:00"
-     → Date.parse removes offset to give UTC ms, then +7h → use parseToWIB()
-
-   Format 3 — Open-Meteo hourly (bare local time, already WIB):
-     "2026-03-25T00:00"  or  "2026-03-25T00:00:00"
-     timezone=auto was requested, so this IS local WIB time already.
-     DO NOT parse with Date.parse (would treat as UTC then +7h = wrong).
-     Just slice the date/hour from the string → use parseLocalISO()
 ═══════════════════════════════════════════════════ */
 
 /**
  * parseToWIB — for TPXO ("Z") and Luwes ("+07:00") timestamps only.
- * Converts any UTC-anchored timestamp to WIB wall-clock.
  */
 function parseToWIB(ts: string): { wibDate: string; wibHour: number; wibMinute: number } | null {
   try {
@@ -174,9 +152,9 @@ function parseToWIB(ts: string): { wibDate: string; wibHour: number; wibMinute: 
     if (/[Zz]$/.test(ts)) {
       utcMs = Date.parse(ts);
     } else if (/[+\-]\d{2}:?\d{2}$/.test(ts)) {
-      utcMs = Date.parse(ts); // strips offset → UTC ms
+      utcMs = Date.parse(ts);
     } else if (ts.includes("T")) {
-      utcMs = Date.parse(ts + "Z"); // bare ISO, assume UTC
+      utcMs = Date.parse(ts + "Z");
     } else {
       utcMs = Date.parse(ts);
     }
@@ -193,31 +171,89 @@ function parseToWIB(ts: string): { wibDate: string; wibHour: number; wibMinute: 
 
 /**
  * parseLocalISO — for Open-Meteo hourly timestamps ONLY.
- *
- * Open-Meteo with timezone=auto returns bare local time strings such as
- * "2026-03-25T00:00" or "2026-03-25T00:00:00". These strings already
- * represent WIB wall-clock time for Jakarta. Do NOT use Date.parse on
- * them — that would treat them as UTC and shift by +7h.
- * Simply read the date and hour directly from the string.
+ * These are already local WIB time strings like "2026-03-25T00:00".
  */
 function parseLocalISO(ts: string): { localDate: string; localHour: number } | null {
   try {
     if (ts.length < 13) return null;
-    const localDate = ts.slice(0, 10);          // "YYYY-MM-DD"
-    const localHour = parseInt(ts.slice(11, 13), 10); // HH
+    const localDate = ts.slice(0, 10);
+    const localHour = parseInt(ts.slice(11, 13), 10);
     if (isNaN(localHour) || localDate.length !== 10) return null;
     return { localDate, localHour };
   } catch { return null; }
 }
 
 /**
- * tsToWIBHour — chart x-axis for TPXO & Luwes only.
+ * tsToWIBHour — for TPXO & Luwes only.
  * Returns decimal WIB hour (10:30 → 10.5), null if date doesn't match.
  */
 function tsToWIBHour(ts: string, targetDate: string): number | null {
   const w = parseToWIB(ts);
   if (!w || w.wibDate !== targetDate) return null;
   return w.wibHour + w.wibMinute / 60;
+}
+
+/* ═══════════════════════════════════════════════════
+   BUILD CHART PREDICTIONS — v2.7.0 FIX
+   
+   Strategy: always use the hourly tideData (correctly filtered by wibDate)
+   as the full-day backbone (hours 00–23 WIB). Then, if minutePredictions
+   exist, overlay them for higher resolution — but only replace hourly points
+   for hours that minute data actually covers.
+   
+   This guarantees hours 00:00–06:59 WIB are always present because tideData
+   is fetched with prevDay→nextDay range and parseToWIB correctly maps
+   UTC 17:00–23:59 (prevDay) → wibDate=targetDate, wibHour=0–6.
+═══════════════════════════════════════════════════ */
+function buildChartPredictions(
+  tideData: TideData | null,
+  minutePredictions: Array<{ time: string; height: number }>,
+  targetDate: string
+): Array<{ time: string; height: number }> {
+  // Hourly backbone: all predictions for targetDate in WIB
+  const hourly = (tideData?.predictions ?? []).filter(p =>
+    parseToWIB(p.time)?.wibDate === targetDate
+  );
+
+  // If no minute data, return hourly as-is (24 points, 00:00–23:00 WIB)
+  if (minutePredictions.length === 0) return hourly;
+
+  // Determine what WIB hour range the minute predictions actually cover
+  let minHour = 24;
+  let maxHour = 0;
+  for (const p of minutePredictions) {
+    const x = tsToWIBHour(p.time, targetDate);
+    if (x === null) continue;
+    if (x < minHour) minHour = x;
+    if (x > maxHour) maxHour = x;
+  }
+
+  // If minute data covers the full day (minHour < 0.1), just use it
+  if (minHour < 0.1) return minutePredictions;
+
+  // Otherwise: take hourly points for hours BEFORE minute data starts,
+  // then append all minute predictions.
+  // Use Math.floor so e.g. minHour=7.0 → keep hourly for hours 0,1,2,3,4,5,6
+  const cutoffHour = Math.floor(minHour);
+  const earlyHourly = hourly.filter(p => {
+    const w = parseToWIB(p.time);
+    return w !== null && w.wibHour < cutoffHour;
+  });
+
+  // Also append hourly points AFTER minute data ends (if any gap at end of day)
+  const lateHourly = hourly.filter(p => {
+    const w = parseToWIB(p.time);
+    return w !== null && w.wibHour > Math.ceil(maxHour);
+  });
+
+  const merged = [...earlyHourly, ...minutePredictions, ...lateHourly];
+
+  // Sort by WIB decimal hour to ensure correct line rendering
+  return merged.sort((a, b) => {
+    const xa = tsToWIBHour(a.time, targetDate) ?? 0;
+    const xb = tsToWIBHour(b.time, targetDate) ?? 0;
+    return xa - xb;
+  });
 }
 
 /* ═══════════════════════════════════════════════════
@@ -230,7 +266,6 @@ function buildRecommendations(
   dateStr: string,
   lang: "en" | "id"
 ): ActivityRec[] {
-  // Open-Meteo → parseLocalISO (bare local WIB)
   const hourlyIdxs = weatherData?.hourly.time.map((t,i) => {
     const p = parseLocalISO(t);
     return p?.localDate === dateStr ? i : -1;
@@ -248,7 +283,6 @@ function buildRecommendations(
   const avgWindMs: number|null = hourlyIdxs.length
     ? hourlyIdxs.reduce((s,i) => s+kmhToMs(weatherData!.hourly.wind_speed_10m[i]??0),0)/hourlyIdxs.length : null;
 
-  // TPXO → parseToWIB (UTC Z)
   const dayPred = tideData?.predictions.filter(p => parseToWIB(p.time)?.wibDate===dateStr) ?? [];
   const tideRange: number|null = dayPred.length
     ? Math.max(...dayPred.map(p=>p.height))-Math.min(...dayPred.map(p=>p.height)) : null;
@@ -330,11 +364,11 @@ const WeatherSymbol: React.FC<{code:number;size?:number}> = ({code,size=16}) => 
    OVERLAY CHART — uses parseToWIB for TPXO & Luwes only
 ════════════════════════════════════════════════════════ */
 const OverlayChart: React.FC<{
-  minutePredictions: Array<{time:string;height:number}>;
+  chartPredictions: Array<{time:string;height:number}>;
   luwesObs: Array<{recorded_at:string;level_m:number}>;
   dateStr: string;
   loadingMinute: boolean;
-}> = ({minutePredictions,luwesObs,dateStr,loadingMinute}) => {
+}> = ({chartPredictions,luwesObs,dateStr,loadingMinute}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef  = useRef<any>(null);
 
@@ -342,7 +376,7 @@ const OverlayChart: React.FC<{
     if (!canvasRef.current) return;
     if (chartRef.current) { chartRef.current.destroy(); chartRef.current=null; }
 
-    const tpxoPts = minutePredictions
+    const tpxoPts = chartPredictions
       .reduce<{x:number;y:number}[]>((acc,p) => {
         const x = tsToWIBHour(p.time, dateStr);
         if (x!==null&&x>=0&&x<=24) acc.push({x,y:p.height});
@@ -434,7 +468,7 @@ const OverlayChart: React.FC<{
       });
     });
     return ()=>{cancelled=true;if(chartRef.current){chartRef.current.destroy();chartRef.current=null;}};
-  },[minutePredictions,luwesObs,dateStr]);
+  },[chartPredictions,luwesObs,dateStr]);
 
   return (
     <div style={{position:"relative",width:"100%",height:"100%"}}>
@@ -593,21 +627,13 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({coordinates,onClose}) => {
     return {sunrise:fmtHHmm(weatherData.daily.sunrise[idx]),sunset:fmtHHmm(weatherData.daily.sunset[idx])};
   };
 
-  /* ══════════════════════════════════════════════════════════════
-     buildRows — v2.6.0 FIXED
-     Open-Meteo returns "2026-03-25T00:00" = bare local WIB time.
-     Use parseLocalISO() — reads date/hour directly from string.
-     NEVER use parseToWIB() or Date.parse for Open-Meteo timestamps.
-  ══════════════════════════════════════════════════════════════ */
   const buildRows=():HourRow[]=>{
-    // TPXO: UTC "Z" → parseToWIB adds +7h → correct WIB hour
     const tideMap=new Map<number,number>();
     tideData?.predictions.forEach(p=>{
       const w=parseToWIB(p.time);
       if(w?.wibDate===selDate) tideMap.set(w.wibHour,p.height);
     });
 
-    // Weather: Open-Meteo bare local time → parseLocalISO (NO timezone math)
     const wxMap=new Map<string,Partial<HourRow>>();
     weatherData?.hourly.time.forEach((t,i)=>{
       const p=parseLocalISO(t);
@@ -622,7 +648,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({coordinates,onClose}) => {
       });
     });
 
-    // Marine: Open-Meteo bare local time → parseLocalISO (NO timezone math)
     const marineMap=new Map<string,{waveH:number|null;currentSpd:number|null}>();
     marineData?.hourly.time.forEach((t,i)=>{
       const p=parseLocalISO(t);
@@ -646,7 +671,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({coordinates,onClose}) => {
     return hs.length?{max:Math.max(...hs),min:Math.min(...hs)}:null;
   })();
 
-  // Luwes: "+07:00" timestamps → parseToWIB ✓
   const luwesForChart=(overlayData?.luwes_obs??[])
     .filter(o=>parseToWIB(o.recorded_at)?.wibDate===selDate)
     .map(o=>({...o,level_m:o.level_m+TOL_CORRECTION}));
@@ -655,7 +679,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({coordinates,onClose}) => {
     ?{max_m:Math.max(...luwesForChart.map(o=>o.level_m)),min_m:Math.min(...luwesForChart.map(o=>o.level_m)),count:luwesForChart.length}
     :overlayData?.luwes_stats??null;
 
-  const chartPredictions=minutePredictions.length>0?minutePredictions:(tideData?.predictions??[]);
+  // ── v2.7.0 FIX: use buildChartPredictions for correct 00:00 WIB coverage ──
+  const chartPredictions = buildChartPredictions(tideData, minutePredictions, selDate);
+
   const {sunrise,sunset}=getSunTimes();
   const rows=buildRows();
   const current=weatherData?.current;
@@ -666,6 +692,19 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({coordinates,onClose}) => {
   const isToday=selDate===todayISO();
   const activities=buildRecommendations(tideData,weatherData,marineData,selDate,lang);
   const selDateFmt=new Date(selDate+"T12:00:00Z").toLocaleDateString(lang==="en"?"en-US":"id-ID",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+
+  // Resolution label for metadata footer
+  const chartResolutionLabel = (() => {
+    if (minutePredictions.length > 0) {
+      const coveredByMinute = minutePredictions.filter(p => tsToWIBHour(p.time, selDate) !== null).length;
+      const totalPoints = chartPredictions.length;
+      if (totalPoints > coveredByMinute) {
+        return `1 menit + hourly gap fill (${totalPoints} titik)`;
+      }
+      return `1 menit (${totalPoints} titik)`;
+    }
+    return `1 jam (${chartPredictions.length} titik)`;
+  })();
 
   return (
     <div style={{width:"100%",height:"100%",display:"flex",flexDirection:"column",borderLeft:"1px solid #e2e8f0",fontFamily:SANS,background:"#f8fafc"}}>
@@ -799,7 +838,12 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({coordinates,onClose}) => {
                   </div>
                 </div>
                 <div style={{height:280,padding:"4px 6px 12px"}}>
-                  <OverlayChart minutePredictions={chartPredictions} luwesObs={luwesForChart} dateStr={selDate} loadingMinute={loadingMinute}/>
+                  <OverlayChart
+                    chartPredictions={chartPredictions}
+                    luwesObs={luwesForChart}
+                    dateStr={selDate}
+                    loadingMinute={loadingMinute}
+                  />
                 </div>
                 {overlayData&&(
                   <div style={{padding:"6px 14px",borderTop:"1px solid #f1f5f9",background:"#fafafa",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -903,7 +947,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({coordinates,onClose}) => {
                 [lang==="en"?"Tide model":"Model pasut",tideData?.metadata.model],
                 ["Datum",tideData?.metadata.datum],
                 ...(tideData?[[lang==="en"?"Nearest grid":"Grid terdekat",`${tideData.grid.lat.toFixed(3)}°, ${tideData.grid.lon.toFixed(3)}° · ${tideData.grid.distance_km.toFixed(1)} km`]]:[]),
-                [lang==="en"?"Chart resolution":"Resolusi grafik",minutePredictions.length>0?"1 menit (1440 titik)":"1 jam (24 titik)"],
+                [lang==="en"?"Chart resolution":"Resolusi grafik", chartResolutionLabel],
                 [lang==="en"?"Table resolution":"Resolusi tabel","1 jam (24 titik)"],
                 [lang==="en"?"Weather":"Cuaca","Open-Meteo API (timezone=auto → local WIB)"],
                 [lang==="en"?"Obs. station":"Stasiun obs.",overlayData?.imei?`IMEI ${overlayData.imei}`:"—"],
