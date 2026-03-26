@@ -152,32 +152,24 @@ function writeMinuteCache(lat:number, lon:number, date:string, data:Array<{time:
      "2026-03-26T10:00:00+0700"    → same             → {date:"2026-03-26", h:10.0}
      "2026-03-26T03:00:00"         → treat as UTC     → {date:"2026-03-26", h:10.0}
 ═══════════════════════════════════════════════════ */
-function parseToWIB(ts: string): { wibDate:string; wibHour:number; wibMinute:number } | null {
+function parseToWIB(ts: string) {
   try {
-    let utcMs: number;
+    let ms = NaN;
 
-    if (ts.endsWith("Z")) {
-      utcMs = Date.parse(ts);
-    } else if (/[+\-]\d{2}:?\d{2}$/.test(ts)) {
-      // Has explicit offset — Date.parse handles correctly (returns UTC ms)
-      utcMs = Date.parse(ts);
+    if (ts.endsWith("Z") || ts.includes("+")) {
+      ms = Date.parse(ts);
     } else if (ts.includes("T")) {
-      // Bare ISO, assume UTC
-      utcMs = Date.parse(ts + "Z");
-    } else {
-      utcMs = Date.parse(ts);
+      ms = Date.parse(ts + "Z");
     }
 
-    if (isNaN(utcMs)) return null;
+    if (isNaN(ms)) return null;
 
-    // Shift to WIB (UTC+7)
-    const wibMs = utcMs + 7 * 3600_000;
-    const d = new Date(wibMs);
+    const wib = new Date(ms + 7 * 3600_000);
 
     return {
-      wibDate:   d.toISOString().slice(0, 10),   // "YYYY-MM-DD"
-      wibHour:   d.getUTCHours(),                 // 0–23
-      wibMinute: d.getUTCMinutes(),               // 0–59
+      wibDate: wib.toISOString().slice(0,10),
+      wibHour: wib.getHours(),   
+      wibMinute: wib.getMinutes() 
     };
   } catch {
     return null;
