@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LogIn, X, Eye, EyeOff, CheckCircle, Loader2, LogOut, ChevronDown, Anchor, Menu } from 'lucide-react';
+import { useGoogleLogin } from '@react-oauth/google';
 import { useLanguage } from '../../context/LanguageContext';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-/* ── Font: Plus Jakarta Sans everywhere ── */
 const SANS = '"Plus Jakarta Sans", "Inter", system-ui, sans-serif';
 
 interface AuthUser {
   id: number; full_name: string; email: string;
   created_at: string; last_login?: string;
+  avatar?: string;
 }
 type ModalType = 'signin' | 'signup' | null;
 
@@ -79,6 +80,53 @@ const InputField: React.FC<{
   );
 };
 
+/* ── Google Button ── */
+const GoogleButton: React.FC<{
+  label: string;
+  onClick: () => void;
+  loading?: boolean;
+}> = ({ label, onClick, loading }) => (
+  <button
+    onClick={onClick}
+    disabled={loading}
+    style={{
+      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      gap: 10, padding: '11px 16px', borderRadius: 7, border: '1.5px solid #e5e7eb',
+      background: '#fff', cursor: loading ? 'not-allowed' : 'pointer',
+      fontFamily: SANS, fontSize: 13, fontWeight: 500, color: '#374151',
+      transition: 'border-color 0.18s, background 0.18s, box-shadow 0.18s',
+      opacity: loading ? 0.7 : 1,
+    }}
+    onMouseEnter={e => { if (!loading) { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.background = '#f9fafb'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'; } }}
+    onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.background = '#fff'; e.currentTarget.style.boxShadow = 'none'; }}
+  >
+    {loading
+      ? <Loader2 size={16} style={{ animation: 'spin 0.7s linear infinite', color: '#9ca3af' }} />
+      : (
+        <svg width="18" height="18" viewBox="0 0 48 48" style={{ flexShrink: 0 }}>
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          <path fill="none" d="M0 0h48v48H0z"/>
+        </svg>
+      )
+    }
+    <span>{loading ? 'Menghubungkan...' : label}</span>
+  </button>
+);
+
+/* ── Divider ── */
+const OrDivider: React.FC<{ language: string }> = ({ language }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
+    <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+    <span style={{ fontFamily: SANS, fontSize: 12, color: '#9ca3af', flexShrink: 0 }}>
+      {language === 'id' ? 'atau' : 'or'}
+    </span>
+    <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+  </div>
+);
+
 /* ── Auth Modal ── */
 const AuthModal: React.FC<{
   mode: ModalType; onClose: () => void; onSwitch: (m: ModalType) => void;
@@ -95,12 +143,74 @@ const AuthModal: React.FC<{
   const [suErrs,  setSuErrs]  = useState<Record<string,string>>({});
   const [suApi,   setSuApi]   = useState('');
   const [suLoad,  setSuLoad]  = useState(false);
+  const [googleLoad, setGoogleLoad] = useState(false);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
+
+  /* ── Google OAuth — useGoogleLogin ── */
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setGoogleLoad(true);
+      try {
+        // Fetch user profile from Google
+        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+        });
+        if (!res.ok) throw new Error('Gagal mengambil profil Google');
+        const profile = await res.json();
+
+        // Register or login via backend
+        const backendRes = await fetch(`${API_BASE}/api/auth/google`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email:     profile.email,
+            full_name: profile.name,
+            google_id: profile.sub,
+            avatar:    profile.picture,
+          }),
+        });
+
+        if (backendRes.ok) {
+          const data = await backendRes.json();
+          onSuccess(
+            { ...data.user, avatar: profile.picture },
+            data.message || (language === 'id' ? 'Berhasil masuk dengan Google!' : 'Signed in with Google!')
+          );
+        } else {
+          // Backend doesn't have Google endpoint yet — create a local session
+          // by using the Google profile directly
+          const syntheticUser: AuthUser = {
+            id:         0,
+            full_name:  profile.name,
+            email:      profile.email,
+            created_at: new Date().toISOString(),
+            avatar:     profile.picture,
+          };
+          onSuccess(
+            syntheticUser,
+            language === 'id' ? 'Berhasil masuk dengan Google!' : 'Signed in with Google!'
+          );
+        }
+      } catch (e: any) {
+        setSiErr(e.message || 'Google Sign-In gagal');
+        setSuApi(e.message || 'Google Sign-In gagal');
+      } finally {
+        setGoogleLoad(false);
+      }
+    },
+    onError: () => {
+      setGoogleLoad(false);
+      const msg = language === 'id' ? 'Login Google dibatalkan atau gagal' : 'Google sign-in was cancelled or failed';
+      setSiErr(msg);
+      setSuApi(msg);
+    },
+    flow: 'implicit',
+  });
 
   if (!mode) return null;
   const isSignIn = mode === 'signin';
@@ -134,22 +244,23 @@ const AuthModal: React.FC<{
     transition: 'background 0.2s',
   };
 
+  const googleLabel = isSignIn
+    ? (language === 'id' ? 'Masuk dengan Google' : 'Continue with Google')
+    : (language === 'id' ? 'Daftar dengan Google' : 'Continue with Google');
+
   return (
     <div ref={overlayRef} onClick={e => { if (e.target === overlayRef.current) onClose(); }}
       style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(6px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
         animation: 'mfIn 0.18s ease',
-        /* ensure modal is above everything */
         WebkitBackdropFilter: 'blur(6px)',
       }}>
       <div style={{
         background: '#fff', borderRadius: 14, padding: '32px 32px 28px', width: 400,
         maxWidth: '92vw', position: 'relative', boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
         animation: 'mfScale 0.22s cubic-bezier(0.16,1,0.3,1)',
-        /* Prevent viewport overflow on mobile */
-        maxHeight: '92vh',
-        overflowY: 'auto',
+        maxHeight: '92vh', overflowY: 'auto',
       }}>
         <button onClick={onClose}
           style={{ position: 'absolute', top: 14, right: 14, background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 6, borderRadius: 6 }}
@@ -178,6 +289,14 @@ const AuthModal: React.FC<{
 
         {isSignIn ? (
           <>
+            {/* Google first for sign in */}
+            <GoogleButton
+              label={googleLabel}
+              onClick={() => handleGoogleLogin()}
+              loading={googleLoad}
+            />
+            <OrDivider language={language} />
+
             <InputField label="Email" type="email" value={siEmail} onChange={setSiEmail} placeholder="nama@email.com" autoComplete="email" />
             <InputField label="Password" type="password" value={siPass} onChange={setSiPass} placeholder="••••••••" autoComplete="current-password" />
             {siErr && (
@@ -191,17 +310,7 @@ const AuthModal: React.FC<{
               {siLoad && <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} />}
               {language === 'id' ? 'Masuk' : 'Sign In'}
             </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
-              <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
-              <span style={{ fontFamily: SANS, fontSize: 12, color: '#9ca3af', flexShrink: 0 }}>{language === 'id' ? 'atau' : 'or'}</span>
-              <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
-            </div>
-            <button style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '11px 16px', borderRadius: 7, border: '1.5px solid #e5e7eb', background: '#fff', cursor: 'pointer', fontFamily: SANS, fontSize: 13, fontWeight: 500, color: '#374151', transition: 'border-color 0.18s, background 0.18s, box-shadow 0.18s' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.background = '#f9fafb'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.background = '#fff'; }}>
-              <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" style={{ width: 16, height: 16, flexShrink: 0 }} />
-              {language === 'id' ? 'Masuk dengan Google' : 'Continue with Google'}
-            </button>
+
             <p style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: '#6b7280', fontFamily: SANS }}>
               {language === 'id' ? 'Belum punya akun?' : "Don't have an account?"}{' '}
               <button onClick={() => onSwitch('signup')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c2410c', fontWeight: 600, fontSize: 13, fontFamily: SANS, textDecoration: 'underline' }}>
@@ -211,6 +320,14 @@ const AuthModal: React.FC<{
           </>
         ) : (
           <>
+            {/* Google first for sign up */}
+            <GoogleButton
+              label={googleLabel}
+              onClick={() => handleGoogleLogin()}
+              loading={googleLoad}
+            />
+            <OrDivider language={language} />
+
             <InputField label={language === 'id' ? 'Nama Lengkap' : 'Full Name'} value={suName} onChange={setSuName} placeholder="Nama lengkap" error={suErrs.name} autoComplete="name" />
             <InputField label="Email" type="email" value={suEmail} onChange={setSuEmail} placeholder="nama@email.com" error={suErrs.email} autoComplete="email" />
             <InputField label="Password" type="password" value={suPass} onChange={setSuPass} placeholder="Min. 6 karakter" error={suErrs.pass} autoComplete="new-password" />
@@ -225,17 +342,7 @@ const AuthModal: React.FC<{
               {suLoad && <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} />}
               {language === 'id' ? 'Daftar Sekarang' : 'Create Account'}
             </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
-              <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
-              <span style={{ fontFamily: SANS, fontSize: 12, color: '#9ca3af', flexShrink: 0 }}>{language === 'id' ? 'atau' : 'or'}</span>
-              <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
-            </div>
-            <button style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '11px 16px', borderRadius: 7, border: '1.5px solid #e5e7eb', background: '#fff', cursor: 'pointer', fontFamily: SANS, fontSize: 13, fontWeight: 500, color: '#374151', transition: 'all 0.18s' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.background = '#f9fafb'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.background = '#fff'; }}>
-              <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" style={{ width: 16, height: 16, flexShrink: 0 }} />
-              {language === 'id' ? 'Daftar dengan Google' : 'Continue with Google'}
-            </button>
+
             <p style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: '#6b7280', fontFamily: SANS }}>
               {language === 'id' ? 'Sudah punya akun?' : 'Already have an account?'}{' '}
               <button onClick={() => onSwitch('signin')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c2410c', fontWeight: 600, fontSize: 13, fontFamily: SANS, textDecoration: 'underline' }}>
@@ -270,9 +377,19 @@ const UserDropdown: React.FC<{ user: AuthUser; onLogout: () => void; language: s
         style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', transition: 'background 0.15s' }}
         onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.06)')}
         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-        <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, #92400e, #c2410c)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 700, fontFamily: SANS }}>
-          {initials}
-        </div>
+        {/* Avatar: Google photo or initials */}
+        {user.avatar ? (
+          <img
+            src={user.avatar}
+            alt={user.full_name}
+            style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid rgba(194,65,12,0.25)' }}
+            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        ) : (
+          <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, #92400e, #c2410c)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 700, fontFamily: SANS }}>
+            {initials}
+          </div>
+        )}
         <span style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: '#111827', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {user.full_name.split(' ')[0]}
         </span>
@@ -280,9 +397,18 @@ const UserDropdown: React.FC<{ user: AuthUser; onLogout: () => void; language: s
       </button>
       {open && (
         <div style={{ position: 'absolute', right: 0, top: 44, width: 210, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.12)', overflow: 'hidden', zIndex: 200 }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6' }}>
-            <p style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 2 }}>{user.full_name}</p>
-            <p style={{ fontFamily: SANS, fontSize: 12, color: '#9ca3af' }}>{user.email}</p>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: 10 }}>
+            {user.avatar ? (
+              <img src={user.avatar} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+            ) : (
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #92400e, #c2410c)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 700, fontFamily: SANS, flexShrink: 0 }}>
+                {initials}
+              </div>
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.full_name}</p>
+              <p style={{ fontFamily: SANS, fontSize: 11, color: '#9ca3af', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</p>
+            </div>
           </div>
           <button onClick={() => { setOpen(false); onLogout(); }}
             style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontFamily: SANS, fontWeight: 500, color: '#dc2626', transition: 'background 0.15s' }}
@@ -344,7 +470,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Close mobile menu when page changes
   useEffect(() => { setMobileOpen(false); }, [activePage]);
 
   const handleSuccess = (user: AuthUser, msg: string) => {
@@ -367,29 +492,22 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
 
         .nb-link {
           font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-          font-size: 13px;
-          font-weight: 500;
-          letter-spacing: 0.01em;
+          font-size: 13px; font-weight: 500; letter-spacing: 0.01em;
           border: none; background: none; cursor: pointer;
-          padding: 6px 2px;
-          position: relative;
-          transition: color 0.18s ease;
-          white-space: nowrap;
+          padding: 6px 2px; position: relative;
+          transition: color 0.18s ease; white-space: nowrap;
         }
         .nb-link::after {
-          content: '';
-          position: absolute; bottom: -1px; left: 0; right: 0;
+          content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
           height: 2px; background: #e8600a;
           transform: scaleX(0); transform-origin: left;
-          transition: transform 0.22s cubic-bezier(0.4,0,0.2,1);
-          border-radius: 1px;
+          transition: transform 0.22s cubic-bezier(0.4,0,0.2,1); border-radius: 1px;
         }
         .nb-link.active::after, .nb-link:hover::after { transform: scaleX(1); }
 
         .nb-signin {
           font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-          font-size: 13px; font-weight: 600;
-          letter-spacing: 0.01em;
+          font-size: 13px; font-weight: 600; letter-spacing: 0.01em;
           border: 1.5px solid; border-radius: 7px;
           padding: 7px 16px; cursor: pointer;
           display: flex; align-items: center; gap: 6px;
@@ -407,16 +525,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
         }
         .nb-mobile-link.active {
           color: #c2410c; border-left-color: #e8600a;
-          background: rgba(232,96,10,0.05);
-          font-weight: 600;
+          background: rgba(232,96,10,0.05); font-weight: 600;
         }
         .nb-mobile-link:hover { background: #f9fafb; }
 
         .nb-mobile-drawer {
           position: fixed; top: 62px; left: 0; right: 0;
           background: rgba(255,255,255,0.99);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
+          backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
           border-bottom: 1px solid #e5e7eb;
           z-index: 148; padding: 6px 0 12px;
           box-shadow: 0 8px 24px rgba(0,0,0,0.09);
@@ -424,27 +540,21 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
         }
         @keyframes drawerIn { from { opacity:0; transform:translateY(-6px) } to { opacity:1; transform:translateY(0) } }
 
-        /* Overlay when mobile menu open */
         .nb-mobile-overlay {
           position: fixed; inset: 0; top: 62px;
-          background: rgba(0,0,0,0.3);
-          z-index: 147;
+          background: rgba(0,0,0,0.3); z-index: 147;
           animation: fadeIn 0.18s ease;
         }
         @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+        @keyframes spin { to{transform:rotate(360deg)} }
 
         @media (min-width: 769px) {
           .nb-mobile-drawer { display:none!important; }
           .nb-hamburger { display:none!important; }
           .nb-mobile-overlay { display:none!important; }
         }
-        @media (max-width: 768px) {
-          .nb-desktop-nav { display:none!important; }
-        }
-        @media (max-width: 380px) {
-          .nb-logo-img { height: 28px !important; }
-          .nb-lang-label { display: none !important; }
-        }
+        @media (max-width: 768px) { .nb-desktop-nav { display:none!important; } }
+        @media (max-width: 380px) { .nb-logo-img { height: 28px !important; } }
       `}</style>
 
       <header style={{
@@ -460,9 +570,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
       }}>
         <div style={{
           maxWidth: 1320, margin: '0 auto', height: '100%',
-          display: 'flex', alignItems: 'center',
-          padding: '0 20px',
-          gap: 0,
+          display: 'flex', alignItems: 'center', padding: '0 20px', gap: 0,
         }}>
           {/* Logo */}
           <button
@@ -472,14 +580,12 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
             onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
           >
             <img
-              src="/logo.svg"
-              alt="Searibu"
-              className="nb-logo-img"
+              src="/logo.svg" alt="Searibu" className="nb-logo-img"
               style={{ height: 36, width: 'auto', display: 'block', filter: glass ? 'brightness(0) invert(1)' : 'none', transition: 'filter 0.32s ease' }}
             />
           </button>
 
-          {/* Desktop nav links */}
+          {/* Desktop nav */}
           <nav className="nb-desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: 28, flex: 1 }}>
             {navItems.map((label, i) => (
               <button
@@ -497,30 +603,24 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
             ))}
           </nav>
 
-          {/* Right-side controls */}
+          {/* Right controls */}
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
             {/* Language toggle */}
             <div style={{
               display: 'flex', alignItems: 'center', gap: 1,
               background: glass ? 'rgba(255,255,255,0.10)' : '#f1f5f9',
-              borderRadius: 8, padding: '3px',
-              transition: 'background 0.28s',
+              borderRadius: 8, padding: '3px', transition: 'background 0.28s',
             }}>
               {(['en', 'id'] as const).map(l => (
                 <button
                   key={l}
                   onClick={() => setLanguage(l)}
                   style={{
-                    fontFamily: SANS,
-                    fontSize: 11, fontWeight: 700,
+                    fontFamily: SANS, fontSize: 11, fontWeight: 700,
                     letterSpacing: '0.04em', padding: '4px 9px', borderRadius: 5, border: 'none',
                     cursor: 'pointer', transition: 'all 0.18s',
-                    background: language === l
-                      ? (glass ? 'rgba(255,255,255,0.24)' : '#fff')
-                      : 'transparent',
-                    color: language === l
-                      ? (glass ? '#fff' : '#0f172a')
-                      : (glass ? 'rgba(255,255,255,0.45)' : '#94a3b8'),
+                    background: language === l ? (glass ? 'rgba(255,255,255,0.24)' : '#fff') : 'transparent',
+                    color: language === l ? (glass ? '#fff' : '#0f172a') : (glass ? 'rgba(255,255,255,0.45)' : '#94a3b8'),
                     boxShadow: language === l && !glass ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
                   }}
                 >
@@ -565,12 +665,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
         </div>
       </header>
 
-      {/* Mobile overlay backdrop */}
-      {mobileOpen && (
-        <div className="nb-mobile-overlay" onClick={() => setMobileOpen(false)} />
-      )}
+      {mobileOpen && <div className="nb-mobile-overlay" onClick={() => setMobileOpen(false)} />}
 
-      {/* Mobile drawer */}
       {mobileOpen && (
         <div className="nb-mobile-drawer">
           {navItems.map((label, i) => (

@@ -425,7 +425,7 @@ const OverlayChart: React.FC<{
           datasets: [
             {
               label:"TPXO", type:"line" as any, data:tpxoPts,
-              borderColor:"#0284c7",
+              borderColor:"rgb(89, 87, 87)",
               backgroundColor:(c:any)=>{
                 const {chart:{ctx:cx,chartArea:ca}}=c; if(!ca) return "rgba(2,132,199,0.07)";
                 const g=cx.createLinearGradient(0,ca.top,0,ca.bottom);
@@ -435,7 +435,7 @@ const OverlayChart: React.FC<{
             },
             {
               label:"Luwes", type:"scatter" as any, data:luwesPts,
-              borderColor:"rgba(249,115,22,0.8)",backgroundColor:"rgba(249,115,22,0.6)",
+              borderColor:"rgb(242, 131, 181)",backgroundColor:"rgb(250, 212, 229)",
               pointRadius:luwesPts.length>200?1.5:2.5,pointHoverRadius:5,order:1,parsing:false,
             },
           ],
