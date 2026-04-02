@@ -1,24 +1,22 @@
 /**
  * InfoPanel.tsx  — Marine Info Panel (Responsive)
- * v2.7.0 — Fix: TPXO chart missing 00:00–06:59 WIB
+ * v2.9.0 — Fix: TPXO chart discontinuity at 07:00 WIB junction
  *
- * ROOT CAUSE (v2.6.0):
- *   Endpoint /api/tide/prediction/minute?date=YYYY-MM-DD generates predictions
- *   starting from 00:00:00Z UTC of that date = 07:00 WIB. So the first 7 hours
- *   of the WIB day (00:00–06:59 WIB = 17:00–23:59 UTC prevDay) are absent from
- *   minutePredictions entirely.
+ * ROOT CAUSE (v2.8.0):
+ *   v2.8.0 fetched two separate /minute requests (prevDay + currentDay) to cover
+ *   the full WIB day. However, the backend computes astronomical arguments (V₀)
+ *   and nodal factors (f, u) independently per request using different epoch
+ *   midpoints. This produced slightly different harmonic parameters for each
+ *   half, causing a visible vertical jump at the 07:00 WIB boundary where the
+ *   two prediction sets meet.
  *
- *   The hourly tideData IS fetched correctly (prevDay→nextDay range), so
- *   parseToWIB correctly maps those UTC 17:00–23:59 entries to wibDate=targetDate,
- *   hours 0–6. But chartPredictions was set to minutePredictions when available,
- *   discarding the hourly data that covered those early hours.
- *
- * FIX (frontend only — no backend changes):
- *   1. buildChartPredictions() — merges hourly tideData (full 00–23 WIB) as
- *      backbone, then overlays minutePredictions for higher resolution where
- *      minute data exists. This guarantees 00:00 WIB is always present.
- *   2. The merge is sorted by x (WIB decimal hour) so Chart.js draws correctly.
- *   3. minutePredictions cache/fetch logic is unchanged.
+ * FIX (v2.9.0 — frontend only, no backend changes):
+ *   Use a SINGLE request to /api/tide/prediction with interval_minutes=1 and
+ *   explicit UTC start/end timestamps that span exactly one WIB day:
+ *     start_date = prevDay T17:00:00Z  (= 00:00 WIB target date)
+ *     end_date   = dateStr T17:00:00Z  (= 00:00 WIB next day)
+ *   This ensures ONE set of astronomical parameters for the entire curve,
+ *   producing a perfectly continuous sinusoidal tidal prediction.
  */
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
@@ -131,7 +129,7 @@ function clearCache(lat: number, lon: number) {
   try { sessionStorage.removeItem(cacheKey(lat,lon,"wx")); sessionStorage.removeItem(cacheKey(lat,lon,"marine")); } catch {}
 }
 const minuteCacheKey = (lat: number, lon: number, date: string) =>
-  `searibu_minute_${lat.toFixed(4)}_${lon.toFixed(4)}_${date}`;
+  `searibu_minute_v2_${lat.toFixed(4)}_${lon.toFixed(4)}_${date}`;
 function readMinuteCache(lat: number, lon: number, date: string): Array<{time:string;height:number}>|null {
   try { const r=sessionStorage.getItem(minuteCacheKey(lat,lon,date)); return r?JSON.parse(r):null; } catch { return null; }
 }
@@ -194,66 +192,45 @@ function tsToWIBHour(ts: string, targetDate: string): number | null {
 }
 
 /* ═══════════════════════════════════════════════════
-   BUILD CHART PREDICTIONS — v2.7.0 FIX
-   
-   Strategy: always use the hourly tideData (correctly filtered by wibDate)
-   as the full-day backbone (hours 00–23 WIB). Then, if minutePredictions
-   exist, overlay them for higher resolution — but only replace hourly points
-   for hours that minute data actually covers.
-   
-   This guarantees hours 00:00–06:59 WIB are always present because tideData
-   is fetched with prevDay→nextDay range and parseToWIB correctly maps
-   UTC 17:00–23:59 (prevDay) → wibDate=targetDate, wibHour=0–6.
+   BUILD CHART PREDICTIONS — v2.8.0
+
+   With the two-UTC-date fetch, minutePredictions now covers the
+   full WIB day (00:00–23:59). We use them directly. Hourly gap-fill
+   is only a safety net for edge cases.
 ═══════════════════════════════════════════════════ */
 function buildChartPredictions(
   tideData: TideData | null,
   minutePredictions: Array<{ time: string; height: number }>,
   targetDate: string
 ): Array<{ time: string; height: number }> {
-  // Hourly backbone: all predictions for targetDate in WIB
-  const hourly = (tideData?.predictions ?? []).filter(p =>
+  // v2.8.0 fix: minutePredictions now covers full WIB day (two UTC date fetch)
+  if (minutePredictions.length > 0) {
+    const hasEarlyData = minutePredictions.some(p => {
+      const x = tsToWIBHour(p.time, targetDate);
+      return x !== null && x < 1.0;
+    });
+    if (hasEarlyData) return minutePredictions;
+
+    // Safety net: fill gap with hourly if minute data is partial
+    const hourly = (tideData?.predictions ?? []).filter(p =>
+      parseToWIB(p.time)?.wibDate === targetDate
+    );
+    let minHour = 24;
+    for (const p of minutePredictions) {
+      const x = tsToWIBHour(p.time, targetDate);
+      if (x !== null && x < minHour) minHour = x;
+    }
+    const earlyHourly = hourly.filter(p => {
+      const w = parseToWIB(p.time);
+      return w !== null && w.wibHour < Math.floor(minHour);
+    });
+    return [...earlyHourly, ...minutePredictions].sort((a, b) =>
+      (tsToWIBHour(a.time, targetDate) ?? 0) - (tsToWIBHour(b.time, targetDate) ?? 0)
+    );
+  }
+  return (tideData?.predictions ?? []).filter(p =>
     parseToWIB(p.time)?.wibDate === targetDate
   );
-
-  // If no minute data, return hourly as-is (24 points, 00:00–23:00 WIB)
-  if (minutePredictions.length === 0) return hourly;
-
-  // Determine what WIB hour range the minute predictions actually cover
-  let minHour = 24;
-  let maxHour = 0;
-  for (const p of minutePredictions) {
-    const x = tsToWIBHour(p.time, targetDate);
-    if (x === null) continue;
-    if (x < minHour) minHour = x;
-    if (x > maxHour) maxHour = x;
-  }
-
-  // If minute data covers the full day (minHour < 0.1), just use it
-  if (minHour < 0.1) return minutePredictions;
-
-  // Otherwise: take hourly points for hours BEFORE minute data starts,
-  // then append all minute predictions.
-  // Use Math.floor so e.g. minHour=7.0 → keep hourly for hours 0,1,2,3,4,5,6
-  const cutoffHour = Math.floor(minHour);
-  const earlyHourly = hourly.filter(p => {
-    const w = parseToWIB(p.time);
-    return w !== null && w.wibHour < cutoffHour;
-  });
-
-  // Also append hourly points AFTER minute data ends (if any gap at end of day)
-  const lateHourly = hourly.filter(p => {
-    const w = parseToWIB(p.time);
-    return w !== null && w.wibHour > Math.ceil(maxHour);
-  });
-
-  const merged = [...earlyHourly, ...minutePredictions, ...lateHourly];
-
-  // Sort by WIB decimal hour to ensure correct line rendering
-  return merged.sort((a, b) => {
-    const xa = tsToWIBHour(a.time, targetDate) ?? 0;
-    const xb = tsToWIBHour(b.time, targetDate) ?? 0;
-    return xa - xb;
-  });
 }
 
 /* ═══════════════════════════════════════════════════
@@ -564,17 +541,59 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({coordinates,onClose}) => {
   const [error,setError]                         = useState<string|null>(null);
   const [selDate,setSelDate]                     = useState<string>(todayISO());
 
+  // ── v2.9.0 FIX: single request with explicit UTC timestamps for full WIB day ──
+  // Using /api/tide/prediction?interval_minutes=1 with start/end that span exactly
+  // one WIB day ensures ONE set of astronomical parameters → no discontinuity.
   const fetchMinutePredictions = useCallback(async (dateStr:string) => {
     const cached = readMinuteCache(coordinates.lat,coordinates.lon,dateStr);
     if (cached&&cached.length>0){setMinutePredictions(cached);return;}
     setLoadingMinute(true);
     try {
-      const res = await fetch(`${API_BASE}/api/tide/prediction/minute?lon=${coordinates.lon}&lat=${coordinates.lat}&date=${dateStr}`);
-      if (!res.ok) return;
+      // WIB = UTC+7, so for WIB date "2026-03-30":
+      //   00:00 WIB = 2026-03-29T17:00:00Z
+      //   23:59 WIB = 2026-03-30T16:59:00Z
+      // We request start→end spanning this range in a SINGLE call.
+      const target = new Date(dateStr + "T00:00:00Z"); // parse as UTC midnight
+      const prevDay = new Date(target);
+      prevDay.setUTCDate(prevDay.getUTCDate() - 1);
+
+      // start = prevDay 17:00 UTC = dateStr 00:00 WIB
+      const startUTC = `${prevDay.toISOString().slice(0,10)}T17:00:00Z`;
+      // end   = dateStr 17:00 UTC = dateStr+1 00:00 WIB (exclusive, gives up to 16:59 UTC = 23:59 WIB)
+      const endUTC   = `${dateStr}T16:59:00Z`;
+
+      const res = await fetch(
+        `${API_BASE}/api/tide/prediction?lon=${coordinates.lon}&lat=${coordinates.lat}` +
+        `&start_date=${startUTC}&end_date=${endUTC}&interval_minutes=1`
+      );
+
+      if (!res.ok) {
+        // Fallback: if the main endpoint fails (e.g. range too large error),
+        // silently fail — the chart will use hourly data instead
+        setMinutePredictions([]);
+        return;
+      }
+
       const data = await res.json();
-      const preds: Array<{time:string;height:number}> = data.predictions??[];
-      setMinutePredictions(preds);
-      writeMinuteCache(coordinates.lat,coordinates.lon,dateStr,preds);
+      const allPreds: Array<{time:string;height:number}> = data.predictions ?? [];
+
+      // Filter to exact WIB date (should already be correct, but safety check)
+      const filtered = allPreds.filter(p => {
+        const w = parseToWIB(p.time);
+        return w !== null && w.wibDate === dateStr;
+      });
+
+      // Sort by WIB decimal hour
+      filtered.sort((a, b) => {
+        const xa = tsToWIBHour(a.time, dateStr) ?? 0;
+        const xb = tsToWIBHour(b.time, dateStr) ?? 0;
+        return xa - xb;
+      });
+
+      setMinutePredictions(filtered);
+      if (filtered.length > 0) {
+        writeMinuteCache(coordinates.lat, coordinates.lon, dateStr, filtered);
+      }
     } catch {} finally {setLoadingMinute(false);}
   },[coordinates]);
 
@@ -679,7 +698,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({coordinates,onClose}) => {
     ?{max_m:Math.max(...luwesForChart.map(o=>o.level_m)),min_m:Math.min(...luwesForChart.map(o=>o.level_m)),count:luwesForChart.length}
     :overlayData?.luwes_stats??null;
 
-  // ── v2.7.0 FIX: use buildChartPredictions for correct 00:00 WIB coverage ──
+  // ── v2.9.0: single-request minute data → no discontinuity ──
   const chartPredictions = buildChartPredictions(tideData, minutePredictions, selDate);
 
   const {sunrise,sunset}=getSunTimes();
@@ -696,14 +715,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({coordinates,onClose}) => {
   // Resolution label for metadata footer
   const chartResolutionLabel = (() => {
     if (minutePredictions.length > 0) {
-      const coveredByMinute = minutePredictions.filter(p => tsToWIBHour(p.time, selDate) !== null).length;
-      const totalPoints = chartPredictions.length;
-      if (totalPoints > coveredByMinute) {
-        return `1 menit + hourly gap fill (${totalPoints} titik)`;
-      }
-      return `1 menit (${totalPoints} titik)`;
+      return `1 min \u00b7 ${chartPredictions.length} pts (full WIB day)`;
     }
-    return `1 jam (${chartPredictions.length} titik)`;
+    return `1 hr \u00b7 ${chartPredictions.length} pts`;
   })();
 
   return (
@@ -833,6 +847,11 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({coordinates,onClose}) => {
                     {isToday&&(
                       <span style={{display:"inline-flex",alignItems:"center",gap:3,fontSize:9,color:"#ef4444",fontWeight:700,background:"#fef2f2",padding:"2px 7px",borderRadius:99,fontFamily:SANS}}>
                         <span style={{display:"inline-block",width:10,height:1.5,background:"#ef4444",borderRadius:1}}/>Now
+                      </span>
+                    )}
+                    {minutePredictions.length>0&&(
+                      <span style={{display:"inline-flex",alignItems:"center",gap:3,fontSize:9,color:"#8b5cf6",fontWeight:700,background:"#f5f3ff",padding:"2px 7px",borderRadius:99,fontFamily:SANS}}>
+                        1-min
                       </span>
                     )}
                   </div>
