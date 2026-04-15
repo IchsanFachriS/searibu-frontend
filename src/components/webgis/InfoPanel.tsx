@@ -6,7 +6,7 @@
  *  - Grafik dan tabel dari 00:00 hingga 24:00 WIB (x=0 s/d x=24)
  *  - Titik x=24 (00:00 hari berikutnya) disertakan untuk kontinuitas sinusoidal
  *  - TPXO diinterpolasi per menit (1440 titik) menggunakan cubic spline
- *  - Tooltip interaktif: menampilkan nilai TPXO dan/atau Luwes sesuai ketersediaan
+ *  - Tooltip interaktif: posisi mengikuti titik pada kurva TPXO (bukan posisi raw mouse)
  *  - Jika hanya TPXO → tampilkan TPXO saja; jika hanya Luwes → tampilkan Luwes saja
  */
 
@@ -188,13 +188,7 @@ function addDays(dateStr: string, days: number): string {
 
 /* ═══════════════════════════════════════════════════
    CUBIC SPLINE INTERPOLATION
-   Natural cubic spline for smooth per-minute TPXO curve.
 ═══════════════════════════════════════════════════ */
-
-/**
- * Build a natural cubic spline from sorted {x,y} knots.
- * Returns an evaluator function y(x).
- */
 function buildCubicSpline(knots: {x:number;y:number}[]): (x: number) => number {
   const n = knots.length;
   if (n === 0) return () => 0;
@@ -208,48 +202,39 @@ function buildCubicSpline(knots: {x:number;y:number}[]): (x: number) => number {
   const ys = knots.map(k => k.y);
   const h  = Array.from({length: n - 1}, (_, i) => xs[i + 1] - xs[i]);
 
-  // Set up tridiagonal system for second derivatives M[]
-  // Natural spline: M[0] = M[n-1] = 0
   const diag = new Array(n).fill(2.0);
-  const upper = new Array(n).fill(0.0); // super-diagonal (lambda)
+  const upper = new Array(n).fill(0.0);
   const rhs  = new Array(n).fill(0.0);
 
   for (let i = 1; i < n - 1; i++) {
     const hi  = h[i - 1];
     const hi1 = h[i];
     const tot = hi + hi1;
-    upper[i] = hi1 / tot;          // lambda_i
-    // mu_i = hi / tot  (lower diag), but stored implicitly
+    upper[i] = hi1 / tot;
     rhs[i]   = 6.0 * ((ys[i + 1] - ys[i]) / hi1 - (ys[i] - ys[i - 1]) / hi) / tot;
   }
 
-  // Thomas algorithm (forward sweep)
   const mu  = new Array(n).fill(0.0);
   const rhs2 = [...rhs];
   for (let i = 1; i < n - 1; i++) {
-    mu[i] = h[i - 1] / (h[i - 1] + h[i]); // lower diag factor
+    mu[i] = h[i - 1] / (h[i - 1] + h[i]);
   }
-  // Forward elimination
   const diagMod = [...diag];
   for (let i = 1; i < n - 1; i++) {
     const w = mu[i] / diagMod[i - 1];
     diagMod[i] -= w * upper[i - 1];
     rhs2[i]    -= w * rhs2[i - 1];
   }
-  // Back substitution
   const M = new Array(n).fill(0.0);
   M[n - 2] = rhs2[n - 2] / diagMod[n - 2];
   for (let i = n - 3; i >= 1; i--) {
     M[i] = (rhs2[i] - upper[i] * M[i + 1]) / diagMod[i];
   }
-  // M[0] = M[n-1] = 0 (natural boundary)
 
   return (x: number) => {
-    // Clamp to knot range
     if (x <= xs[0])     return ys[0];
     if (x >= xs[n - 1]) return ys[n - 1];
 
-    // Binary search for interval [xs[i], xs[i+1]]
     let lo = 0, hi2 = n - 2;
     while (lo < hi2) {
       const mid = (lo + hi2) >> 1;
@@ -260,7 +245,6 @@ function buildCubicSpline(knots: {x:number;y:number}[]): (x: number) => number {
     const dx  = x - xs[i];
     const hi_ = h[i];
 
-    // Cubic polynomial coefficients derived from M[i], M[i+1]
     const a = ys[i];
     const b = (ys[i + 1] - ys[i]) / hi_ - hi_ * (2 * M[i] + M[i + 1]) / 6;
     const c = M[i] / 2;
@@ -270,11 +254,6 @@ function buildCubicSpline(knots: {x:number;y:number}[]): (x: number) => number {
   };
 }
 
-/**
- * Interpolate TPXO knots to per-minute resolution.
- * Input knots: {x (fractional WIB hours, 0–24), y (height m)}
- * Output: 1441 points covering 00:00–24:00 (one per minute).
- */
 function interpolateTPXOPerMinute(
   knots: {x: number; y: number}[]
 ): {x: number; y: number}[] {
@@ -285,7 +264,6 @@ function interpolateTPXOPerMinute(
   const xMax   = knots[knots.length - 1].x;
   const result: {x: number; y: number}[] = [];
 
-  // Step = 1 minute = 1/60 hours
   const STEP = 1 / 60;
 
   for (let min = 0; min <= (xMax - xMin) * 60 + 0.5; min++) {
@@ -553,10 +531,11 @@ const WeatherSymbol: React.FC<{ code: number; size?: number }> = ({ code, size=1
 
 /* ═══════════════════════════════════════════════════
    OVERLAY CHART
-   - TPXO: cubic-spline interpolated to per-minute (1440+ pts)
-   - Luwes: raw scatter dots
-   - Axes: 00:00–24:00 WIB (unchanged)
-   - Tooltip: shows nearest TPXO and/or Luwes value
+   ── PERBAIKAN TOOLTIP ──
+   Tooltip kini diposisikan mengikuti koordinat pixel
+   titik TPXO pada canvas, bukan posisi raw mouse.
+   Ini memastikan tooltip selalu muncul di atas/dekat
+   garis grafik dan tidak keluar dari area chart.
 ═══════════════════════════════════════════════════ */
 const OverlayChart: React.FC<{
   tpxoPredictions: Array<{ time: string; height: number }>;
@@ -581,7 +560,6 @@ const OverlayChart: React.FC<{
       if (w.wibDate === dateStr) {
         tpxoKnots.push({ x: w.wibHour + w.wibMinute / 60, y: p.height });
       } else if (w.wibDate === nextDateStr && w.wibHour === 0 && w.wibMinute === 0) {
-        // Include next-day 00:00 as x=24 for sinusoidal continuity
         tpxoKnots.push({ x: 24, y: p.height });
       }
     });
@@ -610,9 +588,7 @@ const OverlayChart: React.FC<{
       return bestD <= maxDist ? best.y : null;
     };
 
-    // For TPXO tooltip, use the original hourly knots (more accurate label)
     const nearestTPXO = (x: number): number | null => {
-      // Use interpolated pts but with a tighter window — we have 1/60 step so 3 minutes = 0.05
       return nearestY(tpxoPts, x, 3 / 60);
     };
 
@@ -658,7 +634,6 @@ const OverlayChart: React.FC<{
             {
               label: "TPXO",
               type: "line" as any,
-              // Use per-minute interpolated points for a smooth continuous curve
               data: tpxoPts,
               borderColor: "#0284c7",
               backgroundColor: (c: any) => {
@@ -671,7 +646,6 @@ const OverlayChart: React.FC<{
               },
               borderWidth: 2,
               fill: true,
-              // tension: 0 — points are already smooth from spline interpolation
               tension: 0,
               pointRadius: 0,
               pointHoverRadius: 0,
@@ -745,7 +719,7 @@ const OverlayChart: React.FC<{
           },
           onHover: (event: any, _elements: any[], chart: any) => {
             if (!event?.native) { hideTooltip(); return; }
-            const nativeEvent = event.native as MouseEvent;
+
             const xVal = chart.scales.x?.getValueForPixel(event.x);
             if (xVal == null || xVal < 0 || xVal > 24) { hideTooltip(); return; }
 
@@ -775,11 +749,41 @@ const OverlayChart: React.FC<{
             tip.innerHTML = html;
             tip.style.display = "block";
 
-            const tipW = 160, tipH = 70;
-            let left = nativeEvent.clientX + 14;
-            let top  = nativeEvent.clientY - 12;
-            if (left + tipW > window.innerWidth - 8)  left = nativeEvent.clientX - tipW - 14;
-            if (top  + tipH > window.innerHeight - 8) top  = nativeEvent.clientY - tipH - 14;
+            // ── Anchor tooltip to the TPXO curve point on the canvas ──
+            // Use canvas pixel coords instead of raw mouse position so the
+            // tooltip always tracks the line and never drifts outside the chart.
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+            const rect    = canvas.getBoundingClientRect();
+
+            // Get canvas-relative pixel coords for the current x value
+            const xPx     = chart.scales.x.getPixelForValue(xVal);
+            // Anchor Y to TPXO curve (preferred) or Luwes observation
+            const yAnchor = tpxoVal !== null
+              ? chart.scales.y.getPixelForValue(tpxoVal)
+              : chart.scales.y.getPixelForValue(luwesVal!);
+
+            // Normalise: canvas element size may differ from its CSS layout size
+            const scaleX  = rect.width  / (canvas.offsetWidth  || 1);
+            const scaleY  = rect.height / (canvas.offsetHeight || 1);
+            const screenX = rect.left   + xPx     * scaleX;
+            const screenY = rect.top    + yAnchor * scaleY;
+
+            const tipW = 170;
+            const tipH = tpxoVal !== null && luwesVal !== null ? 82 : 58;
+            const gap  = 12;
+
+            // Centre tooltip horizontally above the curve point
+            let left = screenX - tipW / 2;
+            let top  = screenY - tipH - gap;
+
+            // Clamp within viewport horizontally
+            if (left < 8)                           left = 8;
+            if (left + tipW > window.innerWidth - 8) left = window.innerWidth - tipW - 8;
+
+            // Flip below the point if it would go off the top of the screen
+            if (top < 8) top = screenY + gap;
+
             tip.style.left = `${left}px`;
             tip.style.top  = `${top}px`;
           },
