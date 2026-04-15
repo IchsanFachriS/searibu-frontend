@@ -5,6 +5,7 @@
  * Perbaikan:
  *  - Grafik dan tabel dari 00:00 hingga 24:00 WIB (x=0 s/d x=24)
  *  - Titik x=24 (00:00 hari berikutnya) disertakan untuk kontinuitas sinusoidal
+ *  - TPXO diinterpolasi per menit (1440 titik) menggunakan cubic spline
  *  - Tooltip interaktif: menampilkan nilai TPXO dan/atau Luwes sesuai ketersediaan
  *  - Jika hanya TPXO → tampilkan TPXO saja; jika hanya Luwes → tampilkan Luwes saja
  */
@@ -183,6 +184,117 @@ function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + "T12:00:00Z");
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+/* ═══════════════════════════════════════════════════
+   CUBIC SPLINE INTERPOLATION
+   Natural cubic spline for smooth per-minute TPXO curve.
+═══════════════════════════════════════════════════ */
+
+/**
+ * Build a natural cubic spline from sorted {x,y} knots.
+ * Returns an evaluator function y(x).
+ */
+function buildCubicSpline(knots: {x:number;y:number}[]): (x: number) => number {
+  const n = knots.length;
+  if (n === 0) return () => 0;
+  if (n === 1) return () => knots[0].y;
+  if (n === 2) {
+    const [a, b] = knots;
+    return (x) => a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
+  }
+
+  const xs = knots.map(k => k.x);
+  const ys = knots.map(k => k.y);
+  const h  = Array.from({length: n - 1}, (_, i) => xs[i + 1] - xs[i]);
+
+  // Set up tridiagonal system for second derivatives M[]
+  // Natural spline: M[0] = M[n-1] = 0
+  const diag = new Array(n).fill(2.0);
+  const upper = new Array(n).fill(0.0); // super-diagonal (lambda)
+  const rhs  = new Array(n).fill(0.0);
+
+  for (let i = 1; i < n - 1; i++) {
+    const hi  = h[i - 1];
+    const hi1 = h[i];
+    const tot = hi + hi1;
+    upper[i] = hi1 / tot;          // lambda_i
+    // mu_i = hi / tot  (lower diag), but stored implicitly
+    rhs[i]   = 6.0 * ((ys[i + 1] - ys[i]) / hi1 - (ys[i] - ys[i - 1]) / hi) / tot;
+  }
+
+  // Thomas algorithm (forward sweep)
+  const mu  = new Array(n).fill(0.0);
+  const rhs2 = [...rhs];
+  for (let i = 1; i < n - 1; i++) {
+    mu[i] = h[i - 1] / (h[i - 1] + h[i]); // lower diag factor
+  }
+  // Forward elimination
+  const diagMod = [...diag];
+  for (let i = 1; i < n - 1; i++) {
+    const w = mu[i] / diagMod[i - 1];
+    diagMod[i] -= w * upper[i - 1];
+    rhs2[i]    -= w * rhs2[i - 1];
+  }
+  // Back substitution
+  const M = new Array(n).fill(0.0);
+  M[n - 2] = rhs2[n - 2] / diagMod[n - 2];
+  for (let i = n - 3; i >= 1; i--) {
+    M[i] = (rhs2[i] - upper[i] * M[i + 1]) / diagMod[i];
+  }
+  // M[0] = M[n-1] = 0 (natural boundary)
+
+  return (x: number) => {
+    // Clamp to knot range
+    if (x <= xs[0])     return ys[0];
+    if (x >= xs[n - 1]) return ys[n - 1];
+
+    // Binary search for interval [xs[i], xs[i+1]]
+    let lo = 0, hi2 = n - 2;
+    while (lo < hi2) {
+      const mid = (lo + hi2) >> 1;
+      if (xs[mid + 1] < x) lo = mid + 1;
+      else hi2 = mid;
+    }
+    const i   = lo;
+    const dx  = x - xs[i];
+    const hi_ = h[i];
+
+    // Cubic polynomial coefficients derived from M[i], M[i+1]
+    const a = ys[i];
+    const b = (ys[i + 1] - ys[i]) / hi_ - hi_ * (2 * M[i] + M[i + 1]) / 6;
+    const c = M[i] / 2;
+    const d = (M[i + 1] - M[i]) / (6 * hi_);
+
+    return a + dx * (b + dx * (c + dx * d));
+  };
+}
+
+/**
+ * Interpolate TPXO knots to per-minute resolution.
+ * Input knots: {x (fractional WIB hours, 0–24), y (height m)}
+ * Output: 1441 points covering 00:00–24:00 (one per minute).
+ */
+function interpolateTPXOPerMinute(
+  knots: {x: number; y: number}[]
+): {x: number; y: number}[] {
+  if (knots.length < 2) return knots;
+
+  const spline = buildCubicSpline(knots);
+  const xMin   = knots[0].x;
+  const xMax   = knots[knots.length - 1].x;
+  const result: {x: number; y: number}[] = [];
+
+  // Step = 1 minute = 1/60 hours
+  const STEP = 1 / 60;
+
+  for (let min = 0; min <= (xMax - xMin) * 60 + 0.5; min++) {
+    const x = xMin + min * STEP;
+    if (x > xMax + 1e-9) break;
+    result.push({ x: Math.min(x, xMax), y: spline(Math.min(x, xMax)) });
+  }
+
+  return result;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -440,8 +552,11 @@ const WeatherSymbol: React.FC<{ code: number; size?: number }> = ({ code, size=1
 };
 
 /* ═══════════════════════════════════════════════════
-   OVERLAY CHART — 00:00 to 24:00 with sinusoidal continuity
-   Tooltip shows TPXO and/or Luwes based on availability
+   OVERLAY CHART
+   - TPXO: cubic-spline interpolated to per-minute (1440+ pts)
+   - Luwes: raw scatter dots
+   - Axes: 00:00–24:00 WIB (unchanged)
+   - Tooltip: shows nearest TPXO and/or Luwes value
 ═══════════════════════════════════════════════════ */
 const OverlayChart: React.FC<{
   tpxoPredictions: Array<{ time: string; height: number }>;
@@ -450,31 +565,32 @@ const OverlayChart: React.FC<{
 }> = ({ tpxoPredictions, luwesObs, dateStr }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef  = useRef<any>(null);
-  // Keep tooltip element ref for cleanup
   const tooltipIdRef = useRef(`searibu-tip-${Math.random().toString(36).slice(2,7)}`);
 
   useEffect(() => {
     if (!canvasRef.current) return;
     if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
 
-    // ── Build TPXO points (x = WIB hours, 0–24 inclusive) ──
-    // x=0  = 00:00 WIB on dateStr
-    // x=24 = 00:00 WIB on dateStr+1 (for sinusoidal continuity)
+    // ── Build TPXO hourly knots (x = WIB hours, 0–24 inclusive) ──
     const nextDateStr = addDays(dateStr, 1);
-    const tpxoPts: {x:number;y:number}[] = [];
+    const tpxoKnots: {x:number;y:number}[] = [];
+
     tpxoPredictions.forEach(p => {
       const w = parseToWIB(p.time);
       if (!w) return;
       if (w.wibDate === dateStr) {
-        tpxoPts.push({ x: w.wibHour + w.wibMinute / 60, y: p.height });
+        tpxoKnots.push({ x: w.wibHour + w.wibMinute / 60, y: p.height });
       } else if (w.wibDate === nextDateStr && w.wibHour === 0 && w.wibMinute === 0) {
-        // Include next day 00:00 as x=24 for continuity
-        tpxoPts.push({ x: 24, y: p.height });
+        // Include next-day 00:00 as x=24 for sinusoidal continuity
+        tpxoKnots.push({ x: 24, y: p.height });
       }
     });
-    tpxoPts.sort((a, b) => a.x - b.x);
+    tpxoKnots.sort((a, b) => a.x - b.x);
 
-    // ── Build Luwes points ──
+    // ── Interpolate TPXO to per-minute resolution ──
+    const tpxoPts = interpolateTPXOPerMinute(tpxoKnots);
+
+    // ── Build Luwes scatter points ──
     const luwesPts: {x:number;y:number}[] = [];
     luwesObs.forEach(o => {
       const w = parseToWIB(o.recorded_at);
@@ -483,7 +599,7 @@ const OverlayChart: React.FC<{
       }
     });
 
-    // ── Helper: nearest-neighbor lookup ──
+    // ── Nearest-neighbour lookup for tooltip ──
     const nearestY = (pts: {x:number;y:number}[], x: number, maxDist = 0.15): number | null => {
       if (!pts.length) return null;
       let best = pts[0], bestD = Math.abs(x - pts[0].x);
@@ -492,6 +608,12 @@ const OverlayChart: React.FC<{
         if (d < bestD) { bestD = d; best = pt; }
       }
       return bestD <= maxDist ? best.y : null;
+    };
+
+    // For TPXO tooltip, use the original hourly knots (more accurate label)
+    const nearestTPXO = (x: number): number | null => {
+      // Use interpolated pts but with a tighter window — we have 1/60 step so 3 minutes = 0.05
+      return nearestY(tpxoPts, x, 3 / 60);
     };
 
     const wibNow = new Date(Date.now() + 7 * 3600_000);
@@ -536,6 +658,7 @@ const OverlayChart: React.FC<{
             {
               label: "TPXO",
               type: "line" as any,
+              // Use per-minute interpolated points for a smooth continuous curve
               data: tpxoPts,
               borderColor: "#0284c7",
               backgroundColor: (c: any) => {
@@ -546,9 +669,15 @@ const OverlayChart: React.FC<{
                 g.addColorStop(1, "rgba(2,132,199,0)");
                 return g;
               },
-              borderWidth: 2, fill: true, tension: 0.4,
-              pointRadius: 0, pointHoverRadius: 0,
-              spanGaps: true, order: 2, parsing: false,
+              borderWidth: 2,
+              fill: true,
+              // tension: 0 — points are already smooth from spline interpolation
+              tension: 0,
+              pointRadius: 0,
+              pointHoverRadius: 0,
+              spanGaps: false,
+              order: 2,
+              parsing: false,
             },
             {
               label: "Luwes RAW",
@@ -556,14 +685,17 @@ const OverlayChart: React.FC<{
               data: luwesPts,
               borderColor: "rgba(249,115,22,0.7)",
               backgroundColor: "rgba(249,115,22,0.55)",
-              pointRadius: 1.5, pointHoverRadius: 0,
-              order: 1, parsing: false,
+              pointRadius: 1.5,
+              pointHoverRadius: 0,
+              order: 1,
+              parsing: false,
             },
           ],
         },
         options: {
-          responsive: true, maintainAspectRatio: false, animation: false,
-          // Disable built-in tooltip entirely — we use custom canvas-overlay tooltip
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
           interaction: { mode: "index", intersect: false, axis: "x" },
           plugins: {
             legend: { display: false },
@@ -571,12 +703,22 @@ const OverlayChart: React.FC<{
           },
           scales: {
             x: {
-              type: "linear", min: 0, max: 24,
-              grid: { color: (c: any) => c.tick.value % 3 === 0 ? "rgba(0,0,0,0.07)" : "rgba(0,0,0,0.025)" },
+              type: "linear",
+              min: 0,
+              max: 24,
+              grid: {
+                color: (c: any) => c.tick.value % 3 === 0
+                  ? "rgba(0,0,0,0.07)"
+                  : "rgba(0,0,0,0.025)",
+              },
               border: { display: false },
               ticks: {
-                color: "#94a3b8", font: { family: MONO, size: 10 },
-                maxRotation: 0, stepSize: 1, autoSkip: false, includeBounds: true,
+                color: "#94a3b8",
+                font: { family: MONO, size: 10 },
+                maxRotation: 0,
+                stepSize: 1,
+                autoSkip: false,
+                includeBounds: true,
                 callback: (v: any) => {
                   const n = Number(v);
                   if (n === 0)  return "00:00";
@@ -588,8 +730,17 @@ const OverlayChart: React.FC<{
             y: {
               grid: { color: "rgba(0,0,0,0.04)" },
               border: { display: false },
-              ticks: { color: "#94a3b8", font: { family: MONO, size: 10 }, callback: (v: any) => `${Number(v).toFixed(2)} m` },
-              title: { display: true, text: "Water Level (m)", color: "#94a3b8", font: { size: 9, family: MONO } },
+              ticks: {
+                color: "#94a3b8",
+                font: { family: MONO, size: 10 },
+                callback: (v: any) => `${Number(v).toFixed(2)} m`,
+              },
+              title: {
+                display: true,
+                text: "Water Level (m)",
+                color: "#94a3b8",
+                font: { size: 9, family: MONO },
+              },
             },
           },
           onHover: (event: any, _elements: any[], chart: any) => {
@@ -598,7 +749,7 @@ const OverlayChart: React.FC<{
             const xVal = chart.scales.x?.getValueForPixel(event.x);
             if (xVal == null || xVal < 0 || xVal > 24) { hideTooltip(); return; }
 
-            const tpxoVal = nearestY(tpxoPts, xVal, 0.6);
+            const tpxoVal  = nearestTPXO(xVal);
             const luwesVal = nearestY(luwesPts, xVal, 0.12);
             if (tpxoVal === null && luwesVal === null) { hideTooltip(); return; }
 
@@ -624,12 +775,11 @@ const OverlayChart: React.FC<{
             tip.innerHTML = html;
             tip.style.display = "block";
 
-            // Position: follow mouse, keep in viewport
             const tipW = 160, tipH = 70;
             let left = nativeEvent.clientX + 14;
             let top  = nativeEvent.clientY - 12;
-            if (left + tipW > window.innerWidth - 8) left = nativeEvent.clientX - tipW - 14;
-            if (top + tipH > window.innerHeight - 8) top = nativeEvent.clientY - tipH - 14;
+            if (left + tipW > window.innerWidth - 8)  left = nativeEvent.clientX - tipW - 14;
+            if (top  + tipH > window.innerHeight - 8) top  = nativeEvent.clientY - tipH - 14;
             tip.style.left = `${left}px`;
             tip.style.top  = `${top}px`;
           },
@@ -652,14 +802,12 @@ const OverlayChart: React.FC<{
         }],
       });
 
-      // Hide tooltip on mouse leave
       canvasRef.current?.addEventListener("mouseleave", hideTooltip);
     });
 
     return () => {
       cancelled = true;
       if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
-      // Remove tooltip
       const tip = document.getElementById(tooltipIdRef.current);
       if (tip) tip.remove();
     };
@@ -827,7 +975,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       const today  = new Date();
       const fmtD   = (d: Date) => d.toISOString().split("T")[0];
 
-      // Weather ±14 days
       let wd: WeatherData|null = null;
       let md: MarineData|null  = null;
       let usedCache = false;
@@ -871,8 +1018,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
 
       setWeatherData(wd); setMarineData(md); setWeatherFromCache(usedCache);
 
-      // Tide: fetch prev day → next day so we always get 00:00 and 24:00 boundary
-      // e.g. for dateStr "2026-04-15" → fetch "2026-04-14" to "2026-04-16"
       const prevDay = addDays(dateStr, -1);
       const nextDay = addDays(dateStr, +1);
 
@@ -909,7 +1054,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
   };
 
   const buildRows = (): HourRow[] => {
-    // Build rows 00:00–24:00 (25 rows)
     const tideMap = new Map<number,number>();
     tideData?.predictions.forEach(p => {
       const w = parseToWIB(p.time);
@@ -941,11 +1085,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       marineMap.set(hh, { waveH:marineData.hourly.wave_height[i]??null, currentSpd:marineData.hourly.ocean_current_velocity[i]??null });
     });
 
-    // 25 rows: 00:00 to 24:00
     return Array.from({length:25},(_,i) => {
       const hh = i === 24 ? "24" : i.toString().padStart(2,"0");
       const label = i === 24 ? "24:00" : `${hh}:00`;
-      const wxKey = i === 24 ? "00" : hh; // 24:00 weather ≈ next day's 00:00, fallback to 00:00
       const marine = marineMap.get(i === 24 ? "00" : hh) ?? { waveH:null, currentSpd:null };
       return {
         hour: label,
@@ -1040,7 +1182,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       {/* ── Scrollable Body ── */}
       <div style={{ flex:1, overflowY:"auto", scrollbarWidth:"thin", scrollbarColor:"#cbd5e1 transparent" }}>
 
-        {/* LOADING */}
         {loading && (
           <>
             <SkeletonHero/>
@@ -1053,7 +1194,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
           </>
         )}
 
-        {/* ERROR */}
         {error && !loading && (
           <div style={{ margin:16, padding:16, borderRadius:12, background:"#fef2f2", border:"1px solid #fca5a5" }}>
             <div style={{ display:"flex", gap:12, alignItems:"flex-start" }}>
@@ -1071,7 +1211,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
           </div>
         )}
 
-        {/* CONTENT */}
         {!loading && !error && (
           <>
             {/* ── Hero Card ── */}
@@ -1118,7 +1257,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 ) : <div/>}
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:0, padding:"10px 20px 14px", borderTop:"1px solid rgba(255,255,255,0.08)" }}>
-                {/* Wind */}
                 <div style={{ paddingRight:12, borderRight:"1px solid rgba(255,255,255,0.08)" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:5 }}>
                     <Wind size={10} color="rgba(255,255,255,0.45)"/>
@@ -1137,7 +1275,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                     </>
                   ) : <p style={{ fontFamily:MONO, color:"rgba(255,255,255,0.3)", fontSize:14 }}>—</p>}
                 </div>
-                {/* Wave */}
                 <div style={{ paddingLeft:12, paddingRight:12, borderRight:"1px solid rgba(255,255,255,0.08)" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:5 }}>
                     <Waves size={10} color="rgba(255,255,255,0.45)"/>
@@ -1156,7 +1293,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                     </>
                   ) : <p style={{ fontFamily:MONO, color:"rgba(255,255,255,0.3)", fontSize:14 }}>—</p>}
                 </div>
-                {/* Current */}
                 <div style={{ paddingLeft:12 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:5 }}>
                     <Navigation size={10} color="rgba(255,255,255,0.45)"/>
@@ -1321,7 +1457,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 {lang==="en" ? "Hourly Data (00:00–24:00 WIB)" : "Data Per Jam (00:00–24:00 WIB)"}
               </p>
               <div style={{ borderRadius:16, overflow:"hidden", background:"#fff", border:"1px solid #e2e8f0" }}>
-                {/* Header */}
                 <div style={{ display:"grid", gridTemplateColumns:"48px 24px 56px 42px 64px 46px 46px", padding:"6px 16px", background:"#f8fafc", borderBottom:"1px solid #f1f5f9", fontSize:10, fontWeight:600, letterSpacing:"0.04em", textTransform:"uppercase", color:"#94a3b8", fontFamily:SANS }}>
                   <span>{lang==="en"?"Time":"Waktu"}</span>
                   <span style={{textAlign:"center"}}>Wx</span>
@@ -1331,7 +1466,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                   <span style={{textAlign:"right"}}>{lang==="en"?"Wave":"Gel."}</span>
                   <span style={{textAlign:"right"}}>{lang==="en"?"Curr.":"Arus"}</span>
                 </div>
-                {/* Rows */}
                 <div style={{ maxHeight:440, overflowY:"auto", scrollbarWidth:"thin", scrollbarColor:"#e2e8f0 transparent" }}>
                   {rows.map((row, idx) => {
                     const hl     = isToday && row.hour.startsWith(nowHour+":00");
@@ -1378,7 +1512,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                     );
                   })}
                 </div>
-                {/* Legend */}
                 <div style={{ padding:"6px 16px", borderTop:"1px solid #f1f5f9", background:"#fafafa", display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
                   {[
                     { color:"#16a34a", label:lang==="en"?"Low wave/current":"Gelombang/arus rendah" },
@@ -1418,6 +1551,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 [lang==="en"?"Obs. station":"Stasiun obs.",  overlayData?.imei ? `IMEI ${overlayData.imei}` : "—"],
                 ["TOL correction",                           "-2.156 m (Luwes → MSL TPXO9)"],
                 [lang==="en"?"S-104 standard":"Standar S-104", "IHO S-104 Ed.2.0.0 (Dec 2024)"],
+                [lang==="en"?"Chart resolution":"Resolusi grafik", lang==="en"?"Per-minute (cubic spline)":"Per menit (cubic spline)"],
               ] as [string, string|undefined][]).map(([k,v])=>(
                 <div key={k} style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
                   <span style={{ fontFamily:MONO, fontSize:11, color:"#94a3b8", fontWeight:500 }}>{k}</span>
