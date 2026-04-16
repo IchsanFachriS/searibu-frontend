@@ -25,6 +25,22 @@ export const WebGISPage: React.FC = () => {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 
+        /*
+         * ── OVERSCROLL FIX ──────────────────────────────────────────────────
+         * Block all pull-to-refresh and overscroll on the WebGIS page.
+         * The html/body already have overscroll-behavior:none from App.tsx,
+         * but we reinforce here to be certain nothing bleeds through.
+         * ───────────────────────────────────────────────────────────────────
+         */
+        html, body, #root {
+          overscroll-behavior: none !important;
+          overscroll-behavior-x: none !important;
+          overscroll-behavior-y: none !important;
+          overflow: hidden;
+          height: 100%;
+          width: 100%;
+        }
+
         .webgis-wrapper {
           display: flex;
           height: calc(100vh - 62px);
@@ -33,25 +49,21 @@ export const WebGISPage: React.FC = () => {
           margin-top: 62px;
           position: relative;
           background: #0a1628;
-          /* Critical: contain all scroll inside this element */
-          overscroll-behavior: contain;
-          overscroll-behavior-x: contain;
-          overscroll-behavior-y: contain;
+          overscroll-behavior: none;
           touch-action: none;
         }
 
-        html, body, #root { background: #f8fafc !important; overscroll-behavior: none; }
+        /* ── Map area ── */
+        .webgis-map-area {
+          position: relative;
+          flex: 1;
+          min-width: 0;
+          overflow: hidden;
+          overscroll-behavior: none;
+        }
 
-        /* ── Desktop: side-by-side panel ── */
+        /* ── Desktop: side panel ── */
         @media (min-width: 769px) {
-          .webgis-map-area {
-            position: relative;
-            flex: 1;
-            min-width: 0;
-            overflow: hidden;
-            overscroll-behavior: contain;
-            touch-action: pan-x pan-y;
-          }
           .webgis-panel-desktop {
             width: 520px;
             min-width: 520px;
@@ -63,6 +75,7 @@ export const WebGISPage: React.FC = () => {
             flex-shrink: 0;
             background: #f8fafc;
             height: 100%;
+            overscroll-behavior: contain;
           }
           .webgis-panel-desktop.closed {
             width: 0 !important;
@@ -83,16 +96,8 @@ export const WebGISPage: React.FC = () => {
 
         /* ── Mobile: bottom sheet overlay ── */
         @media (max-width: 768px) {
-          .webgis-map-area {
-            position: relative;
-            flex: 1;
-            min-width: 0;
-            width: 100%;
-            overflow: hidden;
-            overscroll-behavior: contain;
-            touch-action: pan-x pan-y;
-          }
           .webgis-panel-desktop { display: none !important; }
+
           .webgis-panel-mobile {
             position: fixed;
             left: 0;
@@ -107,6 +112,7 @@ export const WebGISPage: React.FC = () => {
             overflow: hidden;
             box-shadow: 0 -8px 40px rgba(0,0,0,0.18);
             background: #f8fafc;
+            overscroll-behavior: contain;
           }
           .webgis-panel-mobile.open {
             transform: translateY(0);
@@ -123,6 +129,21 @@ export const WebGISPage: React.FC = () => {
             z-index: 10;
             cursor: grab;
           }
+
+          /* Backdrop behind sheet */
+          .webgis-mobile-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 499;
+            background: rgba(0,0,0,0.25);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+          }
+          .webgis-mobile-backdrop.visible {
+            opacity: 1;
+            pointer-events: auto;
+          }
         }
 
         @media (max-width: 480px) {
@@ -133,10 +154,15 @@ export const WebGISPage: React.FC = () => {
         }
       `}</style>
 
-      <div className="webgis-wrapper">
+      <div
+        className="webgis-wrapper"
+        /* Capture and swallow any wheel/touch events that reach this wrapper
+           so they can never propagate to the document scroll */
+        onWheel={e => e.preventDefault()}
+        onTouchMove={e => { if (!panelOpen) e.preventDefault(); }}
+      >
         {/* Map area */}
         <div className="webgis-map-area">
-          {/* BasemapToggle is rendered inside MapContainer's absolute positioning space */}
           <BasemapToggle currentBasemap={basemap} onBasemapChange={setBasemap} />
           <MapContainer
             basemap={basemap}
@@ -153,6 +179,10 @@ export const WebGISPage: React.FC = () => {
         </div>
 
         {/* Mobile: bottom sheet */}
+        <div
+          className={`webgis-mobile-backdrop ${panelOpen ? 'visible' : ''}`}
+          onClick={handleClosePanel}
+        />
         <div className={`webgis-panel-mobile ${panelOpen ? 'open' : ''}`}>
           <div className="mobile-drag-handle" />
           {selectedCoordinates && (

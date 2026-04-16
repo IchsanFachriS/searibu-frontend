@@ -2,12 +2,12 @@
  * InfoPanel.tsx  —  Marine Info Panel
  * Sistem Searibu — ITB Geodesy & Geomatics Engineering 2026
  *
- * Perbaikan:
- *  - Grafik dan tabel dari 00:00 hingga 24:00 WIB (x=0 s/d x=24)
- *  - Titik x=24 (00:00 hari berikutnya) disertakan untuk kontinuitas sinusoidal
- *  - TPXO diinterpolasi per menit (1440 titik) menggunakan cubic spline
- *  - Tooltip interaktif: posisi mengikuti titik pada kurva TPXO (bukan posisi raw mouse)
- *  - Jika hanya TPXO → tampilkan TPXO saja; jika hanya Luwes → tampilkan Luwes saja
+ * Perubahan:
+ *  - Activity Guide dipindah ke bawah tabel hourly data
+ *  - Tabel hourly hanya 00:00–23:00 (bukan sampai 24:00)
+ *  - Fix overscroll pada panel agar tidak propagate ke body
+ *  - Tooltip interaktif diposisikan mengikuti titik pada kurva TPXO
+ *  - Cubic spline interpolation per menit untuk grafik TPXO
  */
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
@@ -179,7 +179,6 @@ function parseToWIB(ts: string): { wibDate: string; wibHour: number; wibMinute: 
   } catch { return null; }
 }
 
-/** Add days to a YYYY-MM-DD string */
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + "T12:00:00Z");
   d.setUTCDate(d.getUTCDate() + days);
@@ -485,20 +484,6 @@ const SkeletonHero = () => (
   </div>
 );
 
-const SkeletonActivities = () => (
-  <div style={{ margin:"16px 16px 0", display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-    {[0,1,2,3].map(i=>(
-      <div key={i} style={{ borderRadius:10, padding:12, background:"#f1f5f9", border:"1px solid #e2e8f0" }}>
-        <div style={{ display:"flex", gap:8, marginBottom:6 }}>
-          <Shimmer w="24px" h="24px" r="6px"/>
-          <Shimmer w="60%" h="10px"/>
-        </div>
-        <Shimmer w="85%" h="8px"/>
-      </div>
-    ))}
-  </div>
-);
-
 const SkeletonChart = () => (
   <div style={{ margin:"16px 16px 0", borderRadius:16, overflow:"hidden", border:"1px solid #e2e8f0" }}>
     <div style={{ padding:"12px 16px 4px" }}><Shimmer w="55%" h="11px"/></div>
@@ -531,11 +516,6 @@ const WeatherSymbol: React.FC<{ code: number; size?: number }> = ({ code, size=1
 
 /* ═══════════════════════════════════════════════════
    OVERLAY CHART
-   ── PERBAIKAN TOOLTIP ──
-   Tooltip kini diposisikan mengikuti koordinat pixel
-   titik TPXO pada canvas, bukan posisi raw mouse.
-   Ini memastikan tooltip selalu muncul di atas/dekat
-   garis grafik dan tidak keluar dari area chart.
 ═══════════════════════════════════════════════════ */
 const OverlayChart: React.FC<{
   tpxoPredictions: Array<{ time: string; height: number }>;
@@ -550,7 +530,6 @@ const OverlayChart: React.FC<{
     if (!canvasRef.current) return;
     if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
 
-    // ── Build TPXO hourly knots (x = WIB hours, 0–24 inclusive) ──
     const nextDateStr = addDays(dateStr, 1);
     const tpxoKnots: {x:number;y:number}[] = [];
 
@@ -565,10 +544,8 @@ const OverlayChart: React.FC<{
     });
     tpxoKnots.sort((a, b) => a.x - b.x);
 
-    // ── Interpolate TPXO to per-minute resolution ──
     const tpxoPts = interpolateTPXOPerMinute(tpxoKnots);
 
-    // ── Build Luwes scatter points ──
     const luwesPts: {x:number;y:number}[] = [];
     luwesObs.forEach(o => {
       const w = parseToWIB(o.recorded_at);
@@ -577,7 +554,6 @@ const OverlayChart: React.FC<{
       }
     });
 
-    // ── Nearest-neighbour lookup for tooltip ──
     const nearestY = (pts: {x:number;y:number}[], x: number, maxDist = 0.15): number | null => {
       if (!pts.length) return null;
       let best = pts[0], bestD = Math.abs(x - pts[0].x);
@@ -749,21 +725,14 @@ const OverlayChart: React.FC<{
             tip.innerHTML = html;
             tip.style.display = "block";
 
-            // ── Anchor tooltip to the TPXO curve point on the canvas ──
-            // Use canvas pixel coords instead of raw mouse position so the
-            // tooltip always tracks the line and never drifts outside the chart.
             const canvas = canvasRef.current;
             if (!canvas) return;
             const rect    = canvas.getBoundingClientRect();
-
-            // Get canvas-relative pixel coords for the current x value
             const xPx     = chart.scales.x.getPixelForValue(xVal);
-            // Anchor Y to TPXO curve (preferred) or Luwes observation
             const yAnchor = tpxoVal !== null
               ? chart.scales.y.getPixelForValue(tpxoVal)
               : chart.scales.y.getPixelForValue(luwesVal!);
 
-            // Normalise: canvas element size may differ from its CSS layout size
             const scaleX  = rect.width  / (canvas.offsetWidth  || 1);
             const scaleY  = rect.height / (canvas.offsetHeight || 1);
             const screenX = rect.left   + xPx     * scaleX;
@@ -773,15 +742,11 @@ const OverlayChart: React.FC<{
             const tipH = tpxoVal !== null && luwesVal !== null ? 82 : 58;
             const gap  = 12;
 
-            // Centre tooltip horizontally above the curve point
             let left = screenX - tipW / 2;
             let top  = screenY - tipH - gap;
 
-            // Clamp within viewport horizontally
             if (left < 8)                           left = 8;
             if (left + tipW > window.innerWidth - 8) left = window.innerWidth - tipW - 8;
-
-            // Flip below the point if it would go off the top of the screen
             if (top < 8) top = screenY + gap;
 
             tip.style.left = `${left}px`;
@@ -1057,6 +1022,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
     return { sunrise: fmtHHmm(weatherData.daily.sunrise[idx]), sunset: fmtHHmm(weatherData.daily.sunset[idx]) };
   };
 
+  /* ── Hourly rows: 00:00 – 23:00 only (24 rows) ── */
   const buildRows = (): HourRow[] => {
     const tideMap = new Map<number,number>();
     tideData?.predictions.forEach(p => {
@@ -1064,8 +1030,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       if (!w) return;
       if (w.wibDate === selDate) {
         tideMap.set(w.wibHour, p.height);
-      } else if (w.wibDate === addDays(selDate, 1) && w.wibHour === 0 && w.wibMinute === 0) {
-        tideMap.set(24, p.height);
       }
     });
 
@@ -1089,15 +1053,16 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       marineMap.set(hh, { waveH:marineData.hourly.wave_height[i]??null, currentSpd:marineData.hourly.ocean_current_velocity[i]??null });
     });
 
-    return Array.from({length:25},(_,i) => {
-      const hh = i === 24 ? "24" : i.toString().padStart(2,"0");
-      const label = i === 24 ? "24:00" : `${hh}:00`;
-      const marine = marineMap.get(i === 24 ? "00" : hh) ?? { waveH:null, currentSpd:null };
+    /* Only 00:00 – 23:00 → 24 rows */
+    return Array.from({length:24},(_,i) => {
+      const hh    = i.toString().padStart(2,"0");
+      const label = `${hh}:00`;
+      const marine = marineMap.get(hh) ?? { waveH:null, currentSpd:null };
       return {
         hour: label,
         tideH: tideMap.get(i) ?? null,
         temp: null, windSpd: null, windDir: null, wCode: null,
-        ...(wxMap.get(i === 24 ? "00" : hh) ?? {}),
+        ...(wxMap.get(hh) ?? {}),
         ...marine,
       } as HourRow;
     });
@@ -1144,11 +1109,15 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
      RENDER
   ═══════════════════════════════════════════════ */
   return (
-    <div style={{
-      width:"min(560px,100vw)", minWidth:"560px",
-      height:"100%", display:"flex", flexDirection:"column",
-      borderLeft:"1px solid #e2e8f0", fontFamily:SANS, background:"#f8fafc",
-    }}>
+    <div
+      style={{
+        width:"min(560px,100vw)", minWidth:"560px",
+        height:"100%", display:"flex", flexDirection:"column",
+        borderLeft:"1px solid #e2e8f0", fontFamily:SANS, background:"#f8fafc",
+        /* ── Overscroll fix: contain scroll within this panel ── */
+        overscrollBehavior:"contain",
+      }}
+    >
 
       {/* ── Top Bar ── */}
       <div style={{ flexShrink:0, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 20px", background:"#fff", borderBottom:"1px solid #e2e8f0" }}>
@@ -1184,7 +1153,18 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       </div>
 
       {/* ── Scrollable Body ── */}
-      <div style={{ flex:1, overflowY:"auto", scrollbarWidth:"thin", scrollbarColor:"#cbd5e1 transparent" }}>
+      <div
+        style={{
+          flex:1, overflowY:"auto",
+          scrollbarWidth:"thin", scrollbarColor:"#cbd5e1 transparent",
+          /* ── Overscroll fix: prevent scroll from escaping to map/body ── */
+          overscrollBehavior:"contain",
+          WebkitOverflowScrolling:"touch",
+        }}
+        /* Stop wheel events from reaching the Leaflet map underneath */
+        onWheel={e => e.stopPropagation()}
+        onTouchMove={e => e.stopPropagation()}
+      >
 
         {loading && (
           <>
@@ -1193,7 +1173,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
               <Shimmer w="30%" h="9px"/>
               <div style={{marginTop:8}}><Shimmer w="100%" h="38px" r="12px"/></div>
             </div>
-            <SkeletonActivities/>
             <SkeletonChart/>
           </>
         )}
@@ -1330,49 +1309,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
               />
             </div>
 
-            {/* ── Activity Recommendations ── */}
-            <div style={{ padding:"16px 16px 0" }}>
-              <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase", color:"#94a3b8", marginBottom:8, fontFamily:SANS }}>
-                {lang==="en" ? "Activity Guide" : "Panduan Aktivitas"}
-              </p>
-              <div style={{ display:"flex", gap:6, marginBottom:10, flexWrap:"wrap" }}>
-                {(["safe","caution","danger"] as const).map(s => {
-                  const count = activities.filter(a=>a.status===s).length;
-                  const cfg   = statusStyles[s];
-                  return (
-                    <div key={s} style={{ display:"flex", alignItems:"center", gap:5, background:cfg.bg, border:`1px solid ${cfg.border}`, borderRadius:99, padding:"4px 10px" }}>
-                      <div style={{ width:8, height:8, borderRadius:"50%", background:cfg.dot, flexShrink:0 }}/>
-                      <span style={{ fontFamily:SANS, fontSize:11, fontWeight:700, color:cfg.text }}>{count}</span>
-                      <span style={{ fontFamily:SANS, fontSize:11, color:cfg.text, opacity:0.8 }}>{cfg.label[lang==="en"?0:1]}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:12, overflow:"hidden" }}>
-                {activities.map((act, idx) => {
-                  const st     = statusStyles[act.status];
-                  const isLast = idx===activities.length-1;
-                  return (
-                    <div key={act.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderBottom: isLast?"none":"1px solid #f1f5f9", background: idx%2===0?"#fff":"#fafafa" }}>
-                      <div style={{ width:5, flexShrink:0, alignSelf:"stretch", background:st.dot, borderRadius:99, minHeight:32 }}/>
-                      <div style={{ display:"flex", alignItems:"center", gap:7, flex:"0 0 140px", minWidth:0 }}>
-                        <span style={{ color:st.dot, flexShrink:0 }}>{act.icon}</span>
-                        <span style={{ fontFamily:SANS, fontSize:12, fontWeight:600, color:"#0f172a", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                          {lang==="en" ? act.labelEn : act.labelId}
-                        </span>
-                      </div>
-                      <p style={{ fontFamily:SANS, fontSize:11, color:"#64748b", lineHeight:1.4, flex:1, margin:0 }}>
-                        {lang==="en" ? act.reasonEn : act.reasonId}
-                      </p>
-                      <div style={{ flexShrink:0, background:st.bg, border:`1px solid ${st.border}`, borderRadius:99, padding:"3px 10px", fontFamily:SANS, fontSize:10, fontWeight:700, color:st.text, whiteSpace:"nowrap" }}>
-                        {st.label[lang==="en"?0:1]}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* ── Overlay Chart ── */}
             <div style={{ padding:"16px 16px 0" }}>
               <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase", color:"#94a3b8", marginBottom:8, fontFamily:SANS }}>
@@ -1455,12 +1391,13 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
               </div>
             )}
 
-            {/* ── Hourly Table (00:00 – 24:00) ── */}
+            {/* ── Hourly Table (00:00 – 23:00) ── */}
             <div style={{ padding:"16px 16px 0" }}>
               <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase", color:"#94a3b8", marginBottom:8, fontFamily:SANS }}>
-                {lang==="en" ? "Hourly Data (00:00–24:00 WIB)" : "Data Per Jam (00:00–24:00 WIB)"}
+                {lang==="en" ? "Hourly Data (00:00–23:00 WIB)" : "Data Per Jam (00:00–23:00 WIB)"}
               </p>
               <div style={{ borderRadius:16, overflow:"hidden", background:"#fff", border:"1px solid #e2e8f0" }}>
+                {/* Column headers */}
                 <div style={{ display:"grid", gridTemplateColumns:"48px 24px 56px 42px 64px 46px 46px", padding:"6px 16px", background:"#f8fafc", borderBottom:"1px solid #f1f5f9", fontSize:10, fontWeight:600, letterSpacing:"0.04em", textTransform:"uppercase", color:"#94a3b8", fontFamily:SANS }}>
                   <span>{lang==="en"?"Time":"Waktu"}</span>
                   <span style={{textAlign:"center"}}>Wx</span>
@@ -1470,36 +1407,34 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                   <span style={{textAlign:"right"}}>{lang==="en"?"Wave":"Gel."}</span>
                   <span style={{textAlign:"right"}}>{lang==="en"?"Curr.":"Arus"}</span>
                 </div>
+                {/* Rows */}
                 <div style={{ maxHeight:440, overflowY:"auto", scrollbarWidth:"thin", scrollbarColor:"#e2e8f0 transparent" }}>
                   {rows.map((row, idx) => {
-                    const hl     = isToday && row.hour.startsWith(nowHour+":00");
-                    const is24   = row.hour === "24:00";
-                    const isMax  = !is24 && dailyStats && row.tideH!==null && Math.abs(row.tideH-dailyStats.max)<0.015;
-                    const isMin  = !is24 && dailyStats && row.tideH!==null && Math.abs(row.tideH-dailyStats.min)<0.015;
-                    const waveC  = row.waveH==null?"#64748b": row.waveH<0.5?"#16a34a": row.waveH<1.25?"#d97706":"#dc2626";
-                    const currC  = row.currentSpd==null?"#64748b": row.currentSpd<0.25?"#16a34a": row.currentSpd<0.75?"#d97706":"#dc2626";
+                    const hl    = isToday && row.hour.startsWith(nowHour+":00");
+                    const isMax = dailyStats && row.tideH!==null && Math.abs(row.tideH-dailyStats.max)<0.015;
+                    const isMin = dailyStats && row.tideH!==null && Math.abs(row.tideH-dailyStats.min)<0.015;
+                    const waveC = row.waveH==null?"#64748b": row.waveH<0.5?"#16a34a": row.waveH<1.25?"#d97706":"#dc2626";
+                    const currC = row.currentSpd==null?"#64748b": row.currentSpd<0.25?"#16a34a": row.currentSpd<0.75?"#d97706":"#dc2626";
+                    const isLast = idx === rows.length - 1;
                     return (
                       <div key={idx} style={{
                         display:"grid", gridTemplateColumns:"48px 24px 56px 42px 64px 46px 46px",
                         padding:"6px 16px", alignItems:"center",
-                        borderBottom: is24 ? "none" : "1px solid #f8fafc",
-                        background: is24
-                          ? "linear-gradient(90deg,#f0f9ff,#f8fafc)"
-                          : hl
+                        borderBottom: isLast ? "none" : "1px solid #f8fafc",
+                        background: hl
                           ? "linear-gradient(90deg,#e0f2fe,#f0f9ff)"
                           : idx%2===0?"#fff":"#fafafa",
-                        borderTop: is24 ? "1px dashed #bae6fd" : "none",
                       }}>
-                        <span style={{ fontFamily:MONO, fontSize:11, fontWeight:hl||is24?700:500, color:is24?"#0284c7":hl?"#0284c7":"#64748b" }}>
+                        <span style={{ fontFamily:MONO, fontSize:11, fontWeight:hl?700:500, color:hl?"#0284c7":"#64748b" }}>
                           {row.hour}
                         </span>
-                        <div style={{display:"flex",justifyContent:"center"}}>{row.wCode!==null && !is24 && <WeatherSymbol code={row.wCode} size={12}/>}</div>
-                        <span style={{ fontFamily:MONO, fontSize:11, textAlign:"right", fontWeight:isMax||isMin||is24?700:500, color:is24?"#0284c7":isMax?"#0284c7":isMin?"#d97706":"#334155" }}>
+                        <div style={{display:"flex",justifyContent:"center"}}>{row.wCode!==null && <WeatherSymbol code={row.wCode} size={12}/>}</div>
+                        <span style={{ fontFamily:MONO, fontSize:11, textAlign:"right", fontWeight:isMax||isMin?700:500, color:isMax?"#0284c7":isMin?"#d97706":"#334155" }}>
                           {row.tideH!==null ? (row.tideH>=0?"+":"")+row.tideH.toFixed(3) : "—"}
                         </span>
-                        <span style={{ fontFamily:MONO, fontSize:11, textAlign:"right", color:"#475569" }}>{row.temp!==null&&!is24?`${Math.round(row.temp)}°`:"—"}</span>
+                        <span style={{ fontFamily:MONO, fontSize:11, textAlign:"right", color:"#475569" }}>{row.temp!==null?`${Math.round(row.temp)}°`:"—"}</span>
                         <span style={{ fontFamily:MONO, fontSize:11, textAlign:"right", color:"#475569" }}>
-                          {row.windSpd!==null && !is24 ? (
+                          {row.windSpd!==null ? (
                             <span style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:3}}>
                               <span style={{color:"#94a3b8",fontSize:10,fontFamily:SANS}}>{row.windDir!==null?windDirLabel(row.windDir):""}</span>
                               {row.windSpd.toFixed(1)}
@@ -1507,15 +1442,16 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                           ) : "—"}
                         </span>
                         <span style={{ fontFamily:MONO, fontSize:11, textAlign:"right", color:waveC, fontWeight:row.waveH!=null&&row.waveH>=1.25?600:400 }}>
-                          {row.waveH!==null&&!is24?row.waveH.toFixed(2):"—"}
+                          {row.waveH!==null?row.waveH.toFixed(2):"—"}
                         </span>
                         <span style={{ fontFamily:MONO, fontSize:11, textAlign:"right", color:currC, fontWeight:row.currentSpd!=null&&row.currentSpd>=0.75?600:400 }}>
-                          {row.currentSpd!==null&&!is24?row.currentSpd.toFixed(2):"—"}
+                          {row.currentSpd!==null?row.currentSpd.toFixed(2):"—"}
                         </span>
                       </div>
                     );
                   })}
                 </div>
+                {/* Legend footer */}
                 <div style={{ padding:"6px 16px", borderTop:"1px solid #f1f5f9", background:"#fafafa", display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
                   {[
                     { color:"#16a34a", label:lang==="en"?"Low wave/current":"Gelombang/arus rendah" },
@@ -1528,14 +1464,72 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                     </div>
                   ))}
                   <span style={{ fontSize:10, color:"#cbd5e1", fontFamily:SANS, marginLeft:"auto" }}>
-                    {lang==="en" ? "Wind & current in m/s · 24:00 = tide continuity" : "Angin & arus dalam m/s · 24:00 = kontinuitas pasut"}
+                    {lang==="en" ? "Wind & current in m/s" : "Angin & arus dalam m/s"}
                   </span>
                 </div>
               </div>
             </div>
 
+            {/* ══════════════════════════════════════════════════
+                ACTIVITY GUIDE — dipindah ke bawah hourly table
+            ══════════════════════════════════════════════════ */}
+            <div style={{ padding:"20px 16px 0" }}>
+              {/* Section header */}
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+                <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase", color:"#94a3b8", fontFamily:SANS, margin:0 }}>
+                  {lang==="en" ? "Activity Guide" : "Panduan Aktivitas"}
+                </p>
+                {/* Summary badges */}
+                <div style={{ display:"flex", gap:5 }}>
+                  {(["safe","caution","danger"] as const).map(s => {
+                    const count = activities.filter(a=>a.status===s).length;
+                    const cfg   = statusStyles[s];
+                    return (
+                      <div key={s} style={{ display:"flex", alignItems:"center", gap:4, background:cfg.bg, border:`1px solid ${cfg.border}`, borderRadius:99, padding:"3px 8px" }}>
+                        <div style={{ width:6, height:6, borderRadius:"50%", background:cfg.dot, flexShrink:0 }}/>
+                        <span style={{ fontFamily:SANS, fontSize:10, fontWeight:700, color:cfg.text }}>{count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Activity rows */}
+              <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:12, overflow:"hidden" }}>
+                {activities.map((act, idx) => {
+                  const st     = statusStyles[act.status];
+                  const isLast = idx===activities.length-1;
+                  return (
+                    <div key={act.id} style={{
+                      display:"flex", alignItems:"center", gap:10, padding:"9px 14px",
+                      borderBottom: isLast?"none":"1px solid #f1f5f9",
+                      background: idx%2===0?"#fff":"#fafafa",
+                    }}>
+                      {/* Status bar */}
+                      <div style={{ width:4, flexShrink:0, alignSelf:"stretch", background:st.dot, borderRadius:99, minHeight:28 }}/>
+                      {/* Icon + name */}
+                      <div style={{ display:"flex", alignItems:"center", gap:6, flex:"0 0 130px", minWidth:0 }}>
+                        <span style={{ color:st.dot, flexShrink:0 }}>{act.icon}</span>
+                        <span style={{ fontFamily:SANS, fontSize:11, fontWeight:600, color:"#0f172a", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                          {lang==="en" ? act.labelEn : act.labelId}
+                        </span>
+                      </div>
+                      {/* Reason */}
+                      <p style={{ fontFamily:SANS, fontSize:11, color:"#64748b", lineHeight:1.35, flex:1, margin:0 }}>
+                        {lang==="en" ? act.reasonEn : act.reasonId}
+                      </p>
+                      {/* Badge */}
+                      <div style={{ flexShrink:0, background:st.bg, border:`1px solid ${st.border}`, borderRadius:99, padding:"2px 8px", fontFamily:SANS, fontSize:10, fontWeight:700, color:st.text, whiteSpace:"nowrap" }}>
+                        {st.label[lang==="en"?0:1]}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* ── IHO S-104 Compliance Badge + Export ── */}
-            <div style={{ padding:"16px 16px 0" }}>
+            <div style={{ padding:"20px 16px 0" }}>
               <p style={{ fontSize:10, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase", color:"#94a3b8", marginBottom:8, fontFamily:SANS }}>
                 {lang==="en" ? "IHO S-100 / S-104 Compliance" : "Kepatuhan IHO S-100 / S-104"}
               </p>
@@ -1543,7 +1537,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
             </div>
 
             {/* ── Metadata Footer ── */}
-            <div style={{ margin:"16px 16px 24px", borderRadius:12, padding:"12px 16px", background:"#f1f5f9", border:"1px solid #e2e8f0" }}>
+            <div style={{ margin:"20px 16px 24px", borderRadius:12, padding:"12px 16px", background:"#f1f5f9", border:"1px solid #e2e8f0" }}>
               {([
                 [lang==="en"?"Tide model":"Model pasut",     tideData?.metadata.model],
                 ["Datum",                                     tideData?.metadata.datum],
