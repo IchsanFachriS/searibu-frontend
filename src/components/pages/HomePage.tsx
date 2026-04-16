@@ -1,34 +1,32 @@
 /**
  * HomePage.tsx — Searibu Landing Page
- * Aesthetic: Scientific-editorial (Nature × National Geographic × Precision Engineering)
- * Palette: Navy #0a1628 + Ocean #0284c7 + Amber/Orange #e8600a + Warm White #f5f0e8
- * Typography: Cormorant Garamond (display) + Inter (body/data)
+ * Palette: Navy #024e78 · Ocean #0369a1 · Sky #0ea5e9 · Teal #14b8a6 · Bg #f8fafc
  */
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { ArrowRight, Waves, Wind, Navigation, BarChart2, Map, Shield } from 'lucide-react';
 
-/* ── Font roles ── */
 const DISPLAY = '"Cormorant Garamond", "Georgia", serif';
 const SANS    = '"Inter", "Helvetica Neue", Arial, sans-serif';
 
+/* Brand tokens */
+const NAVY         = '#024e78';
+const PRIMARY      = '#0369a1';
+const PRIMARY_SOFT = '#0ea5e9';
+const TEAL         = '#14b8a6';
+
 interface HomePageProps { onNavigate?: (page: string) => void; }
 
-/* ── Copy ── */
 const COPY = {
   en: {
-    /* Hero */
     eyebrow: 'Blue Economy · Seribu Islands · Jakarta Bay',
     headline: ['Ocean-Informed', 'Marine Tourism'],
     subline:  'IHO S-104 tidal intelligence and real-time metocean data for safe, well-planned maritime recreation.',
     cta:      'Open WebGIS Atlas',
     ctaSecondary: 'Read the Guide',
-
-    /* Context strip */
     context: 'Research · Institut Teknologi Bandung · Geodesy & Geomatics Engineering · 2025',
 
-    /* Problem section */
     problemEyebrow: 'The Problem',
     problemHead:    'Sea conditions determine whether a trip is safe — yet reliable data has been absent.',
     problemBody:    'Maritime accidents account for 51–62% of all reported incidents in Indonesian waters (IMIC Bakamla, 2021–2023). In the Seribu Islands, tidal variation, wave height, and wind speed directly govern the viability of every activity — snorkeling, diving, island-hopping, fishing. Until now, no localized metocean decision-support tool existed for visitors or operators.',
@@ -36,7 +34,6 @@ const COPY = {
     stat2n: '0',        stat2l: 'of 10 major Indonesian dive destinations had metocean tools',
     stat3n: '0.51',     stat3l: 'hazard weight — oceanographic factors (Chuang et al. 2024)',
 
-    /* Data section */
     dataEyebrow: 'Metocean Parameters',
     dataHead:    'Every activity. Every parameter. One platform.',
     dataBody:    'Searibu consolidates tidal prediction from TPXO9, real-time observations from the Luwes telemetry station, and hourly marine forecasts from Open-Meteo into a single IHO S-104 compliant interface.',
@@ -51,7 +48,6 @@ const COPY = {
       { name: 'Beach Camping',    params: ['Tides', 'Weather', 'Sun'] },
     ],
 
-    /* Features section */
     featEyebrow: 'Platform Capabilities',
     featHead:    'Precision data. Human-readable output.',
     features: [
@@ -63,12 +59,9 @@ const COPY = {
       { icon: 'nav',    title: 'S-104 HDF5 Export',         body: 'Download water level data as IHO S-104 compliant HDF5 files — both astronomical prediction and observed datasets — for ECDIS integration.' },
     ],
 
-    /* Standards section */
     stdEyebrow: 'Technical Foundation',
     stdHead:    'Built to international hydrographic standards.',
     stdBody:    'The system architecture follows IHO S-100 Universal Hydrographic Data Model (Ed. 5.2.0) and IHO S-104 Water Level Information for Surface Navigation (Ed. 2.0.0, adopted December 2024), ensuring long-term interoperability with electronic navigational chart environments.',
-
-    /* Footer */
     footerSub: 'Capstone Design Project — FITB, Institut Teknologi Bandung',
   },
 
@@ -78,7 +71,6 @@ const COPY = {
     subline:  'Prediksi pasut berstandar IHO S-104 dan data cuaca laut real-time untuk wisata bahari yang aman dan terencana.',
     cta:      'Buka Atlas WebGIS',
     ctaSecondary: 'Panduan Penggunaan',
-
     context: 'Riset · Institut Teknologi Bandung · Teknik Geodesi dan Geomatika · 2025',
 
     problemEyebrow: 'Permasalahan',
@@ -116,12 +108,10 @@ const COPY = {
     stdEyebrow: 'Landasan Teknis',
     stdHead:    'Dibangun sesuai standar hidrografi internasional.',
     stdBody:    'Arsitektur sistem mengikuti IHO S-100 Universal Hydrographic Data Model (Ed. 5.2.0) dan IHO S-104 Water Level Information for Surface Navigation (Ed. 2.0.0, diadopsi Desember 2024), memastikan interoperabilitas jangka panjang dengan lingkungan peta navigasi elektronik.',
-
     footerSub: 'Proyek Capstone Design — FITB, Institut Teknologi Bandung',
   },
 };
 
-/* ── Animated counter ── */
 const useCounter = (target: string, active: boolean) => {
   const [val, setVal] = useState('0');
   useEffect(() => {
@@ -142,7 +132,6 @@ const useCounter = (target: string, active: boolean) => {
   return val;
 };
 
-/* ── Intersection observer hook ── */
 const useInView = (threshold = 0.15) => {
   const ref = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
@@ -154,9 +143,8 @@ const useInView = (threshold = 0.15) => {
   return { ref, inView };
 };
 
-/* ── Feature icon ── */
 const FeatureIcon: React.FC<{ type: string }> = ({ type }) => {
-  const s = { width: 18, height: 18, color: '#e8600a' };
+  const s = { width: 18, height: 18, color: PRIMARY };
   if (type === 'waves')  return <Waves {...s} />;
   if (type === 'wind')   return <Wind {...s} />;
   if (type === 'map')    return <Map {...s} />;
@@ -166,21 +154,17 @@ const FeatureIcon: React.FC<{ type: string }> = ({ type }) => {
   return null;
 };
 
-/* ── Param badge ── */
 const ParamBadge: React.FC<{ label: string }> = ({ label }) => (
-  <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 3, background: 'rgba(2,132,199,0.10)', border: '1px solid rgba(2,132,199,0.22)', fontFamily: SANS, fontSize: 10, fontWeight: 600, color: '#0369a1', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+  <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 3, background: 'rgba(3,105,161,0.10)', border: '1px solid rgba(3,105,161,0.22)', fontFamily: SANS, fontSize: 10, fontWeight: 600, color: PRIMARY, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
     {label}
   </span>
 );
 
-/* ══════════════════════════════════════════════════
-   STAT BLOCK
-══════════════════════════════════════════════════ */
 const StatBlock: React.FC<{ n: string; label: string; active: boolean; accent?: boolean }> = ({ n, label, active, accent }) => {
   const val = useCounter(n, active);
   return (
     <div style={{ padding: '24px 0', borderTop: '1px solid rgba(255,255,255,0.10)' }}>
-      <p style={{ fontFamily: DISPLAY, fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 700, color: accent ? '#e8810a' : '#fff', lineHeight: 1, margin: '0 0 8px', letterSpacing: '-0.02em' }}>
+      <p style={{ fontFamily: DISPLAY, fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 700, color: accent ? PRIMARY_SOFT : '#fff', lineHeight: 1, margin: '0 0 8px', letterSpacing: '-0.02em' }}>
         {val}
       </p>
       <p style={{ fontFamily: SANS, fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5, letterSpacing: '0.04em', textTransform: 'uppercase', maxWidth: 180 }}>
@@ -190,21 +174,16 @@ const StatBlock: React.FC<{ n: string; label: string; active: boolean; accent?: 
   );
 };
 
-/* ══════════════════════════════════════════════════
-   MAIN COMPONENT
-══════════════════════════════════════════════════ */
 export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   const { language } = useLanguage();
   const c = COPY[language as 'en' | 'id'];
 
-  /* entry animation phases */
   const [phase, setPhase] = useState(0);
   useEffect(() => {
     const timers = [0, 100, 280, 460, 640, 820].map((d, i) => setTimeout(() => setPhase(i + 1), d));
     return () => timers.forEach(clearTimeout);
   }, []);
 
-  /* section observers */
   const prob  = useInView();
   const data  = useInView();
   const feat  = useInView();
@@ -229,13 +208,13 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
 
         .hp-cta {
           display: inline-flex; align-items: center; gap: 8px;
-          background: #e8600a; color: #fff;
+          background: ${PRIMARY}; color: #fff;
           font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600;
           letter-spacing: 0.02em; padding: 12px 26px;
           border: none; border-radius: 4px; cursor: pointer;
           transition: background 0.22s, transform 0.22s, box-shadow 0.28s;
         }
-        .hp-cta:hover { background: #c24e06; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(232,96,10,0.30); }
+        .hp-cta:hover { background: ${PRIMARY_SOFT}; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(14,165,233,0.30); }
 
         .hp-cta-ghost {
           display: inline-flex; align-items: center; gap: 8px;
@@ -248,11 +227,11 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         .hp-cta-ghost:hover { border-color: rgba(255,255,255,0.5); color: #fff; background: rgba(255,255,255,0.06); }
 
         .feat-card {
-          background: #fff; border: 1px solid #e8ecf0;
-          border-radius: 4px; padding: 28px 24px;
+          background: #fff; border: 1px solid #e2e8f0;
+          border-radius: 8px; padding: 28px 24px;
           transition: box-shadow 0.25s, transform 0.25s, border-color 0.25s;
         }
-        .feat-card:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.08); transform: translateY(-3px); border-color: #d0dbe6; }
+        .feat-card:hover { box-shadow: 0 8px 28px rgba(3,105,161,0.10); transform: translateY(-3px); border-color: #bae6fd; }
 
         .act-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f1f5f8; }
         .act-row:last-child { border-bottom: none; }
@@ -271,25 +250,21 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         }
       `}</style>
 
-      {/* ════════════ 1. HERO ════════════ */}
-      <section style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden', background: '#08121e' }}>
-
-        {/* Full-bleed background image */}
+      {/* ════ 1. HERO ════ */}
+      <section style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden', background: NAVY }}>
         <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
           <img
             src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=1800&q=80"
             alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 40%', opacity: phase >= 1 ? 1 : 0, filter: 'brightness(0.38) saturate(0.7)', transition: 'opacity 2.2s ease' }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 40%', opacity: phase >= 1 ? 1 : 0, filter: 'brightness(0.30) saturate(0.8)', transition: 'opacity 2.2s ease' }}
           />
         </div>
 
-        {/* Gradient overlays */}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(105deg, rgba(8,18,30,0.95) 0%, rgba(8,18,30,0.72) 50%, rgba(8,18,30,0.20) 100%)' }}/>
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(8,18,30,1) 0%, transparent 45%)' }}/>
-        {/* Accent glow */}
-        <div style={{ position: 'absolute', top: '20%', left: '48%', width: 400, height: 400, background: 'radial-gradient(circle, rgba(232,96,10,0.07) 0%, transparent 70%)', pointerEvents: 'none' }}/>
+        {/* Gradient overlays — deep navy tones */}
+        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(105deg, rgba(2,78,120,0.96) 0%, rgba(2,78,120,0.75) 50%, rgba(2,78,120,0.20) 100%)` }}/>
+        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to top, rgba(2,78,120,1) 0%, transparent 45%)` }}/>
+        <div style={{ position: 'absolute', top: '20%', left: '48%', width: 400, height: 400, background: `radial-gradient(circle, rgba(20,184,166,0.08) 0%, transparent 70%)`, pointerEvents: 'none' }}/>
 
-        {/* Content */}
         <div className="hero-pad hero-grid" style={{
           position: 'relative', zIndex: 5,
           maxWidth: 1280, margin: '0 auto',
@@ -297,37 +272,29 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
           display: 'grid', gridTemplateColumns: '1fr 420px',
           gap: 64, minHeight: '100vh', alignItems: 'center',
         }}>
-
-          {/* LEFT */}
           <div>
-            {/* Eyebrow */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28, ...anim(2) }}>
-              <div style={{ width: 32, height: 1, background: '#e8600a' }}/>
-              <span style={{ fontFamily: SANS, fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(232,128,26,0.85)' }}>
+              <div style={{ width: 32, height: 1, background: TEAL }}/>
+              <span style={{ fontFamily: SANS, fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: `rgba(20,184,166,0.9)` }}>
                 {c.eyebrow}
               </span>
             </div>
 
-            {/* Headline */}
-            <h1 style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(3.2rem, 5.8vw, 5.4rem)', lineHeight: 1.04, letterSpacing: '-0.02em', color: '#f0ece6', margin: '0 0 24px', ...anim(3) }}>
+            <h1 style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(3.2rem, 5.8vw, 5.4rem)', lineHeight: 1.04, letterSpacing: '-0.02em', color: '#e0f2fe', margin: '0 0 24px', ...anim(3) }}>
               {c.headline[0]}<br />
-              <span style={{ color: '#e8810a' }}>{c.headline[1]}</span>
+              <span style={{ color: PRIMARY_SOFT }}>{c.headline[1]}</span>
             </h1>
 
-            {/* Subline */}
-            <p style={{ fontFamily: SANS, fontSize: 16, fontWeight: 400, lineHeight: 1.75, color: 'rgba(240,236,230,0.58)', maxWidth: 540, margin: '0 0 14px', ...anim(4, 30) }}>
+            <p style={{ fontFamily: SANS, fontSize: 16, fontWeight: 400, lineHeight: 1.75, color: 'rgba(224,242,254,0.60)', maxWidth: 540, margin: '0 0 14px', ...anim(4, 30) }}>
               {c.subline}
             </p>
 
-            {/* Thin rule */}
-            <div style={{ width: 64, height: 1, background: 'rgba(240,232,220,0.14)', margin: '20px 0', ...anim(4, 50) }}/>
+            <div style={{ width: 64, height: 1, background: 'rgba(224,242,254,0.15)', margin: '20px 0', ...anim(4, 50) }}/>
 
-            {/* Context */}
-            <p style={{ fontFamily: SANS, fontSize: 11, fontWeight: 500, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(240,232,220,0.28)', margin: '0 0 36px', ...anim(4, 70) }}>
+            <p style={{ fontFamily: SANS, fontSize: 11, fontWeight: 500, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(224,242,254,0.28)', margin: '0 0 36px', ...anim(4, 70) }}>
               {c.context}
             </p>
 
-            {/* CTAs */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', ...anim(5) }}>
               <button className="hp-cta" onClick={() => onNavigate?.('webgis')}>
                 {c.cta} <ArrowRight size={14} />
@@ -338,36 +305,33 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* RIGHT — data card */}
+          {/* Right — data card */}
           <div style={{ ...anim(5, 100) }}>
-            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, overflow: 'hidden' }}>
-              {/* Card header */}
-              <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid rgba(14,165,233,0.18)`, borderRadius: 8, overflow: 'hidden' }}>
+              <div style={{ padding: '14px 20px', borderBottom: `1px solid rgba(14,165,233,0.12)`, display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#16a34a', boxShadow: '0 0 8px #16a34a88' }}/>
                 <span style={{ fontFamily: SANS, fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)' }}>
                   {language === 'id' ? 'Parameter Aktif' : 'Active Parameters'}
                 </span>
               </div>
-              {/* Parameter list */}
               {[
-                { label: language === 'id' ? 'Tinggi Pasut' : 'Tidal Height', sub: 'TPXO9 · 15 constituents · MSL', color: '#0284c7' },
-                { label: language === 'id' ? 'Tinggi Gelombang' : 'Wave Height', sub: 'Open-Meteo Marine · ~15 km', color: '#0369a1' },
-                { label: language === 'id' ? 'Kecepatan Angin' : 'Wind Speed',   sub: 'Open-Meteo · 10 m altitude', color: '#0284c7' },
-                { label: language === 'id' ? 'Arus Permukaan' : 'Surface Current', sub: 'Open-Meteo Marine · ~8 km', color: '#0369a1' },
-                { label: language === 'id' ? 'Observasi Luwes' : 'Luwes Observation', sub: 'Pushidrosal · TOL −2.156 m', color: '#e8600a' },
+                { label: language === 'id' ? 'Tinggi Pasut' : 'Tidal Height', sub: 'TPXO9 · 15 constituents · MSL', color: PRIMARY_SOFT },
+                { label: language === 'id' ? 'Tinggi Gelombang' : 'Wave Height', sub: 'Open-Meteo Marine · ~15 km', color: PRIMARY },
+                { label: language === 'id' ? 'Kecepatan Angin' : 'Wind Speed',   sub: 'Open-Meteo · 10 m altitude', color: PRIMARY_SOFT },
+                { label: language === 'id' ? 'Arus Permukaan' : 'Surface Current', sub: 'Open-Meteo Marine · ~8 km', color: PRIMARY },
+                { label: language === 'id' ? 'Observasi Luwes' : 'Luwes Observation', sub: 'Pushidrosal · TOL −2.156 m', color: TEAL },
               ].map((p, i) => (
-                <div key={i} style={{ padding: '12px 20px', borderBottom: i < 4 ? '1px solid rgba(255,255,255,0.05)' : 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div key={i} style={{ padding: '12px 20px', borderBottom: i < 4 ? `1px solid rgba(14,165,233,0.08)` : 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ width: 3, height: 28, background: p.color, borderRadius: 2, flexShrink: 0 }}/>
                   <div>
-                    <p style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.80)', margin: 0 }}>{p.label}</p>
+                    <p style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.82)', margin: 0 }}>{p.label}</p>
                     <p style={{ fontFamily: SANS, fontSize: 10, color: 'rgba(255,255,255,0.30)', margin: '2px 0 0', letterSpacing: '0.02em' }}>{p.sub}</p>
                   </div>
                   <div style={{ marginLeft: 'auto', width: 7, height: 7, borderRadius: '50%', background: p.color, opacity: 0.6 }}/>
                 </div>
               ))}
-              {/* Badge */}
-              <div style={{ padding: '10px 20px', background: 'rgba(2,132,199,0.06)', borderTop: '1px solid rgba(2,132,199,0.12)' }}>
-                <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, color: '#38bdf8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              <div style={{ padding: '10px 20px', background: `rgba(3,105,161,0.12)`, borderTop: `1px solid rgba(3,105,161,0.20)` }}>
+                <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, color: PRIMARY_SOFT, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                   IHO S-104 Ed.2.0.0 Compliant
                 </span>
               </div>
@@ -375,44 +339,36 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Bottom bleed */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 100, background: 'linear-gradient(to bottom, transparent, #f5f0e8)', zIndex: 4 }}/>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 100, background: 'linear-gradient(to bottom, transparent, #f8fafc)', zIndex: 4 }}/>
       </section>
 
-      {/* ════════════ 2. PROBLEM ════════════ */}
-      <section className="sec-pad" style={{ background: '#f5f0e8', padding: '96px 64px' }}>
+      {/* ════ 2. PROBLEM ════ */}
+      <section className="sec-pad" style={{ background: '#f8fafc', padding: '96px 64px' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto' }} ref={prob.ref}>
           <div className="prob-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'start' }}>
-
-            {/* Left — text */}
             <div style={secAnim(prob.inView)}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                <div style={{ width: 24, height: 1, background: '#e8600a' }}/>
-                <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c2410c' }}>{c.problemEyebrow}</span>
+                <div style={{ width: 24, height: 1, background: PRIMARY }}/>
+                <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: PRIMARY }}>{c.problemEyebrow}</span>
               </div>
-              <h2 style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(1.8rem, 3.2vw, 2.8rem)', lineHeight: 1.12, color: '#0a1628', margin: '0 0 20px', letterSpacing: '-0.02em' }}>
+              <h2 style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(1.8rem, 3.2vw, 2.8rem)', lineHeight: 1.12, color: NAVY, margin: '0 0 20px', letterSpacing: '-0.02em' }}>
                 {c.problemHead}
               </h2>
-              <p style={{ fontFamily: SANS, fontSize: 15, fontWeight: 400, lineHeight: 1.80, color: '#4b5563', margin: 0 }}>
+              <p style={{ fontFamily: SANS, fontSize: 15, fontWeight: 400, lineHeight: 1.80, color: '#475569', margin: 0 }}>
                 {c.problemBody}
               </p>
-
-              {/* Source note */}
-              <p style={{ fontFamily: SANS, fontSize: 11, color: '#9ca3af', marginTop: 20, fontStyle: 'italic' }}>
+              <p style={{ fontFamily: SANS, fontSize: 11, color: '#94a3b8', marginTop: 20, fontStyle: 'italic' }}>
                 Sources: IMIC Bakamla 2021–2023; Chuang et al. 2024; Rahantoknam 2022
               </p>
             </div>
 
-            {/* Right — stats */}
-            <div style={{ ...secAnim(prob.inView, 150), background: '#0a1628', borderRadius: 6, padding: '0 36px 12px', overflow: 'hidden', position: 'relative' }}>
-              {/* accent bar */}
-              <div style={{ height: 3, background: 'linear-gradient(90deg, #e8600a, #0284c7)', marginLeft: -36, marginRight: -36, marginBottom: 0 }}/>
+            <div style={{ ...secAnim(prob.inView, 150), background: NAVY, borderRadius: 8, padding: '0 36px 12px', overflow: 'hidden', position: 'relative' }}>
+              <div style={{ height: 3, background: `linear-gradient(90deg, ${PRIMARY_SOFT}, ${TEAL})`, marginLeft: -36, marginRight: -36, marginBottom: 0 }}/>
               <StatBlock n={c.stat1n} label={c.stat1l} active={prob.inView} accent />
               <StatBlock n={c.stat2n} label={c.stat2l} active={prob.inView} />
               <StatBlock n={c.stat3n} label={c.stat3l} active={prob.inView} accent />
-              {/* photo overlay */}
               <div style={{ marginTop: 20, borderRadius: 4, overflow: 'hidden', height: 160, position: 'relative' }}>
-                <img src="https://images.unsplash.com/photo-1500267027473-b9f7c2cf46a8?w=800&q=75" alt="Seribu Islands aerial" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', filter: 'brightness(0.7) saturate(0.8)' }}/>
+                <img src="https://images.unsplash.com/photo-1628413188069-383190077d18?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8M…" alt="Seribu Islands aerial" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', filter: 'brightness(0.6) saturate(0.9)' }}/>
                 <div style={{ position: 'absolute', bottom: 10, left: 12 }}>
                   <span style={{ fontFamily: SANS, fontSize: 10, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Kepulauan Seribu · Jakarta Bay</span>
                 </div>
@@ -422,31 +378,27 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         </div>
       </section>
 
-      {/* ════════════ 3. ACTIVITY DATA MATRIX ════════════ */}
+      {/* ════ 3. ACTIVITY DATA MATRIX ════ */}
       <section className="sec-pad" style={{ background: '#fff', padding: '96px 64px' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto' }} ref={data.ref}>
-          {/* Header */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'end', marginBottom: 56 }}>
             <div style={secAnim(data.inView)}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                <div style={{ width: 24, height: 1, background: '#e8600a' }}/>
-                <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c2410c' }}>{c.dataEyebrow}</span>
+                <div style={{ width: 24, height: 1, background: PRIMARY }}/>
+                <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: PRIMARY }}>{c.dataEyebrow}</span>
               </div>
-              <h2 style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(1.8rem, 3vw, 2.6rem)', lineHeight: 1.12, color: '#0a1628', margin: 0, letterSpacing: '-0.02em' }}>
+              <h2 style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(1.8rem, 3vw, 2.6rem)', lineHeight: 1.12, color: NAVY, margin: 0, letterSpacing: '-0.02em' }}>
                 {c.dataHead}
               </h2>
             </div>
-            <p style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.75, color: '#4b5563', ...secAnim(data.inView, 100) }}>
+            <p style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.75, color: '#475569', ...secAnim(data.inView, 100) }}>
               {c.dataBody}
             </p>
           </div>
 
-          {/* Activities + image */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 48, alignItems: 'start', ...secAnim(data.inView, 180) }}>
-            {/* Activity list */}
-            <div style={{ background: '#f8fafc', border: '1px solid #e8ecf0', borderRadius: 6, overflow: 'hidden' }}>
-              {/* Column headers */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', padding: '10px 20px', background: '#0a1628', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', padding: '10px 20px', background: NAVY, borderBottom: `1px solid rgba(255,255,255,0.06)` }}>
                 <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)' }}>
                   {language === 'id' ? 'Aktivitas Wisata' : 'Tourism Activity'}
                 </span>
@@ -456,7 +408,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               </div>
               {c.activities.map((act, i) => (
                 <div key={i} className="act-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 20px', borderBottom: i < c.activities.length - 1 ? '1px solid #f1f5f8' : 'none', background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                  <span style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: '#0f172a', minWidth: 140 }}>{act.name}</span>
+                  <span style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: NAVY, minWidth: 140 }}>{act.name}</span>
                   <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     {act.params.map(p => <ParamBadge key={p} label={p} />)}
                   </div>
@@ -464,18 +416,16 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               ))}
             </div>
 
-            {/* Side image + caption */}
             <div>
-              <div style={{ borderRadius: 4, overflow: 'hidden', marginBottom: 16 }}>
-                <img src="https://images.unsplash.com/photo-1544551763-77ef2d0cfc6c?w=700&q=80" alt="Scuba diving Seribu Islands" style={{ width: '100%', height: 280, objectFit: 'cover', objectPosition: 'center', display: 'block', filter: 'saturate(0.85)' }}/>
+              <div style={{ borderRadius: 6, overflow: 'hidden', marginBottom: 16 }}>
+                <img src="https://images.unsplash.com/photo-1544551763-77ef2d0cfc6c?w=700&q=80" alt="Scuba diving Seribu Islands" style={{ width: '100%', height: 280, objectFit: 'cover', objectPosition: 'center', display: 'block', filter: 'saturate(0.9)' }}/>
               </div>
               <p style={{ fontFamily: SANS, fontSize: 11, color: '#94a3b8', lineHeight: 1.6, fontStyle: 'italic' }}>
                 {language === 'id'
                   ? 'Kegiatan selam skuba di Kepulauan Seribu sangat dipengaruhi variasi pasut dan kecepatan arus.'
                   : 'Scuba diving in the Seribu Islands is highly sensitive to tidal variation and current velocity.'}
               </p>
-              {/* Mini badge */}
-              <div style={{ marginTop: 20, padding: '14px 16px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 4, borderLeft: '3px solid #16a34a' }}>
+              <div style={{ marginTop: 20, padding: '14px 16px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 6, borderLeft: `3px solid #16a34a` }}>
                 <p style={{ fontFamily: SANS, fontSize: 11, fontWeight: 700, color: '#15803d', margin: '0 0 4px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                   {language === 'id' ? 'Akurasi Data' : 'Data Accuracy'}
                 </p>
@@ -490,15 +440,15 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         </div>
       </section>
 
-      {/* ════════════ 4. FEATURES ════════════ */}
-      <section className="sec-pad" style={{ background: '#f5f0e8', padding: '96px 64px' }}>
+      {/* ════ 4. FEATURES ════ */}
+      <section className="sec-pad" style={{ background: '#f8fafc', padding: '96px 64px' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto' }} ref={feat.ref}>
           <div style={{ maxWidth: 640, marginBottom: 56, ...secAnim(feat.inView) }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <div style={{ width: 24, height: 1, background: '#e8600a' }}/>
-              <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c2410c' }}>{c.featEyebrow}</span>
+              <div style={{ width: 24, height: 1, background: PRIMARY }}/>
+              <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: PRIMARY }}>{c.featEyebrow}</span>
             </div>
-            <h2 style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(1.8rem, 3vw, 2.6rem)', lineHeight: 1.12, color: '#0a1628', margin: 0, letterSpacing: '-0.02em' }}>
+            <h2 style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(1.8rem, 3vw, 2.6rem)', lineHeight: 1.12, color: NAVY, margin: 0, letterSpacing: '-0.02em' }}>
               {c.featHead}
             </h2>
           </div>
@@ -506,17 +456,16 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
           <div className="feat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18, ...secAnim(feat.inView, 100) }}>
             {c.features.map((f, i) => (
               <div key={i} className="feat-card">
-                <div style={{ width: 36, height: 36, borderRadius: 4, background: '#fff5ed', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 6, background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
                   <FeatureIcon type={f.icon} />
                 </div>
-                {/* Feature number */}
-                <p style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, color: '#cbd5e1', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 6px' }}>
+                <p style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, color: '#bae6fd', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 6px' }}>
                   {String(i + 1).padStart(2, '0')}
                 </p>
-                <h3 style={{ fontFamily: SANS, fontSize: 14, fontWeight: 700, color: '#0a1628', margin: '0 0 10px', letterSpacing: '-0.01em', lineHeight: 1.3 }}>
+                <h3 style={{ fontFamily: SANS, fontSize: 14, fontWeight: 700, color: NAVY, margin: '0 0 10px', letterSpacing: '-0.01em', lineHeight: 1.3 }}>
                   {f.title}
                 </h3>
-                <p style={{ fontFamily: SANS, fontSize: 13, color: '#64748b', lineHeight: 1.70, margin: 0 }}>
+                <p style={{ fontFamily: SANS, fontSize: 13, color: '#475569', lineHeight: 1.70, margin: 0 }}>
                   {f.body}
                 </p>
               </div>
@@ -525,26 +474,22 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         </div>
       </section>
 
-      {/* ════════════ 5. STANDARDS / TECHNICAL ════════════ */}
-      <section className="sec-pad" style={{ background: '#0a1628', padding: '96px 64px', position: 'relative', overflow: 'hidden' }}>
-        {/* decorative grid lines */}
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '80px 80px', pointerEvents: 'none' }}/>
-        {/* accent glow */}
-        <div style={{ position: 'absolute', top: '50%', right: '10%', width: 500, height: 500, background: 'radial-gradient(circle, rgba(2,132,199,0.06) 0%, transparent 65%)', transform: 'translateY(-50%)', pointerEvents: 'none' }}/>
+      {/* ════ 5. STANDARDS ════ */}
+      <section className="sec-pad" style={{ background: NAVY, padding: '96px 64px', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(rgba(14,165,233,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(14,165,233,0.04) 1px, transparent 1px)`, backgroundSize: '80px 80px', pointerEvents: 'none' }}/>
+        <div style={{ position: 'absolute', top: '50%', right: '10%', width: 500, height: 500, background: `radial-gradient(circle, rgba(20,184,166,0.07) 0%, transparent 65%)`, transform: 'translateY(-50%)', pointerEvents: 'none' }}/>
 
         <div style={{ maxWidth: 1280, margin: '0 auto', position: 'relative', zIndex: 2 }} ref={std.ref}>
           <div className="std-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
-
-            {/* Left */}
             <div style={secAnim(std.inView)}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-                <div style={{ width: 24, height: 1, background: '#e8600a' }}/>
-                <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(232,128,26,0.75)' }}>{c.stdEyebrow}</span>
+                <div style={{ width: 24, height: 1, background: TEAL }}/>
+                <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: `rgba(20,184,166,0.8)` }}>{c.stdEyebrow}</span>
               </div>
-              <h2 style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(1.8rem, 3vw, 2.6rem)', lineHeight: 1.12, color: '#f0ece6', margin: '0 0 20px', letterSpacing: '-0.02em' }}>
+              <h2 style={{ fontFamily: DISPLAY, fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(1.8rem, 3vw, 2.6rem)', lineHeight: 1.12, color: '#e0f2fe', margin: '0 0 20px', letterSpacing: '-0.02em' }}>
                 {c.stdHead}
               </h2>
-              <p style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.78, color: 'rgba(240,236,230,0.55)', margin: '0 0 32px' }}>
+              <p style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.78, color: 'rgba(224,242,254,0.55)', margin: '0 0 32px' }}>
                 {c.stdBody}
               </p>
               <button className="hp-cta" onClick={() => onNavigate?.('webgis')}>
@@ -552,23 +497,22 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               </button>
             </div>
 
-            {/* Right — standard cards */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, ...secAnim(std.inView, 150) }}>
               {[
-                { code: 'IHO S-100', edition: 'Ed. 5.2.0 · 2024', desc: language === 'id' ? 'Universal Hydrographic Data Model — kerangka induk seluruh produk data maritim digital.' : 'Universal Hydrographic Data Model — the overarching framework for all digital maritime data products.' },
-                { code: 'IHO S-104', edition: 'Ed. 2.0.0 · Dec 2024', desc: language === 'id' ? 'Water Level Information for Surface Navigation — spesifikasi produk untuk data muka air, diadopsi Desember 2024.' : 'Water Level Information for Surface Navigation — product specification for water level data, adopted December 2024.' },
-                { code: 'TPXO9', edition: 'Oregon State University', desc: language === 'id' ? 'Model pasut global: 15 konstituen harmonik, resolusi 1/30°. Analisis harmonik mengikuti Schureman (1958) & Foreman (1977).' : 'Global tidal model: 15 harmonic constituents, 1/30° resolution. Harmonic analysis per Schureman (1958) & Foreman (1977).' },
+                { code: 'IHO S-100', edition: 'Ed. 5.2.0 · 2024', color: PRIMARY_SOFT, desc: language === 'id' ? 'Universal Hydrographic Data Model — kerangka induk seluruh produk data maritim digital.' : 'Universal Hydrographic Data Model — the overarching framework for all digital maritime data products.' },
+                { code: 'IHO S-104', edition: 'Ed. 2.0.0 · Dec 2024', color: PRIMARY_SOFT, desc: language === 'id' ? 'Water Level Information for Surface Navigation — spesifikasi produk untuk data muka air, diadopsi Desember 2024.' : 'Water Level Information for Surface Navigation — product specification for water level data, adopted December 2024.' },
+                { code: 'TPXO9', edition: 'Oregon State University', color: TEAL, desc: language === 'id' ? 'Model pasut global: 15 konstituen harmonik, resolusi 1/30°. Analisis harmonik mengikuti Schureman (1958) & Foreman (1977).' : 'Global tidal model: 15 harmonic constituents, 1/30° resolution. Harmonic analysis per Schureman (1958) & Foreman (1977).' },
               ].map((s, i) => (
-                <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 4, padding: '18px 22px', display: 'flex', gap: 18, alignItems: 'flex-start' }}>
+                <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid rgba(14,165,233,0.10)`, borderRadius: 6, padding: '18px 22px', display: 'flex', gap: 18, alignItems: 'flex-start' }}>
                   <div style={{ flexShrink: 0, paddingTop: 2 }}>
-                    <div style={{ width: 3, height: 40, background: i === 2 ? '#e8600a' : '#0284c7', borderRadius: 2 }}/>
+                    <div style={{ width: 3, height: 40, background: s.color, borderRadius: 2 }}/>
                   </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
-                      <span style={{ fontFamily: SANS, fontSize: 13, fontWeight: 700, color: '#f0ece6', letterSpacing: '0.02em' }}>{s.code}</span>
+                      <span style={{ fontFamily: SANS, fontSize: 13, fontWeight: 700, color: '#e0f2fe', letterSpacing: '0.02em' }}>{s.code}</span>
                       <span style={{ fontFamily: SANS, fontSize: 10, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>{s.edition}</span>
                     </div>
-                    <p style={{ fontFamily: SANS, fontSize: 12, color: 'rgba(240,236,230,0.50)', lineHeight: 1.6, margin: 0 }}>{s.desc}</p>
+                    <p style={{ fontFamily: SANS, fontSize: 12, color: 'rgba(224,242,254,0.50)', lineHeight: 1.6, margin: 0 }}>{s.desc}</p>
                   </div>
                 </div>
               ))}
@@ -577,13 +521,13 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         </div>
       </section>
 
-      {/* ════════════ FOOTER ════════════ */}
-      <footer style={{ background: '#070f1a', padding: '32px 64px 28px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+      {/* ════ FOOTER ════ */}
+      <footer style={{ background: '#012d46', padding: '32px 64px 28px', borderTop: `1px solid rgba(14,165,233,0.10)` }}>
         <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <img src="/logo.svg" alt="Searibu" style={{ height: 30, width: 'auto', filter: 'brightness(0) invert(1)', opacity: 0.75 }}/>
           <div style={{ textAlign: 'right' }}>
-            <p style={{ fontFamily: SANS, fontSize: 11, color: 'rgba(240,232,220,0.30)', margin: 0 }}>{c.footerSub}</p>
-            <p style={{ fontFamily: SANS, fontSize: 11, color: 'rgba(240,232,220,0.18)', margin: '3px 0 0' }}>&copy; 2025 Searibu</p>
+            <p style={{ fontFamily: SANS, fontSize: 11, color: 'rgba(224,242,254,0.30)', margin: 0 }}>{c.footerSub}</p>
+            <p style={{ fontFamily: SANS, fontSize: 11, color: 'rgba(224,242,254,0.18)', margin: '3px 0 0' }}>&copy; 2025 Searibu</p>
           </div>
         </div>
       </footer>

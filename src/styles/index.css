@@ -5,8 +5,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Brand tokens */
+:root {
+  --navy:         #024e78;
+  --primary:      #0369a1;
+  --primary-soft: #0ea5e9;
+  --primary-dark: #024e78;
+  --teal:         #14b8a6;
+  --bg:           #f8fafc;
+  --surface:      #ffffff;
+  --card:         #e2e8f0;
+  --border:       #e2e8f0;
+  --text:         #0f172a;
+  --text-sec:     #475569;
+  --safe:         #16a34a;
+  --danger:       #dc2626;
+  --warning:      #d97706;
+  --info:         #0284c7;
+  --chart-primary: #000000;
+  --chart-sec:    #d946ef;
+  --gridline:     #e5e7eb;
+}
+
 @layer base {
-  /* ── Global font — Plus Jakarta Sans ── */
   html {
     font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -21,20 +42,17 @@
     overscroll-behavior-y: none;
   }
 
-  * {
-    box-sizing: border-box;
-  }
+  * { box-sizing: border-box; }
 
   body {
     font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Scrollbar */
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  ::-webkit-scrollbar-thumb { background: #bae6fd; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #7dd3fc; }
 }
 
 @layer utilities {
@@ -56,25 +74,19 @@
   to { transform: rotate(360deg); }
 }
 
-/* ── Leaflet overrides ── */
+/* ── Leaflet ── */
 .leaflet-container {
   width: 100%;
   height: 100%;
   z-index: 1;
   font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   background: #0a1628;
-  /* Contain scroll inside the map — stop it leaking to <body> */
   overscroll-behavior: contain;
   overscroll-behavior-x: contain;
   overscroll-behavior-y: contain;
 }
 
-/* All Leaflet overlay controls (legend, searchbar, basemap toggle, zoom)
-   must not propagate wheel/touch events to the page */
-.leaflet-top,
-.leaflet-bottom,
-.leaflet-left,
-.leaflet-right {
+.leaflet-top, .leaflet-bottom, .leaflet-left, .leaflet-right {
   overscroll-behavior: contain;
 }
 
@@ -93,7 +105,7 @@
 
 .leaflet-popup-content-wrapper {
   border-radius: 10px;
-  box-shadow: 0 8px 28px rgba(0,0,0,0.14);
+  box-shadow: 0 8px 28px rgba(2,78,120,0.14);
 }
 
 .leaflet-popup-content {
@@ -102,17 +114,11 @@
   margin: 0 !important;
 }
 
-/* Prevent leaflet from getting weird fonts */
 .leaflet-control-zoom a {
   font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
 }
 
-/* ── Fix: Leaflet scale sits above search bar on mobile ── */
 @media (max-width: 768px) {
-  .leaflet-bottom.leaflet-right {
-    bottom: 72px !important;
-  }
-  .leaflet-bottom.leaflet-left {
-    bottom: 72px !important;
-  }
+  .leaflet-bottom.leaflet-right { bottom: 72px !important; }
+  .leaflet-bottom.leaflet-left  { bottom: 72px !important; }
 }

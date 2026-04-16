@@ -23,10 +23,10 @@ const App: React.FC = () => {
   };
 
   const pageBg: Record<string, string> = {
-    home:   '#08121e',
+    home:   '#0f1e2e',
     webgis: '#0a1628',
-    about:  '#f5f0e8',
-    guide:  '#f5f0e8',
+    about:  '#f8fafc',
+    guide:  '#f8fafc',
   };
 
   const bg = pageBg[activePage] ?? '#f8fafc';

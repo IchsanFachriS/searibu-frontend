@@ -1,14 +1,11 @@
-/**
- * GuidePage.tsx — Panduan penggunaan sistem Searibu
- */
 import React, { useState } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
-import {
-  BookOpen, Map, BarChart2, Download, ChevronDown, ChevronUp,
-  CheckCircle, AlertTriangle, XCircle,
-} from 'lucide-react';
+import { BookOpen, Map, BarChart2, Download, ChevronDown, ChevronUp, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 
 const SANS = '"Inter", "DM Sans", system-ui, sans-serif';
+const NAVY    = '#024e78';
+const PRIMARY = '#0369a1';
+const PRIMARY_SOFT = '#0ea5e9';
 
 const C = {
   en: {
@@ -157,9 +154,8 @@ export const GuidePage: React.FC = () => {
   const [openIdx, setOpenIdx] = useState<number | null>(0);
 
   return (
-    <div style={{ background: '#f5f0e8', minHeight: '100vh', paddingTop: 62 }}>
-      {/* Hero */}
-      <div style={{ background: 'linear-gradient(135deg, #92400e 0%, #c2410c 100%)', padding: '56px 48px 48px', textAlign: 'center' }}>
+    <div style={{ background: '#f8fafc', minHeight: '100vh', paddingTop: 62 }}>
+      <div style={{ background: `linear-gradient(135deg, ${NAVY} 0%, ${PRIMARY} 60%, ${PRIMARY_SOFT} 100%)`, padding: '56px 48px 48px', textAlign: 'center' }}>
         <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
           <BookOpen size={26} color="#fff" />
         </div>
@@ -172,8 +168,6 @@ export const GuidePage: React.FC = () => {
       </div>
 
       <div style={{ maxWidth: 820, margin: '0 auto', padding: '32px 24px 64px' }}>
-
-        {/* Accordion sections */}
         {c.sections.map((sec, i) => (
           <div key={i} style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
             <button
@@ -181,11 +175,10 @@ export const GuidePage: React.FC = () => {
               style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: 12,
                 padding: '14px 20px', background: '#f8fafc', border: 'none', cursor: 'pointer',
-                fontFamily: SANS, fontSize: 14, fontWeight: 600, color: '#0f172a',
-                textAlign: 'left',
+                fontFamily: SANS, fontSize: 14, fontWeight: 600, color: NAVY, textAlign: 'left',
               }}
             >
-              <div style={{ width: 36, height: 36, borderRadius: 9, background: '#c2410c1a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c2410c', flexShrink: 0 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 9, background: `rgba(3,105,161,0.10)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: PRIMARY, flexShrink: 0 }}>
                 {ICONS[sec.icon]}
               </div>
               <span style={{ flex: 1 }}>{sec.title}</span>
@@ -195,9 +188,7 @@ export const GuidePage: React.FC = () => {
               <div style={{ padding: '16px 20px 20px', background: '#fff' }}>
                 <ol style={{ paddingLeft: 20, margin: 0 }}>
                   {sec.steps.map((step, j) => (
-                    <li key={j} style={{ fontFamily: SANS, fontSize: 14, color: '#475569', lineHeight: 1.7, marginBottom: 6 }}>
-                      {step}
-                    </li>
+                    <li key={j} style={{ fontFamily: SANS, fontSize: 14, color: '#475569', lineHeight: 1.7, marginBottom: 6 }}>{step}</li>
                   ))}
                 </ol>
               </div>
@@ -205,10 +196,9 @@ export const GuidePage: React.FC = () => {
           </div>
         ))}
 
-        {/* Status guide */}
         <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', marginTop: 24 }}>
           <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-            <p style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: '#0f172a', margin: 0 }}>{c.statusGuide}</p>
+            <p style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: NAVY, margin: 0 }}>{c.statusGuide}</p>
           </div>
           <div style={{ padding: '16px 20px', background: '#fff', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {[
@@ -223,7 +213,6 @@ export const GuidePage: React.FC = () => {
             ))}
           </div>
         </div>
-
       </div>
     </div>
   );

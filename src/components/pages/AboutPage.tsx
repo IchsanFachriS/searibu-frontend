@@ -1,31 +1,23 @@
-/**
- * AboutPage.tsx — Halaman About Searibu
- * Berisi metodologi S-100/S-104, tim, dan referensi standar.
- */
 import React, { useState } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
-import {
-  Anchor, Users, BookOpen, ExternalLink,
-  ChevronDown, ChevronUp, CheckCircle,
-} from 'lucide-react';
+import { Anchor, ExternalLink, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react';
 
 const SANS = '"Inter", "DM Sans", system-ui, sans-serif';
+const NAVY    = '#024e78';
+const PRIMARY = '#0369a1';
+const PRIMARY_SOFT = '#0ea5e9';
 
 const C = {
   en: {
     hero:    'About Searibu',
     heroSub: 'Ocean Weather-Informed Marine Tourism System — Kepulauan Seribu',
     heroDesc:'A capstone design project by ITB Geodesy and Geomatics Engineering students, building a unified marine information platform that integrates tidal prediction, real-time telemetry, and weather forecasting for safer and smarter island tourism.',
-
     stdTitle:  'Standards & Compliance',
     stdSub:    'This system implements IHO S-100 and S-104 international standards for hydrographic data interoperability.',
-
     s100Title: 'IHO S-100 — Universal Hydrographic Data Model',
     s100Body:  'S-100 is the overarching framework issued by the International Hydrographic Organization (IHO) that defines how all maritime digital data products should be structured, encoded, and shared. It replaces the older S-57 standard and is designed to be compatible with modern geospatial standards (ISO/TC 211). S-100 was officially adopted by IHO member states in December 2024.',
-
     s104Title: 'IHO S-104 — Water Level Information for Surface Navigation',
     s104Body:  'S-104 is one of the product specifications within the S-100 framework, specifically designed for encapsulating tidal and water level data for use in ECDIS or any dynamic tide application. The Searibu system implements S-104 Edition 2.0.0 for both astronomical prediction data (from TPXO9) and observed data (from Luwes telemetry stations).',
-
     tableTitle:  'S-104 Implementation Details',
     tableHeaders:['Attribute', 'Value', 'Description'],
     tableRows: [
@@ -40,10 +32,8 @@ const C = {
       ['TOL Correction',       '−2.156 m',          'Transfer of Level: Luwes → MSL TPXO9'],
       ['encoding',             'HDF5',              'Hierarchical Data Format version 5'],
     ],
-
     methodTitle: 'Methodology',
     methodBody:  'Tidal predictions are computed using harmonic analysis based on the TPXO9-atlas-v5 model (Oregon State University), implementing 15 tidal constituents with astronomical arguments following Schureman (1958) and nodal factors following Foreman (1977). Real-time water level observations are collected every 60 seconds from the Luwes telemetry station operated by Pushidrosal, with a Transfer of Level correction (TOL = −2.156 m) applied to align the station datum to MSL.',
-
     teamTitle:  'Project Team',
     teamSub:    'Geodesy & Geomatics Engineering — Institut Teknologi Bandung — 2026',
     teamMembers: [
@@ -53,7 +43,6 @@ const C = {
       { name: 'Ichsan Fachri Siroj',          nim: '15122092' },
     ],
     supervisor: 'Supervisor: Prof. Dr.rer.nat. Poerbandono, S.T., M.M.',
-
     refTitle: 'References',
     refs: [
       { id: '[1]', text: 'IHO. (2024). S-100 Universal Hydrographic Data Model, Edition 5.2.0.', url: 'https://iho.int/uploads/user/pubs/standards/s-100/S-100_5.2.0_Final_Clean.pdf' },
@@ -70,16 +59,12 @@ const C = {
     hero:    'Tentang Searibu',
     heroSub: 'Sistem Informasi Kelautan untuk Wisata Bahari — Kepulauan Seribu',
     heroDesc:'Proyek capstone mahasiswa Teknik Geodesi dan Geomatika ITB yang membangun platform informasi kelautan terpadu — mengintegrasikan prediksi pasang surut, telemetri real-time, dan prakiraan cuaca untuk wisata bahari yang lebih aman.',
-
     stdTitle:  'Standar & Kepatuhan',
     stdSub:    'Sistem ini mengimplementasikan standar internasional IHO S-100 dan S-104 untuk interoperabilitas data hidrografi.',
-
     s100Title: 'IHO S-100 — Universal Hydrographic Data Model',
     s100Body:  'S-100 adalah kerangka induk yang dikeluarkan IHO untuk mendefinisikan cara semua produk data digital maritim disusun, dikodekan, dan dibagikan. Standar ini menggantikan S-57 dan dirancang kompatibel dengan standar geospasial modern (ISO/TC 211). S-100 diadopsi resmi oleh anggota IHO pada Desember 2024.',
-
     s104Title: 'IHO S-104 — Water Level Information for Surface Navigation',
     s104Body:  'S-104 adalah product specification dalam kerangka S-100 yang dirancang khusus untuk enkapsulasi dan transfer data pasut serta muka air untuk digunakan di ECDIS. Sistem Searibu mengimplementasikan S-104 Edition 2.0.0 untuk data prediksi astronomis (TPXO9) maupun data observasi (stasiun telemetri Luwes).',
-
     tableTitle:  'Detail Implementasi S-104',
     tableHeaders:['Atribut', 'Nilai', 'Keterangan'],
     tableRows: [
@@ -94,10 +79,8 @@ const C = {
       ['Koreksi TOL',          '−2.156 m',          'Transfer of Level: Luwes → MSL TPXO9'],
       ['encoding',             'HDF5',              'Hierarchical Data Format version 5'],
     ],
-
     methodTitle: 'Metodologi',
     methodBody:  'Prediksi pasut dihitung menggunakan analisis harmonik model TPXO9-atlas-v5 (Oregon State University) dengan 15 konstituen pasut. Argumen astronomis mengikuti Schureman (1958) dan faktor nodal mengikuti Foreman (1977). Observasi muka air real-time dikumpulkan setiap 60 detik dari stasiun telemetri Luwes (Pushidrosal), dengan koreksi Transfer of Level (TOL = −2.156 m) untuk menyelaraskan datum stasiun ke MSL.',
-
     teamTitle:  'Tim Proyek',
     teamSub:    'Teknik Geodesi dan Geomatika — Institut Teknologi Bandung — 2026',
     teamMembers: [
@@ -107,7 +90,6 @@ const C = {
       { name: 'Ichsan Fachri Siroj',          nim: '15122092' },
     ],
     supervisor: 'Pembimbing: Prof. Dr.rer.nat. Poerbandono, S.T., M.M.',
-
     refTitle: 'Referensi',
     refs: [
       { id: '[1]', text: 'IHO. (2024). S-100 Universal Hydrographic Data Model, Edition 5.2.0.', url: 'https://iho.int/uploads/user/pubs/standards/s-100/S-100_5.2.0_Final_Clean.pdf' },
@@ -122,7 +104,6 @@ const C = {
   },
 };
 
-// ── Collapsible Section ───────────────────────────────────────────────────
 const Section: React.FC<{ title: string; children: React.ReactNode; defaultOpen?: boolean }> = ({
   title, children, defaultOpen = true
 }) => {
@@ -134,7 +115,7 @@ const Section: React.FC<{ title: string; children: React.ReactNode; defaultOpen?
         style={{
           width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: '14px 20px', background: '#f8fafc', border: 'none', cursor: 'pointer',
-          fontFamily: SANS, fontSize: 14, fontWeight: 600, color: '#0f172a',
+          fontFamily: SANS, fontSize: 14, fontWeight: 600, color: NAVY,
         }}
       >
         {title}
@@ -145,16 +126,15 @@ const Section: React.FC<{ title: string; children: React.ReactNode; defaultOpen?
   );
 };
 
-// ── Main Component ────────────────────────────────────────────────────────
 export const AboutPage: React.FC = () => {
   const { language } = useLanguage();
   const c = C[language as 'en' | 'id'];
 
   return (
-    <div style={{ background: '#f5f0e8', minHeight: '100vh', paddingTop: 62 }}>
+    <div style={{ background: '#f8fafc', minHeight: '100vh', paddingTop: 62 }}>
       {/* Hero */}
       <div style={{
-        background: 'linear-gradient(135deg, #0c4a6e 0%, #075985 100%)',
+        background: `linear-gradient(135deg, ${NAVY} 0%, ${PRIMARY} 100%)`,
         padding: '56px 48px 48px', textAlign: 'center',
       }}>
         <div style={{
@@ -175,39 +155,31 @@ export const AboutPage: React.FC = () => {
       </div>
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px 64px' }}>
-
-        {/* Standards Section */}
         <div style={{ marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-            <CheckCircle size={18} style={{ color: '#0284c7' }} />
-            <h2 style={{ fontFamily: SANS, fontSize: 20, fontWeight: 700, color: '#0f172a', margin: 0 }}>
+            <CheckCircle size={18} style={{ color: PRIMARY }} />
+            <h2 style={{ fontFamily: SANS, fontSize: 20, fontWeight: 700, color: NAVY, margin: 0 }}>
               {c.stdTitle}
             </h2>
           </div>
-          <p style={{ fontFamily: SANS, fontSize: 14, color: '#64748b', marginBottom: 20, lineHeight: 1.7 }}>
+          <p style={{ fontFamily: SANS, fontSize: 14, color: '#475569', marginBottom: 20, lineHeight: 1.7 }}>
             {c.stdSub}
           </p>
         </div>
 
         <Section title={c.s100Title}>
-          <p style={{ fontFamily: SANS, fontSize: 14, color: '#475569', lineHeight: 1.8, margin: 0 }}>
-            {c.s100Body}
-          </p>
+          <p style={{ fontFamily: SANS, fontSize: 14, color: '#475569', lineHeight: 1.8, margin: 0 }}>{c.s100Body}</p>
         </Section>
 
         <Section title={c.s104Title}>
-          <p style={{ fontFamily: SANS, fontSize: 14, color: '#475569', lineHeight: 1.8, marginBottom: 16 }}>
-            {c.s104Body}
-          </p>
-
-          {/* S-104 attribute table */}
+          <p style={{ fontFamily: SANS, fontSize: 14, color: '#475569', lineHeight: 1.8, marginBottom: 16 }}>{c.s104Body}</p>
           <p style={{ fontFamily: SANS, fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#94a3b8', marginBottom: 8 }}>
             {c.tableTitle}
           </p>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: SANS, fontSize: 12 }}>
               <thead>
-                <tr style={{ background: '#0284c7' }}>
+                <tr style={{ background: PRIMARY }}>
                   {c.tableHeaders.map((h, i) => (
                     <th key={i} style={{ padding: '8px 12px', color: '#fff', textAlign: 'left', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
@@ -216,8 +188,8 @@ export const AboutPage: React.FC = () => {
               <tbody>
                 {c.tableRows.map((row, i) => (
                   <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                    <td style={{ padding: '7px 12px', color: '#0f172a', fontFamily: '"Courier New", monospace', fontSize: 11, borderBottom: '1px solid #f1f5f9' }}>{row[0]}</td>
-                    <td style={{ padding: '7px 12px', color: '#0284c7', fontFamily: '"Courier New", monospace', fontSize: 11, borderBottom: '1px solid #f1f5f9', fontWeight: 600 }}>{row[1]}</td>
+                    <td style={{ padding: '7px 12px', color: NAVY, fontFamily: '"Courier New", monospace', fontSize: 11, borderBottom: '1px solid #f1f5f9' }}>{row[0]}</td>
+                    <td style={{ padding: '7px 12px', color: PRIMARY, fontFamily: '"Courier New", monospace', fontSize: 11, borderBottom: '1px solid #f1f5f9', fontWeight: 600 }}>{row[1]}</td>
                     <td style={{ padding: '7px 12px', color: '#64748b', borderBottom: '1px solid #f1f5f9' }}>{row[2]}</td>
                   </tr>
                 ))}
@@ -227,22 +199,19 @@ export const AboutPage: React.FC = () => {
         </Section>
 
         <Section title={c.methodTitle}>
-          <p style={{ fontFamily: SANS, fontSize: 14, color: '#475569', lineHeight: 1.8, margin: 0 }}>
-            {c.methodBody}
-          </p>
+          <p style={{ fontFamily: SANS, fontSize: 14, color: '#475569', lineHeight: 1.8, margin: 0 }}>{c.methodBody}</p>
         </Section>
 
-        {/* Team */}
         <Section title={c.teamTitle}>
           <p style={{ fontFamily: SANS, fontSize: 12, color: '#94a3b8', marginBottom: 14 }}>{c.teamSub}</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
             {c.teamMembers.map((m, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontFamily: SANS, fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                <div style={{ width: 34, height: 34, borderRadius: '50%', background: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontFamily: SANS, fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
                   {m.name.split(' ').slice(0, 2).map(w => w[0]).join('')}
                 </div>
                 <div>
-                  <p style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: '#0f172a', margin: 0 }}>{m.name}</p>
+                  <p style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: NAVY, margin: 0 }}>{m.name}</p>
                   <p style={{ fontFamily: SANS, fontSize: 11, color: '#94a3b8', margin: 0 }}>{m.nim}</p>
                 </div>
               </div>
@@ -251,16 +220,15 @@ export const AboutPage: React.FC = () => {
           <p style={{ fontFamily: SANS, fontSize: 13, color: '#475569', margin: 0 }}>{c.supervisor}</p>
         </Section>
 
-        {/* References */}
         <Section title={c.refTitle} defaultOpen={false}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {c.refs.map((r, i) => (
               <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <span style={{ fontFamily: SANS, fontSize: 12, fontWeight: 700, color: '#0284c7', flexShrink: 0, marginTop: 1 }}>{r.id}</span>
+                <span style={{ fontFamily: SANS, fontSize: 12, fontWeight: 700, color: PRIMARY, flexShrink: 0, marginTop: 1 }}>{r.id}</span>
                 <span style={{ fontFamily: SANS, fontSize: 12, color: '#475569', lineHeight: 1.6, flex: 1 }}>
                   {r.text}
                   {r.url && (
-                    <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 6, color: '#0284c7', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                    <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 6, color: PRIMARY, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
                       <ExternalLink size={10} />
                     </a>
                   )}
@@ -269,7 +237,6 @@ export const AboutPage: React.FC = () => {
             ))}
           </div>
         </Section>
-
       </div>
     </div>
   );
