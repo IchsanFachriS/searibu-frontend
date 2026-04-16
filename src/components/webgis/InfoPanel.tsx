@@ -2,14 +2,14 @@
  * InfoPanel.tsx  —  Marine Info Panel
  * Sistem Searibu — ITB Geodesy & Geomatics Engineering 2026
  *
- * Changes:
- *  - Responsive sidebar (no content cut-off, min-width removed, fluid)
- *  - Weather hero layout cleaner (temp prominent, wind/wave/current compact)
- *  - Date picker more responsive (full-width, better styling)
- *  - Chart stays fixed height
- *  - TPXO High/Low: only 1 high + 1 low card (merged, not 4 cards)
- *  - Hourly table fixed height (scroll inside)
- *  - TPXO chart: visible bullet dot at hover point on curve + improved tooltip
+ * Color palette: soft, cohesive tones aligned with brand navy/ocean/sky
+ *  - TPXO chart line:  #3b82f6 (soft blue, brand-aligned)
+ *  - Luwes chart dots: #e879a0 (soft rose-magenta, brand-aligned)
+ *  - Hero card:        navy gradient (brand)
+ *  - Tide high card:   soft sky blue
+ *  - Tide low card:    soft amber (warm, not harsh)
+ *  - Activity guide:   muted semantic colors
+ *  - S104 badge:       soft teal-blue
  */
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
@@ -90,9 +90,41 @@ interface InfoPanelProps {
 }
 
 /* ═══════════════════════════════════════════════════
-   CONSTANTS
+   DESIGN TOKENS — soft, cohesive palette
 ═══════════════════════════════════════════════════ */
-const API_BASE = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:5000";
+// Brand
+const NAVY    = "#0c4a6e";
+const OCEAN   = "#075985";
+const PRIMARY = "#0369a1";
+const SKY     = "#0ea5e9";
+
+// Chart colors — soft, brand-aligned
+const CHART_TPXO  = "#5b7093";   // soft medium blue (not harsh)
+const CHART_LUWES = "#e879a0";   // soft rose-magenta
+
+// Semantic — muted
+const C_SAFE    = { dot: "#22c55e", bg: "#f0fdf4", border: "#bbf7d0", text: "#15803d" };
+const C_CAUTION = { dot: "#f59e0b", bg: "#fffbeb", border: "#fde68a", text: "#b45309" };
+const C_DANGER  = { dot: "#f87171", bg: "#fff1f2", border: "#fecdd3", text: "#be123c" };
+
+// Neutral surfaces
+const BG_PAGE   = "#f0f6fb";   // very soft blue-tinted page
+const BG_CARD   = "#ffffff";
+const BG_MUTED  = "#f5f9fc";
+const BORDER    = "#dbeafe";   // soft blue border
+const BORDER_SM = "#e8f0f7";
+const TEXT_PRI  = "#0f2744";
+const TEXT_SEC  = "#4a6580";
+const TEXT_HINT = "#8faabb";
+
+// Tide high/low
+const HIGH_BG   = "#eff8ff";
+const HIGH_BDR  = "#bfdbfe";
+const HIGH_TEXT = "#4f7af3";
+const LOW_BG    = "#fffbf0";
+const LOW_BDR   = "#fde68a";
+const LOW_TEXT  = "#b45309";
+
 const SANS = '"Inter", "DM Sans", system-ui, sans-serif';
 const MONO = '"Inter", "DM Sans", system-ui, sans-serif';
 const TOL_CORRECTION = -2.156;
@@ -142,9 +174,9 @@ const fmtHHmm = (iso: string) => {
 const statusStyles: Record<ActivityRec["status"], {
   dot: string; bg: string; border: string; text: string; label: [string, string]
 }> = {
-  safe:    { dot: "#16a34a", bg: "#f0fdf4", border: "#86efac", text: "#15803d", label: ["Safe",    "Aman"]    },
-  caution: { dot: "#d97706", bg: "#fffbeb", border: "#fde68a", text: "#b45309", label: ["Caution", "Waspada"] },
-  danger:  { dot: "#dc2626", bg: "#fef2f2", border: "#fca5a5", text: "#b91c1c", label: ["Avoid",   "Hindari"] },
+  safe:    { ...C_SAFE,    label: ["Safe",    "Aman"]    },
+  caution: { ...C_CAUTION, label: ["Caution", "Waspada"] },
+  danger:  { ...C_DANGER,  label: ["Avoid",   "Hindari"] },
 };
 
 /* ═══════════════════════════════════════════════════
@@ -198,15 +230,12 @@ function buildCubicSpline(knots: {x:number;y:number}[]): (x: number) => number {
     const [a, b] = knots;
     return (x) => a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
   }
-
   const xs = knots.map(k => k.x);
   const ys = knots.map(k => k.y);
   const h  = Array.from({length: n - 1}, (_, i) => xs[i + 1] - xs[i]);
-
-  const diag = new Array(n).fill(2.0);
+  const diag  = new Array(n).fill(2.0);
   const upper = new Array(n).fill(0.0);
-  const rhs  = new Array(n).fill(0.0);
-
+  const rhs   = new Array(n).fill(0.0);
   for (let i = 1; i < n - 1; i++) {
     const hi  = h[i - 1];
     const hi1 = h[i];
@@ -214,12 +243,9 @@ function buildCubicSpline(knots: {x:number;y:number}[]): (x: number) => number {
     upper[i] = hi1 / tot;
     rhs[i]   = 6.0 * ((ys[i + 1] - ys[i]) / hi1 - (ys[i] - ys[i - 1]) / hi) / tot;
   }
-
-  const mu  = new Array(n).fill(0.0);
+  const mu   = new Array(n).fill(0.0);
   const rhs2 = [...rhs];
-  for (let i = 1; i < n - 1; i++) {
-    mu[i] = h[i - 1] / (h[i - 1] + h[i]);
-  }
+  for (let i = 1; i < n - 1; i++) mu[i] = h[i - 1] / (h[i - 1] + h[i]);
   const diagMod = [...diag];
   for (let i = 1; i < n - 1; i++) {
     const w = mu[i] / diagMod[i - 1];
@@ -231,11 +257,9 @@ function buildCubicSpline(knots: {x:number;y:number}[]): (x: number) => number {
   for (let i = n - 3; i >= 1; i--) {
     M[i] = (rhs2[i] - upper[i] * M[i + 1]) / diagMod[i];
   }
-
   return (x: number) => {
     if (x <= xs[0])     return ys[0];
     if (x >= xs[n - 1]) return ys[n - 1];
-
     let lo = 0, hi2 = n - 2;
     while (lo < hi2) {
       const mid = (lo + hi2) >> 1;
@@ -245,34 +269,26 @@ function buildCubicSpline(knots: {x:number;y:number}[]): (x: number) => number {
     const i   = lo;
     const dx  = x - xs[i];
     const hi_ = h[i];
-
     const a = ys[i];
     const b = (ys[i + 1] - ys[i]) / hi_ - hi_ * (2 * M[i] + M[i + 1]) / 6;
     const c = M[i] / 2;
     const d = (M[i + 1] - M[i]) / (6 * hi_);
-
     return a + dx * (b + dx * (c + dx * d));
   };
 }
 
-function interpolateTPXOPerMinute(
-  knots: {x: number; y: number}[]
-): {x: number; y: number}[] {
+function interpolateTPXOPerMinute(knots: {x: number; y: number}[]): {x: number; y: number}[] {
   if (knots.length < 2) return knots;
-
   const spline = buildCubicSpline(knots);
   const xMin   = knots[0].x;
   const xMax   = knots[knots.length - 1].x;
   const result: {x: number; y: number}[] = [];
-
   const STEP = 1 / 60;
-
   for (let min = 0; min <= (xMax - xMin) * 60 + 0.5; min++) {
     const x = xMin + min * STEP;
     if (x > xMax + 1e-9) break;
     result.push({ x: Math.min(x, xMax), y: spline(Math.min(x, xMax)) });
   }
-
   return result;
 }
 
@@ -322,7 +338,6 @@ function buildRecommendations(
     if(s==="caution") return ["Moderate conditions — experienced snorkelers only","Kondisi sedang — hanya untuk snorkeler berpengalaman"];
     return ["Rough sea or strong current — avoid water","Laut kasar atau arus kuat — hindari masuk air"];
   };
-
   const scuba = (): S => {
     if(isStormy||(avgCurrentMs??0)>0.51||(avgWave??0)>1.25) return "danger";
     if((avgCurrentMs??0)>0.26||(avgWave??0)>0.5)            return "caution";
@@ -334,7 +349,6 @@ function buildRecommendations(
     if(s==="caution") return ["Moderate current — plan with slack tide","Arus sedang — rencanakan saat slack tide"];
     return ["Current >1 kt or rough sea — diving not safe","Arus melebihi batas aman selam atau laut kasar"];
   };
-
   const freedive = (): S => {
     if((avgWave??0)>0.8||(avgCurrentMs??0)>0.51) return "danger";
     if((avgWave??0)>0.5||(avgCurrentMs??0)>0.26) return "caution";
@@ -346,7 +360,6 @@ function buildRecommendations(
     if(s==="caution") return ["Moderate swell — buddy required","Ombak sedang — wajib buddy system"];
     return ["High wave or strong current — hazardous","Ombak tinggi atau arus kuat — berbahaya"];
   };
-
   const jetski = (): S => {
     if(isStormy||(avgWindMs??0)>10.3||(avgWave??0)>1.5) return "danger";
     if(isRainy ||(avgWindMs??0)>7.9 ||(avgWave??0)>0.8) return "caution";
@@ -358,7 +371,6 @@ function buildRecommendations(
     if(s==="caution") return ["Choppy water — reduce speed","Air bergelombang — kurangi kecepatan"];
     return ["Strong wind or high waves — unsafe","Angin kencang atau ombak tinggi — tidak aman"];
   };
-
   const sup = (): S => {
     if((avgWindMs??0)>6.2||(avgWave??0)>1.0||(avgCurrentMs??0)>0.51) return "danger";
     if((avgWindMs??0)>4.5||(avgWave??0)>0.5||(avgCurrentMs??0)>0.26) return "caution";
@@ -370,7 +382,6 @@ function buildRecommendations(
     if(s==="caution") return ["Light chop — experienced paddlers only","Sedikit bergelombang — paddler berpengalaman"];
     return ["Wind/wave exceeds safe SUP limit","Angin/ombak melampaui batas aman SUP"];
   };
-
   const boat = (): S => {
     if((avgWindMs??0)>10.3||(avgWave??0)>1.5) return "danger";
     if((avgWindMs??0)>7.9 ||(avgWave??0)>1.0) return "caution";
@@ -382,7 +393,6 @@ function buildRecommendations(
     if(s==="caution") return ["Moderate sea — check vessel seaworthiness","Laut sedang — periksa kelayakan kapal"];
     return ["Exceeds small-craft limits — delay trip","Melampaui batas kapal kecil — tunda perjalanan"];
   };
-
   const fishing = (): S => {
     if(isStormy||(avgWindMs??0)>10.3||(avgWave??0)>1.5) return "danger";
     if(isRainy ||(avgWindMs??0)>7.9 ||(avgWave??0)>1.0) return "caution";
@@ -394,7 +404,6 @@ function buildRecommendations(
     if(s==="caution") return ["Moderate wind/wave — stay close to shore","Angin/ombak sedang — tetap dekat pantai"];
     return ["Dangerous sea state — not recommended","Kondisi laut berbahaya — tidak disarankan"];
   };
-
   const turtle = (): S => {
     if(isStormy) return "danger";
     if(isRainy||(tideRange!==null&&tideRange>1.5)) return "caution";
@@ -406,7 +415,6 @@ function buildRecommendations(
     if(s==="caution") return ["Rain or strong tides may affect access","Hujan/pasut kuat dapat ganggu akses"];
     return ["Storm — field activity unsafe","Badai — kegiatan lapangan tidak aman"];
   };
-
   const camp = (): S => {
     if(isStormy) return "danger";
     if(isRainy||(tideRange!==null&&tideRange>1.5)) return "caution";
@@ -418,7 +426,6 @@ function buildRecommendations(
     if(s==="caution") return ["Rain or high tide — limited beach access","Hujan/pasut tinggi — akses pantai terbatas"];
     return ["Storm — outdoor activities unsafe","Badai — aktivitas pantai tidak aman"];
   };
-
   const photo = (): S => {
     if(isStormy||(avgWave??0)>1.0||(avgCurrentMs??0)>0.51) return "danger";
     if(isRainy ||(avgWave??0)>0.5||(avgCurrentMs??0)>0.26) return "caution";
@@ -430,7 +437,6 @@ function buildRecommendations(
     if(s==="caution") return ["Reduced visibility — challenging","Visibilitas berkurang — menantang"];
     return ["Poor visibility or strong current","Visibilitas buruk atau arus kuat"];
   };
-
   const general = (): S => {
     if(isStormy) return "danger";
     if(isRainy)  return "caution";
@@ -444,17 +450,17 @@ function buildRecommendations(
   };
 
   return [
-    { id:"snorkeling", labelEn:"Snorkeling",       labelId:"Snorkeling",        icon:<Waves size={14}/>,    status:snorkel(),  reasonEn:snorkelR()[0],  reasonId:snorkelR()[1]  },
-    { id:"scuba",      labelEn:"Scuba Diving",      labelId:"Selam Scuba",       icon:<Anchor size={14}/>,   status:scuba(),    reasonEn:scubaR()[0],    reasonId:scubaR()[1]    },
-    { id:"freedive",   labelEn:"Freediving",        labelId:"Freediving",        icon:<Navigation size={14}/>,status:freedive(),reasonEn:freediveR()[0], reasonId:freediveR()[1] },
-    { id:"jetski",     labelEn:"Jet Ski / Sports",  labelId:"Jet Ski / Olahraga",icon:<Zap size={14}/>,      status:jetski(),   reasonEn:jetskiR()[0],   reasonId:jetskiR()[1]   },
-    { id:"sup",        labelEn:"SUP / Kayaking",    labelId:"SUP / Kayak",       icon:<Users size={14}/>,    status:sup(),      reasonEn:supR()[0],      reasonId:supR()[1]      },
-    { id:"boat",       labelEn:"Island Hopping",    labelId:"Wisata Pulau",      icon:<Ship size={14}/>,     status:boat(),     reasonEn:boatR()[0],     reasonId:boatR()[1]     },
-    { id:"fishing",    labelEn:"Fishing",           labelId:"Memancing",         icon:<Fish size={14}/>,     status:fishing(),  reasonEn:fishingR()[0],  reasonId:fishingR()[1]  },
-    { id:"turtle",     labelEn:"Turtle Conservation",labelId:"Konservasi Penyu", icon:<Leaf size={14}/>,     status:turtle(),   reasonEn:turtleR()[0],   reasonId:turtleR()[1]   },
-    { id:"camping",    labelEn:"Camping & Beach",   labelId:"Camping & Pantai",  icon:<Flag size={14}/>,     status:camp(),     reasonEn:campR()[0],     reasonId:campR()[1]     },
-    { id:"uwphoto",    labelEn:"UW Photography",    labelId:"Foto Bawah Air",    icon:<Camera size={14}/>,   status:photo(),    reasonEn:photoR()[0],    reasonId:photoR()[1]    },
-    { id:"general",    labelEn:"General Tourism",   labelId:"Wisata Umum",       icon:<Sun size={14}/>,      status:general(),  reasonEn:generalR()[0],  reasonId:generalR()[1]  },
+    { id:"snorkeling", labelEn:"Snorkeling",       labelId:"Snorkeling",        icon:<Waves size={13}/>,    status:snorkel(),  reasonEn:snorkelR()[0],  reasonId:snorkelR()[1]  },
+    { id:"scuba",      labelEn:"Scuba Diving",      labelId:"Selam Scuba",       icon:<Anchor size={13}/>,   status:scuba(),    reasonEn:scubaR()[0],    reasonId:scubaR()[1]    },
+    { id:"freedive",   labelEn:"Freediving",        labelId:"Freediving",        icon:<Navigation size={13}/>,status:freedive(),reasonEn:freediveR()[0], reasonId:freediveR()[1] },
+    { id:"jetski",     labelEn:"Jet Ski / Sports",  labelId:"Jet Ski / Olahraga",icon:<Zap size={13}/>,      status:jetski(),   reasonEn:jetskiR()[0],   reasonId:jetskiR()[1]   },
+    { id:"sup",        labelEn:"SUP / Kayaking",    labelId:"SUP / Kayak",       icon:<Users size={13}/>,    status:sup(),      reasonEn:supR()[0],      reasonId:supR()[1]      },
+    { id:"boat",       labelEn:"Island Hopping",    labelId:"Wisata Pulau",      icon:<Ship size={13}/>,     status:boat(),     reasonEn:boatR()[0],     reasonId:boatR()[1]     },
+    { id:"fishing",    labelEn:"Fishing",           labelId:"Memancing",         icon:<Fish size={13}/>,     status:fishing(),  reasonEn:fishingR()[0],  reasonId:fishingR()[1]  },
+    { id:"turtle",     labelEn:"Turtle Conservation",labelId:"Konservasi Penyu", icon:<Leaf size={13}/>,     status:turtle(),   reasonEn:turtleR()[0],   reasonId:turtleR()[1]   },
+    { id:"camping",    labelEn:"Camping & Beach",   labelId:"Camping & Pantai",  icon:<Flag size={13}/>,     status:camp(),     reasonEn:campR()[0],     reasonId:campR()[1]     },
+    { id:"uwphoto",    labelEn:"UW Photography",    labelId:"Foto Bawah Air",    icon:<Camera size={13}/>,   status:photo(),    reasonEn:photoR()[0],    reasonId:photoR()[1]    },
+    { id:"general",    labelEn:"General Tourism",   labelId:"Wisata Umum",       icon:<Sun size={13}/>,      status:general(),  reasonEn:generalR()[0],  reasonId:generalR()[1]  },
   ];
 }
 
@@ -466,20 +472,20 @@ const Shimmer: React.FC<{ w?: string; h?: string; r?: string }> = ({
 }) => (
   <div style={{
     width: w, height: h, borderRadius: r,
-    background: "linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%)",
+    background: "linear-gradient(90deg,#dbeafe 25%,#eff6ff 50%,#dbeafe 75%)",
     backgroundSize: "200% 100%",
     animation: "shimmer 1.6s linear infinite",
   }}/>
 );
 
 const SkeletonHero = () => (
-  <div style={{ margin:"16px 16px 0", borderRadius:16, padding:20, background:"#e2e8f0" }}>
-    <Shimmer w="55%" h="10px"/>
-    <div style={{ display:"flex", gap:16, marginTop:12 }}>
+  <div style={{ margin:"14px 14px 0", borderRadius:14, padding:18, background:"#dbeafe" }}>
+    <Shimmer w="55%" h="9px"/>
+    <div style={{ display:"flex", gap:14, marginTop:10 }}>
       {[0,1,2,3].map(i=>(
         <div key={i} style={{ flex:1 }}>
-          <Shimmer w="40%" h="8px"/>
-          <div style={{marginTop:6}}><Shimmer w="60%" h={i===2?"32px":"24px"}/></div>
+          <Shimmer w="40%" h="7px"/>
+          <div style={{marginTop:5}}><Shimmer w="60%" h={i===2?"28px":"20px"}/></div>
         </div>
       ))}
     </div>
@@ -487,14 +493,14 @@ const SkeletonHero = () => (
 );
 
 const SkeletonChart = () => (
-  <div style={{ margin:"16px 16px 0", borderRadius:16, overflow:"hidden", border:"1px solid #e2e8f0" }}>
-    <div style={{ padding:"12px 16px 4px" }}><Shimmer w="55%" h="11px"/></div>
-    <div style={{ padding:12, display:"flex", alignItems:"flex-end", gap:2, height:170 }}>
+  <div style={{ margin:"14px 14px 0", borderRadius:12, overflow:"hidden", border:`1px solid ${BORDER}` }}>
+    <div style={{ padding:"10px 14px 3px" }}><Shimmer w="50%" h="9px"/></div>
+    <div style={{ padding:10, display:"flex", alignItems:"flex-end", gap:2, height:160 }}>
       {Array.from({length:24},(_,i)=>(
         <div key={i} style={{
           flex:1, borderRadius:2,
           height:`${30+Math.sin(i*0.5)*25+Math.random()*20}%`,
-          background:"linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%)",
+          background:"linear-gradient(90deg,#dbeafe 25%,#eff6ff 50%,#dbeafe 75%)",
           backgroundSize:"200% 100%",
           animation:`shimmer 1.6s linear ${i*0.04}s infinite`,
         }}/>
@@ -506,9 +512,9 @@ const SkeletonChart = () => (
 /* ═══════════════════════════════════════════════════
    WEATHER SYMBOL
 ═══════════════════════════════════════════════════ */
-const WeatherSymbol: React.FC<{ code: number; size?: number }> = ({ code, size=18 }) => {
+const WeatherSymbol: React.FC<{ code: number; size?: number }> = ({ code, size=16 }) => {
   const s = { width: size, height: size };
-  const p = { fill:"none", strokeWidth:1.8, strokeLinecap:"round" as const, strokeLinejoin:"round" as const };
+  const p = { fill:"none", strokeWidth:1.6, strokeLinecap:"round" as const, strokeLinejoin:"round" as const };
   if (code<=1)  return <svg {...s} viewBox="0 0 24 24" stroke="#f59e0b" {...p}><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>;
   if (code<=3)  return <svg {...s} viewBox="0 0 24 24" stroke="#94a3b8" {...p}><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>;
   if (code>=51&&code<=82) return <svg {...s} viewBox="0 0 24 24" stroke="#60a5fa" {...p}><path d="M20 17.58A5 5 0 0018 8h-1.26A8 8 0 104 16.25M8 19v2M12 19v2M16 19v2"/></svg>;
@@ -517,7 +523,7 @@ const WeatherSymbol: React.FC<{ code: number; size?: number }> = ({ code, size=1
 };
 
 /* ═══════════════════════════════════════════════════
-   OVERLAY CHART — with bullet dot on TPXO curve hover
+   OVERLAY CHART
 ═══════════════════════════════════════════════════ */
 const OverlayChart: React.FC<{
   tpxoPredictions: Array<{ time: string; height: number }>;
@@ -527,7 +533,6 @@ const OverlayChart: React.FC<{
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef  = useRef<any>(null);
   const tooltipIdRef = useRef(`searibu-tip-${Math.random().toString(36).slice(2,7)}`);
-  // Bullet overlay: positioned on the TPXO curve
   const bulletRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -568,9 +573,7 @@ const OverlayChart: React.FC<{
       return bestD <= maxDist ? best.y : null;
     };
 
-    const nearestTPXO = (x: number): number | null => {
-      return nearestY(tpxoPts, x, 3 / 60);
-    };
+    const nearestTPXO = (x: number): number | null => nearestY(tpxoPts, x, 3 / 60);
 
     const wibNow = new Date(Date.now() + 7 * 3600_000);
     const isToday = dateStr === wibNow.toISOString().slice(0, 10);
@@ -585,10 +588,10 @@ const OverlayChart: React.FC<{
         el.id = tooltipId;
         el.style.cssText = [
           "position:fixed","pointer-events:none","z-index:99999",
-          `background:#0f172a`,"color:#f1f5f9","border-radius:8px",
-          "padding:9px 13px",`font-family:${MONO}`,"font-size:12px",
-          "box-shadow:0 4px 20px rgba(0,0,0,0.40)","min-width:110px",
-          "line-height:1.65","display:none","border:1px solid rgba(255,255,255,0.08)",
+          `background:${NAVY}`,"color:#e0f2fe","border-radius:8px",
+          "padding:8px 12px",`font-family:${MONO}`,"font-size:11.5px",
+          "box-shadow:0 4px 18px rgba(7,89,133,0.22)","min-width:110px",
+          "line-height:1.65","display:none",`border:1px solid rgba(14,165,233,0.18)`,
           "transition:opacity 0.08s",
         ].join(";");
         document.body.appendChild(el);
@@ -599,7 +602,6 @@ const OverlayChart: React.FC<{
     const hideTooltip = () => {
       const el = document.getElementById(tooltipId);
       if (el) el.style.display = "none";
-      // hide bullet
       if (bulletRef.current) bulletRef.current.style.display = "none";
     };
 
@@ -617,13 +619,15 @@ const OverlayChart: React.FC<{
               label: "TPXO",
               type: "line" as any,
               data: tpxoPts,
-              borderColor: "#0284c7",
+              // Soft blue — brand aligned
+              borderColor: CHART_TPXO,
               backgroundColor: (c: any) => {
                 const { chart: { ctx: cx, chartArea: ca } } = c;
-                if (!ca) return "rgba(2,132,199,0.08)";
+                if (!ca) return "rgba(59,130,246,0.09)";
                 const g = cx.createLinearGradient(0, ca.top, 0, ca.bottom);
-                g.addColorStop(0, "rgba(2,132,199,0.22)");
-                g.addColorStop(1, "rgba(2,132,199,0)");
+                g.addColorStop(0, "rgba(59,130,246,0.16)");
+                g.addColorStop(0.6, "rgba(59,130,246,0.05)");
+                g.addColorStop(1, "rgba(59,130,246,0)");
                 return g;
               },
               borderWidth: 2,
@@ -639,9 +643,10 @@ const OverlayChart: React.FC<{
               label: "Luwes RAW",
               type: "scatter" as any,
               data: luwesPts,
-              borderColor: "rgba(249,115,22,0.7)",
-              backgroundColor: "rgba(249,115,22,0.55)",
-              pointRadius: 1.5,
+              // Soft rose-magenta
+              borderColor: `${CHART_LUWES}bb`,
+              backgroundColor: `${CHART_LUWES}99`,
+              pointRadius: 1.8,
               pointHoverRadius: 0,
               order: 1,
               parsing: false,
@@ -664,13 +669,13 @@ const OverlayChart: React.FC<{
               max: 24,
               grid: {
                 color: (c: any) => c.tick.value % 3 === 0
-                  ? "rgba(0,0,0,0.07)"
-                  : "rgba(0,0,0,0.025)",
+                  ? "rgba(59,130,246,0.08)"
+                  : "rgba(59,130,246,0.03)",
               },
               border: { display: false },
               ticks: {
-                color: "#94a3b8",
-                font: { family: MONO, size: 10 },
+                color: TEXT_HINT,
+                font: { family: MONO, size: 9 },
                 maxRotation: 0,
                 stepSize: 1,
                 autoSkip: false,
@@ -684,24 +689,23 @@ const OverlayChart: React.FC<{
               },
             },
             y: {
-              grid: { color: "rgba(0,0,0,0.04)" },
+              grid: { color: "rgba(59,130,246,0.05)" },
               border: { display: false },
               ticks: {
-                color: "#94a3b8",
-                font: { family: MONO, size: 10 },
+                color: TEXT_HINT,
+                font: { family: MONO, size: 9 },
                 callback: (v: any) => `${Number(v).toFixed(2)} m`,
               },
               title: {
                 display: true,
                 text: "Water Level (m)",
-                color: "#94a3b8",
+                color: TEXT_HINT,
                 font: { size: 9, family: MONO },
               },
             },
           },
           onHover: (event: any, _elements: any[], chart: any) => {
             if (!event?.native) { hideTooltip(); return; }
-
             const xVal = chart.scales.x?.getValueForPixel(event.x);
             if (xVal == null || xVal < 0 || xVal > 24) { hideTooltip(); return; }
 
@@ -713,18 +717,18 @@ const OverlayChart: React.FC<{
             const mm = Math.round((xVal - hh) * 60);
             const timeLabel = `${hh.toString().padStart(2,"0")}:${mm.toString().padStart(2,"0")} WIB`;
 
-            let html = `<div style="color:#64748b;font-size:10px;font-weight:600;letter-spacing:0.04em;margin-bottom:6px;text-transform:uppercase;">${timeLabel}</div>`;
+            let html = `<div style="color:#7dd3fc;font-size:9.5px;font-weight:600;letter-spacing:0.05em;margin-bottom:5px;text-transform:uppercase;">${timeLabel}</div>`;
             if (tpxoVal !== null) {
-              html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:${luwesVal!==null?3:0}px;">` +
-                `<span style="width:8px;height:8px;border-radius:50%;background:#0284c7;flex-shrink:0;"></span>` +
-                `<span style="color:#94a3b8;font-size:10px;">TPXO</span>` +
-                `<span style="margin-left:auto;font-weight:700;color:#e2f0fb;">${tpxoVal.toFixed(3)} m</span></div>`;
+              html += `<div style="display:flex;align-items:center;gap:5px;margin-bottom:${luwesVal!==null?3:0}px;">` +
+                `<span style="width:7px;height:7px;border-radius:50%;background:${CHART_TPXO};flex-shrink:0;"></span>` +
+                `<span style="color:#93c5fd;font-size:10px;">TPXO</span>` +
+                `<span style="margin-left:auto;font-weight:600;color:#dbeafe;">${tpxoVal.toFixed(3)} m</span></div>`;
             }
             if (luwesVal !== null) {
-              html += `<div style="display:flex;align-items:center;gap:6px;">` +
-                `<span style="width:8px;height:8px;border-radius:50%;background:#f97316;flex-shrink:0;"></span>` +
-                `<span style="color:#94a3b8;font-size:10px;">Luwes</span>` +
-                `<span style="margin-left:auto;font-weight:700;color:#fed7aa;">${luwesVal.toFixed(3)} m</span></div>`;
+              html += `<div style="display:flex;align-items:center;gap:5px;">` +
+                `<span style="width:7px;height:7px;border-radius:50%;background:${CHART_LUWES};flex-shrink:0;"></span>` +
+                `<span style="color:#f9a8d4;font-size:10px;">Luwes</span>` +
+                `<span style="margin-left:auto;font-weight:600;color:#fce7f3;">${luwesVal.toFixed(3)} m</span></div>`;
             }
 
             const tip = ensureTooltip();
@@ -744,11 +748,9 @@ const OverlayChart: React.FC<{
             const screenX = rect.left   + xPx     * scaleX;
             const screenY = rect.top    + yAnchor * scaleY;
 
-            // ── Position bullet dot on TPXO curve ──
             if (bulletRef.current && tpxoVal !== null) {
               const tpxoScreenY = rect.top + chart.scales.y.getPixelForValue(tpxoVal) * scaleY;
               const tpxoScreenX = rect.left + xPx * scaleX;
-              // Convert to coordinates relative to the canvas parent
               const canvasParent = canvas.parentElement;
               if (canvasParent) {
                 const parentRect = canvasParent.getBoundingClientRect();
@@ -760,17 +762,14 @@ const OverlayChart: React.FC<{
               bulletRef.current.style.display = "none";
             }
 
-            const tipW = 170;
-            const tipH = tpxoVal !== null && luwesVal !== null ? 82 : 58;
-            const gap  = 12;
-
+            const tipW = 168;
+            const tipH = tpxoVal !== null && luwesVal !== null ? 78 : 54;
+            const gap  = 10;
             let left = screenX - tipW / 2;
             let top  = screenY - tipH - gap;
-
-            if (left < 8)                           left = 8;
+            if (left < 8)                            left = 8;
             if (left + tipW > window.innerWidth - 8) left = window.innerWidth - tipW - 8;
             if (top < 8) top = screenY + gap;
-
             tip.style.left = `${left}px`;
             tip.style.top  = `${top}px`;
           },
@@ -784,10 +783,11 @@ const OverlayChart: React.FC<{
             if (x < ca.left || x > ca.right) return;
             c.save();
             c.beginPath(); c.moveTo(x, ca.top); c.lineTo(x, ca.bottom);
-            c.strokeStyle = "rgba(239,68,68,0.70)"; c.lineWidth = 1.5;
+            // Soft coral-red for "now" line
+            c.strokeStyle = "rgba(251,113,133,0.65)"; c.lineWidth = 1.5;
             c.setLineDash([4, 4]); c.stroke();
-            c.fillStyle = "rgba(239,68,68,0.9)"; c.font = `bold 9px ${MONO}`;
-            c.textAlign = "center"; c.fillText("NOW", x, ca.top + 10);
+            c.fillStyle = "rgba(251,113,133,0.9)"; c.font = `bold 8.5px ${MONO}`;
+            c.textAlign = "center"; c.fillText("NOW", x, ca.top + 9);
             c.restore();
           },
         }],
@@ -807,18 +807,17 @@ const OverlayChart: React.FC<{
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <canvas ref={canvasRef} style={{ width: "100%", height: "100%" }} />
-      {/* Bullet dot that follows the TPXO curve on hover */}
       <div
         ref={bulletRef}
         style={{
           position: "absolute",
           display: "none",
-          width: 12,
-          height: 12,
+          width: 11,
+          height: 11,
           borderRadius: "50%",
-          background: "#0284c7",
+          background: CHART_TPXO,
           border: "2.5px solid #fff",
-          boxShadow: "0 0 0 2px rgba(2,132,199,0.4), 0 2px 6px rgba(2,132,199,0.5)",
+          boxShadow: `0 0 0 2px rgba(59,130,246,0.30), 0 2px 5px rgba(59,130,246,0.35)`,
           pointerEvents: "none",
           zIndex: 10,
           transition: "left 0.04s, top 0.04s",
@@ -831,6 +830,8 @@ const OverlayChart: React.FC<{
 /* ═══════════════════════════════════════════════════
    S-104 COMPLIANCE BADGE + EXPORT BUTTONS
 ═══════════════════════════════════════════════════ */
+const API_BASE = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:5000";
+
 const S104Badge: React.FC<{
   coordinates: {lat:number;lon:number};
   selectedDate: string;
@@ -874,14 +875,14 @@ const S104Badge: React.FC<{
   };
 
   const infoRows = [
-    { label: "Standard",      value: "IHO S-104 Ed.2.0.0" },
-    { label: "Horizontal CRS",value: "EPSG:4326 (WGS 84)" },
-    { label: "Vertical Datum",value: "MSL (IHO code 12)"  },
-    { label: "TPXO data",     value: "dataDynamicity = 1 (astronomicalPrediction)" },
-    { label: "Luwes data",    value: "dataDynamicity = 3 (observed)" },
-    { label: "TOL correction",value: "−2.156 m (Luwes → MSL)" },
-    { label: "Encoding",      value: "HDF5" },
-    { label: "Adopted",       value: "December 2024" },
+    { label: "Standard",       value: "IHO S-104 Ed.2.0.0" },
+    { label: "Horizontal CRS", value: "EPSG:4326 (WGS 84)" },
+    { label: "Vertical Datum", value: "MSL (IHO code 12)"  },
+    { label: "TPXO data",      value: "dataDynamicity = 1 (astronomicalPrediction)" },
+    { label: "Luwes data",     value: "dataDynamicity = 3 (observed)" },
+    { label: "TOL correction", value: "−2.156 m (Luwes → MSL)" },
+    { label: "Encoding",       value: "HDF5" },
+    { label: "Adopted",        value: "December 2024" },
   ];
 
   return (
@@ -890,74 +891,76 @@ const S104Badge: React.FC<{
         onClick={() => setOpen(p=>!p)}
         style={{
           display:"flex", alignItems:"center", justifyContent:"space-between",
-          padding:"10px 14px", cursor:"pointer",
-          background:"linear-gradient(135deg,#e0f2fe,#f0fdf4)",
-          border:"1px solid #bae6fd", borderRadius:10,
+          padding:"10px 13px", cursor:"pointer",
+          background:`linear-gradient(135deg,${HIGH_BG},#f0fdf4)`,
+          border:`1px solid ${HIGH_BDR}`, borderRadius:10,
         }}
       >
-        <div style={{ display:"flex", alignItems:"center", gap:9 }}>
-          <div style={{ width:28, height:28, borderRadius:6, background:"#0284c7", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-            <CheckCircle size={14} color="#fff"/>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ width:26, height:26, borderRadius:6, background:PRIMARY, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <CheckCircle size={13} color="#fff"/>
           </div>
           <div>
-            <p style={{ fontFamily:SANS, fontSize:12, fontWeight:700, color:"#0284c7", margin:0 }}>IHO S-100 / S-104 Ed. 2.0</p>
-            <p style={{ fontFamily:SANS, fontSize:10, color:"#0369a1", margin:0, opacity:0.8 }}>
+            <p style={{ fontFamily:SANS, fontSize:11.5, fontWeight:700, color:PRIMARY, margin:0 }}>IHO S-100 / S-104 Ed. 2.0</p>
+            <p style={{ fontFamily:SANS, fontSize:10, color:"#0369a1", margin:0, opacity:0.75 }}>
               {lang==="en" ? "Water Level Standard" : "Standar Muka Air"}
             </p>
           </div>
         </div>
-        {open ? <ChevronUp size={14} style={{color:"#0284c7",opacity:0.6}}/> : <ChevronDown size={14} style={{color:"#0284c7",opacity:0.6}}/>}
+        {open ? <ChevronUp size={13} style={{color:PRIMARY,opacity:0.5}}/> : <ChevronDown size={13} style={{color:PRIMARY,opacity:0.5}}/>}
       </div>
 
       {open && (
-        <div style={{ marginTop:6, padding:"12px 14px", background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:10 }}>
-          <p style={{ fontFamily:SANS, fontSize:12, fontWeight:600, color:"#0f172a", marginBottom:8 }}>
+        <div style={{ marginTop:5, padding:"11px 13px", background:BG_MUTED, border:`1px solid ${BORDER}`, borderRadius:10 }}>
+          <p style={{ fontFamily:SANS, fontSize:11.5, fontWeight:600, color:TEXT_PRI, marginBottom:7 }}>
             {lang==="en" ? "S-104 Compliance Details" : "Detail Kepatuhan S-104"}
           </p>
-          <p style={{ fontFamily:SANS, fontSize:11, color:"#64748b", lineHeight:1.6, marginBottom:10 }}>
+          <p style={{ fontFamily:SANS, fontSize:11, color:TEXT_SEC, lineHeight:1.65, marginBottom:9 }}>
             {lang==="en"
               ? "This data complies with IHO S-104 Edition 2.0.0 (adopted December 2024). Export as HDF5 files compatible with ECDIS, HDFView, and s100py."
               : "Data ini memenuhi IHO S-104 Edition 2.0.0 (diadopsi Desember 2024). Ekspor ke file HDF5 yang kompatibel dengan ECDIS, HDFView, dan s100py."
             }
           </p>
-          <div style={{ borderTop:"1px solid #f1f5f9", paddingTop:8, marginBottom:10 }}>
+          <div style={{ borderTop:`1px solid ${BORDER_SM}`, paddingTop:7, marginBottom:9 }}>
             {infoRows.map(({label,value}) => (
-              <div key={label} style={{ display:"flex", justifyContent:"space-between", gap:8, padding:"3px 0" }}>
-                <span style={{ fontFamily:SANS, fontSize:10, color:"#94a3b8" }}>{label}</span>
-                <span style={{ fontFamily:'"Courier New",monospace', fontSize:10, color:"#475569", textAlign:"right" }}>{value}</span>
+              <div key={label} style={{ display:"flex", justifyContent:"space-between", gap:8, padding:"2.5px 0" }}>
+                <span style={{ fontFamily:SANS, fontSize:10, color:TEXT_HINT }}>{label}</span>
+                <span style={{ fontFamily:'"Courier New",monospace', fontSize:10, color:TEXT_SEC, textAlign:"right" }}>{value}</span>
               </div>
             ))}
           </div>
           <a href="https://iho.int/en/s-100-based-product-specifications" target="_blank" rel="noopener noreferrer"
-            style={{ display:"inline-flex", alignItems:"center", gap:4, fontFamily:SANS, fontSize:11, color:"#0284c7", textDecoration:"none", marginBottom:12 }}>
-            {lang==="en" ? "IHO S-100 Resources" : "Sumber IHO S-100"} <ExternalLink size={10}/>
+            style={{ display:"inline-flex", alignItems:"center", gap:3, fontFamily:SANS, fontSize:10.5, color:PRIMARY, textDecoration:"none", marginBottom:10 }}>
+            {lang==="en" ? "IHO S-100 Resources" : "Sumber IHO S-100"} <ExternalLink size={9}/>
           </a>
         </div>
       )}
 
-      <div style={{ display:"flex", flexDirection:"column", gap:6, marginTop:8 }}>
+      <div style={{ display:"flex", flexDirection:"column", gap:5, marginTop:7 }}>
+        {/* TPXO export — soft blue */}
         <button onClick={handleTpxo} disabled={loadingTpxo}
-          style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"9px 14px", borderRadius:8, border:"1.5px solid #0284c722", background:loadingTpxo?"#f1f5f9":"#0284c710", color:loadingTpxo?"#94a3b8":"#0284c7", fontFamily:SANS, fontSize:12, fontWeight:600, cursor:loadingTpxo?"not-allowed":"pointer", transition:"all 0.18s" }}
-          onMouseEnter={e => { if(!loadingTpxo){ e.currentTarget.style.background="#0284c720"; e.currentTarget.style.borderColor="#0284c755"; } }}
-          onMouseLeave={e => { if(!loadingTpxo){ e.currentTarget.style.background="#0284c710"; e.currentTarget.style.borderColor="#0284c722"; } }}>
-          {loadingTpxo ? <Loader2 size={13} style={{animation:"spin 0.7s linear infinite"}}/> : <FileDown size={13}/>}
+          style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:5, width:"100%", padding:"8px 13px", borderRadius:8, border:`1.5px solid ${CHART_TPXO}28`, background:loadingTpxo?"#f8fafc":`${CHART_TPXO}0d`, color:loadingTpxo?TEXT_HINT:HIGH_TEXT, fontFamily:SANS, fontSize:11.5, fontWeight:600, cursor:loadingTpxo?"not-allowed":"pointer", transition:"all 0.18s" }}
+          onMouseEnter={e => { if(!loadingTpxo){ e.currentTarget.style.background=`${CHART_TPXO}18`; e.currentTarget.style.borderColor=`${CHART_TPXO}50`; } }}
+          onMouseLeave={e => { if(!loadingTpxo){ e.currentTarget.style.background=`${CHART_TPXO}0d`; e.currentTarget.style.borderColor=`${CHART_TPXO}28`; } }}>
+          {loadingTpxo ? <Loader2 size={12} style={{animation:"spin 0.7s linear infinite"}}/> : <FileDown size={12}/>}
           {loadingTpxo ? (lang==="en"?"Preparing...":"Menyiapkan...") : (lang==="en"?"Export S-104 (TPXO)":"Ekspor S-104 (TPXO)")}
         </button>
+        {/* Luwes export — soft rose */}
         <button onClick={handleLuwes} disabled={loadingLuwes}
-          style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"9px 14px", borderRadius:8, border:"1.5px solid #f9731622", background:loadingLuwes?"#f1f5f9":"#f9731610", color:loadingLuwes?"#94a3b8":"#f97316", fontFamily:SANS, fontSize:12, fontWeight:600, cursor:loadingLuwes?"not-allowed":"pointer", transition:"all 0.18s" }}
-          onMouseEnter={e => { if(!loadingLuwes){ e.currentTarget.style.background="#f9731620"; e.currentTarget.style.borderColor="#f9731655"; } }}
-          onMouseLeave={e => { if(!loadingLuwes){ e.currentTarget.style.background="#f9731610"; e.currentTarget.style.borderColor="#f9731622"; } }}>
-          {loadingLuwes ? <Loader2 size={13} style={{animation:"spin 0.7s linear infinite"}}/> : <FileDown size={13}/>}
+          style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:5, width:"100%", padding:"8px 13px", borderRadius:8, border:`1.5px solid ${CHART_LUWES}28`, background:loadingLuwes?"#f8fafc":`${CHART_LUWES}0d`, color:loadingLuwes?TEXT_HINT:"#be185d", fontFamily:SANS, fontSize:11.5, fontWeight:600, cursor:loadingLuwes?"not-allowed":"pointer", transition:"all 0.18s" }}
+          onMouseEnter={e => { if(!loadingLuwes){ e.currentTarget.style.background=`${CHART_LUWES}18`; e.currentTarget.style.borderColor=`${CHART_LUWES}50`; } }}
+          onMouseLeave={e => { if(!loadingLuwes){ e.currentTarget.style.background=`${CHART_LUWES}0d`; e.currentTarget.style.borderColor=`${CHART_LUWES}28`; } }}>
+          {loadingLuwes ? <Loader2 size={12} style={{animation:"spin 0.7s linear infinite"}}/> : <FileDown size={12}/>}
           {loadingLuwes ? (lang==="en"?"Preparing...":"Menyiapkan...") : (lang==="en"?"Export S-104 (Luwes)":"Ekspor S-104 (Luwes)")}
         </button>
       </div>
 
       {error && (
-        <div style={{ marginTop:8, padding:"8px 12px", background:"#fef2f2", border:"1px solid #fca5a5", borderRadius:8, display:"flex", alignItems:"flex-start", gap:8 }}>
-          <span style={{ color:"#dc2626", fontSize:11, fontFamily:SANS, flex:1 }}>
+        <div style={{ marginTop:7, padding:"7px 11px", background:"#fff1f2", border:`1px solid #fecdd3`, borderRadius:8, display:"flex", alignItems:"flex-start", gap:7 }}>
+          <span style={{ color:"#be123c", fontSize:11, fontFamily:SANS, flex:1 }}>
             <strong>{lang==="en"?"Export failed":"Ekspor gagal"}:</strong> {error}
           </span>
-          <button onClick={()=>setError(null)} style={{ background:"none", border:"none", cursor:"pointer", color:"#dc2626", padding:0, fontSize:14, lineHeight:1, flexShrink:0 }}>×</button>
+          <button onClick={()=>setError(null)} style={{ background:"none", border:"none", cursor:"pointer", color:"#be123c", padding:0, fontSize:13, lineHeight:1, flexShrink:0 }}>×</button>
         </div>
       )}
     </div>
@@ -980,7 +983,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
   const [weatherFromCache, setWeatherFromCache]  = useState(false);
   const [selDate,          setSelDate]           = useState<string>(todayISO());
 
-  /* ── Fetch all data ── */
   const fetchAll = useCallback(async (dateStr: string, forceRefresh = false) => {
     setLoading(true); setError(null);
     try {
@@ -1057,7 +1059,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
     const d = todayISO(); setSelDate(d); fetchAll(d);
   }, [coordinates.lat, coordinates.lon]);
 
-  /* ── Derived values ── */
   const getSunTimes = () => {
     if (!weatherData?.daily) return { sunrise:"--:--", sunset:"--:--" };
     const idx = weatherData.daily.time.findIndex(t => t===selDate);
@@ -1065,15 +1066,12 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
     return { sunrise: fmtHHmm(weatherData.daily.sunrise[idx]), sunset: fmtHHmm(weatherData.daily.sunset[idx]) };
   };
 
-  /* ── Hourly rows: 00:00 – 23:00 only (24 rows) ── */
   const buildRows = (): HourRow[] => {
     const tideMap = new Map<number,number>();
     tideData?.predictions.forEach(p => {
       const w = parseToWIB(p.time);
       if (!w) return;
-      if (w.wibDate === selDate) {
-        tideMap.set(w.wibHour, p.height);
-      }
+      if (w.wibDate === selDate) tideMap.set(w.wibHour, p.height);
     });
 
     const wxMap = new Map<string, Partial<HourRow>>();
@@ -1110,7 +1108,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
     });
   };
 
-  /* ── TPXO single high + single low for the selected day ── */
   const tpxoHighLow = (() => {
     const hs = tideData?.predictions.filter(p=>parseToWIB(p.time)?.wibDate===selDate) ?? [];
     if (!hs.length) return null;
@@ -1125,10 +1122,8 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       return `${w.wibHour.toString().padStart(2,"0")}:00`;
     };
     return {
-      max: highPt.height,
-      maxTime: fmtTime(highPt.time),
-      min: lowPt.height,
-      minTime: fmtTime(lowPt.time),
+      max: highPt.height, maxTime: fmtTime(highPt.time),
+      min: lowPt.height,  minTime: fmtTime(lowPt.time),
     };
   })();
 
@@ -1164,9 +1159,13 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
     const d = e.target.value; setSelDate(d); fetchAll(d);
   };
 
-  /* ═══════════════════════════════════════════════
-     RENDER
-  ═══════════════════════════════════════════════ */
+  /* ── Section label helper ── */
+  const SectionLabel: React.FC<{children: React.ReactNode}> = ({children}) => (
+    <p style={{ fontSize:9, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase" as const, color:TEXT_HINT, marginBottom:7, fontFamily:SANS }}>
+      {children}
+    </p>
+  );
+
   return (
     <div
       style={{
@@ -1174,53 +1173,52 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        borderLeft: "1px solid #e2e8f0",
+        borderLeft: `1px solid ${BORDER}`,
         fontFamily: SANS,
-        background: "#f8fafc",
+        background: BG_PAGE,
         overscrollBehavior: "contain",
-        minWidth: 0, // allow shrinking
+        minWidth: 0,
       }}
     >
-
       {/* ── Top Bar ── */}
       <div style={{
         flexShrink: 0,
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "10px 14px",
-        background: "#fff",
-        borderBottom: "1px solid #e2e8f0",
-        gap: 8,
+        padding: "9px 13px",
+        background: BG_CARD,
+        borderBottom: `1px solid ${BORDER}`,
+        gap: 7,
         minWidth: 0,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
-          <div style={{ width: 26, height: 26, borderRadius: 7, background: "#0284c7", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <Anchor size={13} color="#fff"/>
+          <div style={{ width: 24, height: 24, borderRadius: 7, background: PRIMARY, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Anchor size={12} color="#fff"/>
           </div>
-          <h2 style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.01em", fontFamily: SANS, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <h2 style={{ fontSize: 12.5, fontWeight: 700, color: TEXT_PRI, letterSpacing: "-0.01em", fontFamily: SANS, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {lang==="en" ? "Marine Information" : "Informasi Kelautan"}
           </h2>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
           {weatherFromCache && (
-            <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, fontWeight:600, color:"#d97706", background:"#fef9c3", border:"1px solid #fde68a", padding:"2px 6px", borderRadius:99, fontFamily:SANS, whiteSpace:"nowrap" }}>
-              <span style={{width:4,height:4,borderRadius:"50%",background:"#d97706",flexShrink:0}}/>
+            <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, fontWeight:600, color:"#b45309", background:"#fef3c7", border:"1px solid #fde68a", padding:"2px 6px", borderRadius:99, fontFamily:SANS, whiteSpace:"nowrap" }}>
+              <span style={{width:3,height:3,borderRadius:"50%",background:"#d97706",flexShrink:0}}/>
               {lang==="en" ? "Cached" : "Cache"}
             </span>
           )}
           <button onClick={() => { clearCache(coordinates.lat, coordinates.lon); fetchAll(selDate, true); }}
             title={lang==="en" ? "Refresh weather data" : "Perbarui data cuaca"}
-            style={{ padding:5, borderRadius:7, border:"none", background:"transparent", cursor:"pointer", color:"#94a3b8", display:"flex" }}
-            onMouseEnter={e=>(e.currentTarget.style.background="#f1f5f9")}
+            style={{ padding:5, borderRadius:6, border:"none", background:"transparent", cursor:"pointer", color:TEXT_HINT, display:"flex" }}
+            onMouseEnter={e=>(e.currentTarget.style.background=BG_MUTED)}
             onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>
-            <RefreshCw size={12}/>
+            <RefreshCw size={11}/>
           </button>
           <button onClick={onClose}
-            style={{ padding:5, borderRadius:7, border:"none", background:"transparent", cursor:"pointer", color:"#94a3b8", display:"flex" }}
-            onMouseEnter={e=>(e.currentTarget.style.background="#f1f5f9")}
+            style={{ padding:5, borderRadius:6, border:"none", background:"transparent", cursor:"pointer", color:TEXT_HINT, display:"flex" }}
+            onMouseEnter={e=>(e.currentTarget.style.background=BG_MUTED)}
             onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>
-            <X size={14}/>
+            <X size={13}/>
           </button>
         </div>
       </div>
@@ -1232,7 +1230,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
           overflowY: "auto",
           overflowX: "hidden",
           scrollbarWidth: "thin",
-          scrollbarColor: "#cbd5e1 transparent",
+          scrollbarColor: `${BORDER} transparent`,
           overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",
           minWidth: 0,
@@ -1240,29 +1238,28 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
         onWheel={e => e.stopPropagation()}
         onTouchMove={e => e.stopPropagation()}
       >
-
         {loading && (
           <>
             <SkeletonHero/>
-            <div style={{ margin:"16px 16px 0" }}>
-              <Shimmer w="30%" h="9px"/>
-              <div style={{marginTop:8}}><Shimmer w="100%" h="38px" r="12px"/></div>
+            <div style={{ margin:"14px 14px 0" }}>
+              <Shimmer w="30%" h="8px"/>
+              <div style={{marginTop:7}}><Shimmer w="100%" h="34px" r="10px"/></div>
             </div>
             <SkeletonChart/>
           </>
         )}
 
         {error && !loading && (
-          <div style={{ margin:16, padding:16, borderRadius:12, background:"#fef2f2", border:"1px solid #fca5a5" }}>
-            <div style={{ display:"flex", gap:12, alignItems:"flex-start" }}>
-              <AlertCircle size={15} style={{ color:"#f87171", flexShrink:0, marginTop:1 }}/>
+          <div style={{ margin:14, padding:14, borderRadius:12, background:"#fff1f2", border:`1px solid #fecdd3` }}>
+            <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
+              <AlertCircle size={14} style={{ color:"#f87171", flexShrink:0, marginTop:1 }}/>
               <div>
-                <p style={{ color:"#dc2626", fontSize:13, fontWeight:600, marginBottom:4, fontFamily:SANS }}>
+                <p style={{ color:"#be123c", fontSize:12.5, fontWeight:600, marginBottom:3, fontFamily:SANS }}>
                   {lang==="en" ? "Unable to load data" : "Gagal memuat data"}
                 </p>
-                <p style={{ color:"#ef4444", fontSize:11, marginBottom:10, fontFamily:SANS }}>{error}</p>
-                <button onClick={()=>fetchAll(selDate)} style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:"#dc2626", background:"none", border:"none", cursor:"pointer", fontFamily:SANS, fontWeight:600 }}>
-                  <RefreshCw size={11}/>{lang==="en" ? "Try again" : "Coba lagi"}
+                <p style={{ color:"#e11d48", fontSize:11, marginBottom:9, fontFamily:SANS }}>{error}</p>
+                <button onClick={()=>fetchAll(selDate)} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"#be123c", background:"none", border:"none", cursor:"pointer", fontFamily:SANS, fontWeight:600 }}>
+                  <RefreshCw size={10}/>{lang==="en" ? "Try again" : "Coba lagi"}
                 </button>
               </div>
             </div>
@@ -1271,106 +1268,104 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
 
         {!loading && !error && (
           <>
-            {/* ════════════════════════════════════════════════
-                HERO CARD — RESPONSIVE WEATHER LAYOUT
-            ════════════════════════════════════════════════ */}
-            <div style={{ margin:"14px 14px 0", borderRadius:14, overflow:"hidden", background:"linear-gradient(135deg,#0c4a6e 0%,#075985 55%,#0369a1 100%)", boxShadow:"0 4px 20px rgba(3,105,161,0.20)" }}>
+            {/* ════ HERO CARD — brand navy gradient ════ */}
+            <div style={{ margin:"13px 13px 0", borderRadius:13, overflow:"hidden", background:`linear-gradient(135deg,${NAVY} 0%,${OCEAN} 55%,${PRIMARY} 100%)` }}>
 
               {/* Coord bar */}
-              <div style={{ padding:"8px 16px 7px", borderBottom:"1px solid rgba(255,255,255,0.10)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                <p style={{ fontFamily:MONO, color:"rgba(255,255,255,0.45)", fontSize:10, letterSpacing:"0.02em", margin:0 }}>
+              <div style={{ padding:"7px 14px 6px", borderBottom:"1px solid rgba(255,255,255,0.09)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <p style={{ fontFamily:MONO, color:"rgba(186,230,253,0.50)", fontSize:9.5, letterSpacing:"0.03em", margin:0 }}>
                   {Math.abs(coordinates.lat).toFixed(4)}°{coordinates.lat>=0?"N":"S"}&ensp;
                   {Math.abs(coordinates.lon).toFixed(4)}°{coordinates.lon>=0?"E":"W"}
                 </p>
                 {isToday && (
-                  <span style={{ fontFamily:SANS, fontSize:9, fontWeight:700, color:"rgba(255,255,255,0.4)", letterSpacing:"0.05em", textTransform:"uppercase" }}>
+                  <span style={{ fontFamily:SANS, fontSize:8.5, fontWeight:700, color:"rgba(186,230,253,0.38)", letterSpacing:"0.05em", textTransform:"uppercase" }}>
                     {lang==="en"?"Today":"Hari ini"}
                   </span>
                 )}
               </div>
 
-              {/* ── Main weather row: temp large + sun times + weather icon ── */}
-              <div style={{ padding:"14px 16px 10px", display:"flex", alignItems:"center", gap:12 }}>
-                {/* Temperature — large & prominent */}
+              {/* Temperature + sun times */}
+              <div style={{ padding:"13px 14px 9px", display:"flex", alignItems:"center", gap:11 }}>
                 {current && (
-                  <div style={{ display:"flex", alignItems:"flex-start", gap:6 }}>
+                  <div style={{ display:"flex", alignItems:"flex-start", gap:5 }}>
                     <div style={{ lineHeight:1 }}>
-                      <p style={{ color:"#fff", fontSize:44, fontWeight:800, lineHeight:1, letterSpacing:"-0.04em", fontFamily:SANS, margin:0 }}>
+                      <p style={{ color:"#e0f2fe", fontSize:42, fontWeight:800, lineHeight:1, letterSpacing:"-0.04em", fontFamily:SANS, margin:0 }}>
                         {Math.round(current.temperature_2m)}°
                       </p>
-                      <p style={{ color:"rgba(255,255,255,0.55)", fontSize:11, fontFamily:SANS, margin:"3px 0 0", whiteSpace:"nowrap" }}>
+                      <p style={{ color:"rgba(186,230,253,0.55)", fontSize:10.5, fontFamily:SANS, margin:"2px 0 0", whiteSpace:"nowrap" }}>
                         {wmoLabel(current.weather_code, lang)}
                       </p>
                     </div>
-                    <div style={{ marginTop:4 }}>
-                      <WeatherSymbol code={current.weather_code} size={22}/>
+                    <div style={{ marginTop:3 }}>
+                      <WeatherSymbol code={current.weather_code} size={20}/>
                     </div>
                   </div>
                 )}
-                {/* Vertical divider */}
-                <div style={{ width:1, height:52, background:"rgba(255,255,255,0.12)", flexShrink:0 }}/>
-                {/* Sun times */}
-                <div style={{ display:"flex", flexDirection:"column", gap:6, flex:1, minWidth:0 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                    <Sun size={11} color="#fde68a" style={{ flexShrink:0 }}/>
-                    <span style={{ color:"rgba(255,255,255,0.45)", fontSize:10, fontWeight:600, fontFamily:SANS, textTransform:"uppercase", letterSpacing:"0.04em" }}>
+                <div style={{ width:1, height:48, background:"rgba(186,230,253,0.12)", flexShrink:0 }}/>
+                <div style={{ display:"flex", flexDirection:"column", gap:5, flex:1, minWidth:0 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+                    <Sun size={10} color="#fde68a" style={{ flexShrink:0 }}/>
+                    <span style={{ color:"rgba(186,230,253,0.40)", fontSize:9, fontWeight:600, fontFamily:SANS, textTransform:"uppercase", letterSpacing:"0.04em" }}>
                       {lang==="en"?"Rise":"Terbit"}
                     </span>
-                    <span style={{ fontFamily:MONO, color:"#fff", fontSize:13, fontWeight:700, marginLeft:"auto" }}>{sunrise}</span>
-                    <span style={{ color:"rgba(255,255,255,0.3)", fontSize:9, fontFamily:SANS }}>WIB</span>
+                    <span style={{ fontFamily:MONO, color:"#e0f2fe", fontSize:12.5, fontWeight:700, marginLeft:"auto" }}>{sunrise}</span>
+                    <span style={{ color:"rgba(186,230,253,0.30)", fontSize:8.5, fontFamily:SANS }}>WIB</span>
                   </div>
-                  <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                    <Moon size={11} color="#fca5a5" style={{ flexShrink:0 }}/>
-                    <span style={{ color:"rgba(255,255,255,0.45)", fontSize:10, fontWeight:600, fontFamily:SANS, textTransform:"uppercase", letterSpacing:"0.04em" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+                    <Moon size={10} color="#fda4af" style={{ flexShrink:0 }}/>
+                    <span style={{ color:"rgba(186,230,253,0.40)", fontSize:9, fontWeight:600, fontFamily:SANS, textTransform:"uppercase", letterSpacing:"0.04em" }}>
                       {lang==="en"?"Set":"Terbenam"}
                     </span>
-                    <span style={{ fontFamily:MONO, color:"#fff", fontSize:13, fontWeight:700, marginLeft:"auto" }}>{sunset}</span>
-                    <span style={{ color:"rgba(255,255,255,0.3)", fontSize:9, fontFamily:SANS }}>WIB</span>
+                    <span style={{ fontFamily:MONO, color:"#e0f2fe", fontSize:12.5, fontWeight:700, marginLeft:"auto" }}>{sunset}</span>
+                    <span style={{ color:"rgba(186,230,253,0.30)", fontSize:8.5, fontFamily:SANS }}>WIB</span>
                   </div>
                 </div>
               </div>
 
-              {/* ── 3-column marine params ── */}
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", borderTop:"1px solid rgba(255,255,255,0.08)" }}>
+              {/* 3-col marine params */}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", borderTop:"1px solid rgba(186,230,253,0.08)" }}>
                 {[
                   {
-                    icon: <Wind size={11} color="rgba(255,255,255,0.45)"/>,
+                    icon: <Wind size={10} color="rgba(186,230,253,0.40)"/>,
                     label: lang==="en"?"Wind":"Angin",
                     value: currentWindMs!=null ? currentWindMs.toFixed(1) : "—",
                     unit: "m/s",
                     sub: currentWindMs!=null ? `${windDirLabel(current!.wind_direction_10m)} ${current!.wind_direction_10m.toFixed(0)}°` : "",
+                    accent: "#93c5fd",
                   },
                   {
-                    icon: <Waves size={11} color="rgba(255,255,255,0.45)"/>,
+                    icon: <Waves size={10} color="rgba(186,230,253,0.40)"/>,
                     label: lang==="en"?"Wave":"Gelombang",
                     value: currentWaveH!=null ? currentWaveH.toFixed(2) : "—",
                     unit: "m",
                     sub: currentWaveH!=null ? (currentWaveH<0.5?(lang==="en"?"Calm":"Tenang"):currentWaveH<1.25?(lang==="en"?"Slight":"Kecil"):currentWaveH<2.5?(lang==="en"?"Moderate":"Sedang"):(lang==="en"?"Rough":"Kasar")) : "",
+                    accent: "#7dd3fc",
                   },
                   {
-                    icon: <Navigation size={11} color="rgba(255,255,255,0.45)"/>,
+                    icon: <Navigation size={10} color="rgba(186,230,253,0.40)"/>,
                     label: lang==="en"?"Current":"Arus",
                     value: currentCurrentSpd!=null ? currentCurrentSpd.toFixed(2) : "—",
                     unit: "m/s",
                     sub: currentCurrentSpd!=null ? (currentCurrentSpd<0.25?(lang==="en"?"Weak":"Lemah"):currentCurrentSpd<0.75?(lang==="en"?"Moderate":"Sedang"):(lang==="en"?"Strong":"Kuat")) : "",
+                    accent: "#a5f3fc",
                   },
                 ].map((item, i) => (
                   <div key={i} style={{
-                    padding: "10px 12px 12px",
-                    borderRight: i < 2 ? "1px solid rgba(255,255,255,0.08)" : "none",
+                    padding: "9px 11px 11px",
+                    borderRight: i < 2 ? "1px solid rgba(186,230,253,0.07)" : "none",
                   }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:6 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:3, marginBottom:5 }}>
                       {item.icon}
-                      <span style={{ color:"rgba(255,255,255,0.45)", fontSize:9, fontWeight:600, letterSpacing:"0.04em", textTransform:"uppercase" as const, fontFamily:SANS }}>
+                      <span style={{ color:"rgba(186,230,253,0.38)", fontSize:8.5, fontWeight:600, letterSpacing:"0.04em", textTransform:"uppercase" as const, fontFamily:SANS }}>
                         {item.label}
                       </span>
                     </div>
-                    <p style={{ fontFamily:MONO, color:"#fff", fontSize:17, fontWeight:700, lineHeight:1, margin:0 }}>
+                    <p style={{ fontFamily:MONO, color:"#e0f2fe", fontSize:16, fontWeight:700, lineHeight:1, margin:0 }}>
                       {item.value}
-                      <span style={{ fontSize:10, color:"rgba(255,255,255,0.45)", fontWeight:400, marginLeft:2 }}>{item.unit}</span>
+                      <span style={{ fontSize:9, color:item.accent, fontWeight:400, marginLeft:2, opacity:0.7 }}>{item.unit}</span>
                     </p>
                     {item.sub && (
-                      <p style={{ color:"rgba(255,255,255,0.32)", fontSize:9, marginTop:2, fontFamily:SANS, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                      <p style={{ color:"rgba(186,230,253,0.28)", fontSize:8.5, marginTop:2, fontFamily:SANS, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                         {item.sub}
                       </p>
                     )}
@@ -1379,76 +1374,70 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
               </div>
             </div>
 
-            {/* ── Date Picker — full width, responsive ── */}
-            <div style={{ padding:"12px 14px 0" }}>
-              <label style={{ fontSize:9, fontWeight:700, letterSpacing:"0.05em", textTransform:"uppercase" as const, color:"#94a3b8", marginBottom:5, display:"block", fontFamily:SANS }}>
-                {lang==="en" ? "Select Date" : "Pilih Tanggal"}
-              </label>
-              <div style={{ position:"relative" }}>
-                <input
-                  type="date"
-                  value={selDate}
-                  onChange={handleDateChange}
-                  style={{
-                    width:"100%",
-                    padding:"9px 12px",
-                    border:"1.5px solid #e2e8f0",
-                    borderRadius:10,
-                    fontSize:13,
-                    fontWeight:600,
-                    fontFamily:SANS,
-                    color:"#0f172a",
-                    background:"#fff",
-                    cursor:"pointer",
-                    outline:"none",
-                    boxSizing:"border-box" as const,
-                    WebkitAppearance:"none",
-                    appearance:"none",
-                    display:"block",
-                  }}
-                  onFocus={e=>{e.currentTarget.style.borderColor="#0284c7";e.currentTarget.style.boxShadow="0 0 0 3px rgba(2,132,199,0.12)";}}
-                  onBlur={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.boxShadow="none";}}
-                />
-              </div>
+            {/* ── Date Picker ── */}
+            <div style={{ padding:"11px 13px 0" }}>
+              <SectionLabel>{lang==="en" ? "Select Date" : "Pilih Tanggal"}</SectionLabel>
+              <input
+                type="date"
+                value={selDate}
+                onChange={handleDateChange}
+                style={{
+                  width:"100%",
+                  padding:"8px 11px",
+                  border:`1.5px solid ${BORDER}`,
+                  borderRadius:9,
+                  fontSize:12.5,
+                  fontWeight:600,
+                  fontFamily:SANS,
+                  color:TEXT_PRI,
+                  background:BG_CARD,
+                  cursor:"pointer",
+                  outline:"none",
+                  boxSizing:"border-box" as const,
+                  WebkitAppearance:"none",
+                  appearance:"none",
+                  display:"block",
+                }}
+                onFocus={e=>{e.currentTarget.style.borderColor=SKY;e.currentTarget.style.boxShadow=`0 0 0 2.5px rgba(14,165,233,0.10)`;}}
+                onBlur={e=>{e.currentTarget.style.borderColor=BORDER;e.currentTarget.style.boxShadow="none";}}
+              />
             </div>
 
-            {/* ── Overlay Chart — fixed height ── */}
-            <div style={{ padding:"12px 14px 0" }}>
+            {/* ── Overlay Chart ── */}
+            <div style={{ padding:"11px 13px 0" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6, gap:4, flexWrap:"wrap" as const }}>
-                <p style={{ fontSize:9, fontWeight:700, letterSpacing:"0.05em", textTransform:"uppercase" as const, color:"#94a3b8", fontFamily:SANS, margin:0 }}>
+                <SectionLabel>
                   {hasLuwesObs
                     ? (lang==="en" ? "Observation vs TPXO" : "Observasi vs TPXO")
                     : (lang==="en" ? "TPXO Tide Levels" : "Tinggi Pasut TPXO")
                   }
-                </p>
-                <div style={{ display:"flex", alignItems:"center", gap:5, flexWrap:"wrap" as const }}>
-                  <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, color:"#0284c7", fontWeight:700, background:"#e0f2fe", padding:"2px 7px", borderRadius:99, fontFamily:SANS }}>
-                    <span style={{ display:"inline-block", width:14, height:2, background:"#0284c7", borderRadius:1 }}/>TPXO
+                </SectionLabel>
+                <div style={{ display:"flex", alignItems:"center", gap:4, flexWrap:"wrap" as const, marginBottom:7 }}>
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, color:HIGH_TEXT, fontWeight:700, background:HIGH_BG, border:`1px solid ${HIGH_BDR}`, padding:"2px 7px", borderRadius:99, fontFamily:SANS }}>
+                    <span style={{ display:"inline-block", width:12, height:2, background:CHART_TPXO, borderRadius:1 }}/>TPXO
                   </span>
-                  <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, color:hasLuwesObs?"#f97316":"#94a3b8", fontWeight:700, background:hasLuwesObs?"#ffedd5":"#f1f5f9", padding:"2px 7px", borderRadius:99, fontFamily:SANS }}>
-                    <span style={{ display:"inline-block", width:6, height:6, background:hasLuwesObs?"#f97316":"#94a3b8", borderRadius:"50%" }}/>
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, color:hasLuwesObs?"#be185d":"#8faabb", fontWeight:700, background:hasLuwesObs?"#fdf2f8":"#f0f6fb", border:`1px solid ${hasLuwesObs?"#fbcfe8":"#dbeafe"}`, padding:"2px 7px", borderRadius:99, fontFamily:SANS }}>
+                    <span style={{ display:"inline-block", width:6, height:6, background:hasLuwesObs?CHART_LUWES:"#b0c8d8", borderRadius:"50%" }}/>
                     Luwes
                   </span>
                   {isToday && (
-                    <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, color:"#ef4444", fontWeight:700, background:"#fef2f2", padding:"2px 7px", borderRadius:99, fontFamily:SANS }}>
-                      <span style={{ display:"inline-block", width:10, height:1.5, background:"#ef4444", borderRadius:1 }}/>Now
+                    <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, color:"#e11d48", fontWeight:700, background:"#fff1f2", border:"1px solid #fecdd3", padding:"2px 7px", borderRadius:99, fontFamily:SANS }}>
+                      <span style={{ display:"inline-block", width:8, height:1.5, background:"#fb7185", borderRadius:1 }}/>Now
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Chart container — fixed height, no overflow */}
-              <div style={{ borderRadius:12, overflow:"hidden", background:"#fff", border:"1px solid #e2e8f0" }}>
-                <div style={{ padding:"8px 12px 4px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  <p style={{ fontSize:10, fontWeight:500, color:"#64748b", fontFamily:SANS, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1, paddingRight:8 }}>{selDateFmt}</p>
+              <div style={{ borderRadius:12, overflow:"hidden", background:BG_CARD, border:`1px solid ${BORDER}` }}>
+                <div style={{ padding:"7px 12px 3px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                  <p style={{ fontSize:10, fontWeight:500, color:TEXT_SEC, fontFamily:SANS, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1, paddingRight:7 }}>{selDateFmt}</p>
                   {overlayData && (
-                    <span style={{ fontSize:10, fontWeight:700, fontFamily:MONO, color:hasLuwesObs?"#f97316":"#94a3b8", background:hasLuwesObs?"#ffedd5":"#f1f5f9", padding:"1px 7px", borderRadius:99, flexShrink:0 }}>
+                    <span style={{ fontSize:9.5, fontWeight:700, fontFamily:MONO, color:hasLuwesObs?"#be185d":TEXT_HINT, background:hasLuwesObs?"#fdf2f8":BG_MUTED, padding:"1px 7px", borderRadius:99 }}>
                       {overlayData.luwes_stats.count} obs
                     </span>
                   )}
                 </div>
-                {/* FIXED height chart — does not grow or shrink */}
-                <div style={{ height:280, padding:"4px 8px 10px", position:"relative" }}>
+                <div style={{ height:272, padding:"3px 7px 9px", position:"relative" }}>
                   <OverlayChart
                     tpxoPredictions={tideData?.predictions??[]}
                     luwesObs={luwesForChart}
@@ -1458,86 +1447,84 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
               </div>
             </div>
 
-            {/* ── TPXO High / Low — single card for each (makes sense) ── */}
-            <div style={{ padding:"10px 14px 0" }}>
+            {/* ── TPXO High / Low ── */}
+            <div style={{ padding:"9px 13px 0" }}>
               {tpxoHighLow && (
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-                  {/* High */}
-                  <div style={{ borderRadius:10, padding:"10px 14px", background:"#e0f2fe", border:"1.5px solid #bae6fd" }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:4 }}>
-                      <div style={{ width:6, height:6, borderRadius:"50%", background:"#0284c7", flexShrink:0 }}/>
-                      <p style={{ fontSize:9, fontWeight:700, color:"#0284c7", opacity:0.8, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7 }}>
+                  {/* High — soft sky-blue */}
+                  <div style={{ borderRadius:10, padding:"9px 13px", background:HIGH_BG, border:`1.5px solid ${HIGH_BDR}` }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:3 }}>
+                      <div style={{ width:5, height:5, borderRadius:"50%", background:CHART_TPXO, flexShrink:0 }}/>
+                      <p style={{ fontSize:8.5, fontWeight:700, color:HIGH_TEXT, opacity:0.75, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>
                         TPXO · {lang==="en"?"High":"Tertinggi"}
                       </p>
                     </div>
-                    <p style={{ fontFamily:MONO, color:"#0284c7", fontSize:20, fontWeight:800, lineHeight:1, margin:0 }}>
+                    <p style={{ fontFamily:MONO, color:HIGH_TEXT, fontSize:19, fontWeight:800, lineHeight:1, margin:0 }}>
                       {tpxoHighLow.max>0?"+":""}{tpxoHighLow.max.toFixed(3)} m
                     </p>
-                    <p style={{ fontFamily:SANS, fontSize:10, color:"#0369a1", marginTop:3, opacity:0.7 }}>
+                    <p style={{ fontFamily:SANS, fontSize:9.5, color:HIGH_TEXT, marginTop:2, opacity:0.55 }}>
                       ~{tpxoHighLow.maxTime} WIB
                     </p>
                   </div>
-                  {/* Low */}
-                  <div style={{ borderRadius:10, padding:"10px 14px", background:"#fef3c7", border:"1.5px solid #fde68a" }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:4 }}>
-                      <div style={{ width:6, height:6, borderRadius:"50%", background:"#d97706", flexShrink:0 }}/>
-                      <p style={{ fontSize:9, fontWeight:700, color:"#d97706", opacity:0.8, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>
+                  {/* Low — soft warm amber */}
+                  <div style={{ borderRadius:10, padding:"9px 13px", background:LOW_BG, border:`1.5px solid ${LOW_BDR}` }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:3 }}>
+                      <div style={{ width:5, height:5, borderRadius:"50%", background:"#f59e0b", flexShrink:0 }}/>
+                      <p style={{ fontSize:8.5, fontWeight:700, color:LOW_TEXT, opacity:0.75, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>
                         TPXO · {lang==="en"?"Low":"Terendah"}
                       </p>
                     </div>
-                    <p style={{ fontFamily:MONO, color:"#d97706", fontSize:20, fontWeight:800, lineHeight:1, margin:0 }}>
+                    <p style={{ fontFamily:MONO, color:LOW_TEXT, fontSize:19, fontWeight:800, lineHeight:1, margin:0 }}>
                       {tpxoHighLow.min>0?"+":""}{tpxoHighLow.min.toFixed(3)} m
                     </p>
-                    <p style={{ fontFamily:SANS, fontSize:10, color:"#b45309", marginTop:3, opacity:0.7 }}>
+                    <p style={{ fontFamily:SANS, fontSize:9.5, color:LOW_TEXT, marginTop:2, opacity:0.55 }}>
                       ~{tpxoHighLow.minTime} WIB
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* Luwes stats if available */}
+              {/* Luwes stats — soft rose */}
               {hasLuwesObs && luwesStatsCorrected && luwesStatsCorrected.max_m!=null && (
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:8 }}>
-                  <div style={{ borderRadius:10, padding:"10px 14px", background:"#ffedd5", border:"1.5px solid #fed7aa" }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:4 }}>
-                      <div style={{ width:6, height:6, borderRadius:"50%", background:"#f97316", flexShrink:0 }}/>
-                      <p style={{ fontSize:9, fontWeight:700, color:"#f97316", opacity:0.8, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7, marginTop:7 }}>
+                  <div style={{ borderRadius:10, padding:"9px 13px", background:"#fdf2f8", border:`1.5px solid #fbcfe8` }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:3 }}>
+                      <div style={{ width:5, height:5, borderRadius:"50%", background:CHART_LUWES, flexShrink:0 }}/>
+                      <p style={{ fontSize:8.5, fontWeight:700, color:"#be185d", opacity:0.75, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>
                         Luwes · {lang==="en"?"Max (TOL)":"Maks (TOL)"}
                       </p>
                     </div>
-                    <p style={{ fontFamily:MONO, color:"#ea580c", fontSize:20, fontWeight:800, lineHeight:1, margin:0 }}>{luwesStatsCorrected.max_m!.toFixed(3)} m</p>
+                    <p style={{ fontFamily:MONO, color:"#9d174d", fontSize:19, fontWeight:800, lineHeight:1, margin:0 }}>{luwesStatsCorrected.max_m!.toFixed(3)} m</p>
                   </div>
-                  <div style={{ borderRadius:10, padding:"10px 14px", background:"#fef9c3", border:"1.5px solid #fef08a" }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:4 }}>
-                      <div style={{ width:6, height:6, borderRadius:"50%", background:"#ca8a04", flexShrink:0 }}/>
-                      <p style={{ fontSize:9, fontWeight:700, color:"#ca8a04", opacity:0.8, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>
+                  <div style={{ borderRadius:10, padding:"9px 13px", background:"#fef9f0", border:`1.5px solid #fde8c8` }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:3 }}>
+                      <div style={{ width:5, height:5, borderRadius:"50%", background:"#ec8e2c", flexShrink:0 }}/>
+                      <p style={{ fontSize:8.5, fontWeight:700, color:"#92400e", opacity:0.75, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>
                         Luwes · {lang==="en"?"Min (TOL)":"Min (TOL)"}
                       </p>
                     </div>
-                    <p style={{ fontFamily:MONO, color:"#b45309", fontSize:20, fontWeight:800, lineHeight:1, margin:0 }}>{luwesStatsCorrected.min_m!.toFixed(3)} m</p>
+                    <p style={{ fontFamily:MONO, color:"#92400e", fontSize:19, fontWeight:800, lineHeight:1, margin:0 }}>{luwesStatsCorrected.min_m!.toFixed(3)} m</p>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* ── Hourly Table — FIXED height with internal scroll ── */}
-            <div style={{ padding:"12px 14px 0" }}>
-              <p style={{ fontSize:9, fontWeight:700, letterSpacing:"0.05em", textTransform:"uppercase" as const, color:"#94a3b8", marginBottom:6, fontFamily:SANS }}>
-                {lang==="en" ? "Hourly Data (00:00–23:00 WIB)" : "Data Per Jam (00:00–23:00 WIB)"}
-              </p>
-              <div style={{ borderRadius:12, overflow:"hidden", background:"#fff", border:"1px solid #e2e8f0" }}>
-                {/* Fixed column headers */}
+            {/* ── Hourly Table ── */}
+            <div style={{ padding:"11px 13px 0" }}>
+              <SectionLabel>{lang==="en" ? "Hourly Data (00:00–23:00 WIB)" : "Data Per Jam (00:00–23:00 WIB)"}</SectionLabel>
+              <div style={{ borderRadius:11, overflow:"hidden", background:BG_CARD, border:`1px solid ${BORDER}` }}>
+                {/* Column headers */}
                 <div style={{
                   display:"grid",
-                  gridTemplateColumns:"44px 20px 54px 38px 60px 42px 42px",
-                  padding:"5px 12px",
-                  background:"#f8fafc",
-                  borderBottom:"1px solid #f1f5f9",
-                  fontSize:9,
+                  gridTemplateColumns:"44px 19px 54px 36px 60px 40px 40px",
+                  padding:"4px 11px",
+                  background:BG_MUTED,
+                  borderBottom:`1px solid ${BORDER_SM}`,
+                  fontSize:8.5,
                   fontWeight:700,
                   letterSpacing:"0.04em",
                   textTransform:"uppercase" as const,
-                  color:"#94a3b8",
+                  color:TEXT_HINT,
                   fontFamily:SANS,
                   position:"sticky" as const,
                   top:0,
@@ -1552,51 +1539,52 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                   <span style={{textAlign:"right" as const}}>{lang==="en"?"Curr.":"Arus"}</span>
                 </div>
 
-                {/* Scrollable rows — FIXED height */}
+                {/* Fixed-height scrollable rows */}
                 <div style={{
-                  height: 320, // fixed height
+                  height: 316,
                   overflowY: "auto",
                   scrollbarWidth: "thin",
-                  scrollbarColor: "#e2e8f0 transparent",
+                  scrollbarColor: `${BORDER} transparent`,
                 }}>
                   {rows.map((row, idx) => {
                     const hl    = isToday && row.hour.startsWith(nowHour+":00");
                     const isMax = tpxoHighLow && row.tideH!==null && Math.abs(row.tideH-tpxoHighLow.max)<0.015;
                     const isMin = tpxoHighLow && row.tideH!==null && Math.abs(row.tideH-tpxoHighLow.min)<0.015;
-                    const waveC = row.waveH==null?"#64748b": row.waveH<0.5?"#16a34a": row.waveH<1.25?"#d97706":"#dc2626";
-                    const currC = row.currentSpd==null?"#64748b": row.currentSpd<0.25?"#16a34a": row.currentSpd<0.75?"#d97706":"#dc2626";
+                    // Wave/current color: soft semantic
+                    const waveC = row.waveH==null?TEXT_HINT: row.waveH<0.5?"#16a34a": row.waveH<1.25?"#d97706":"#e11d48";
+                    const currC = row.currentSpd==null?TEXT_HINT: row.currentSpd<0.25?"#16a34a": row.currentSpd<0.75?"#d97706":"#e11d48";
                     const isLast = idx === rows.length - 1;
                     return (
                       <div key={idx} style={{
                         display:"grid",
-                        gridTemplateColumns:"44px 20px 54px 38px 60px 42px 42px",
-                        padding:"5px 12px",
+                        gridTemplateColumns:"44px 19px 54px 36px 60px 40px 40px",
+                        padding:"4.5px 11px",
                         alignItems:"center",
-                        borderBottom: isLast ? "none" : "1px solid #f8fafc",
+                        borderBottom: isLast ? "none" : `1px solid ${BORDER_SM}`,
                         background: hl
-                          ? "linear-gradient(90deg,#e0f2fe,#f0f9ff)"
-                          : idx%2===0?"#fff":"#fafafa",
+                          ? `linear-gradient(90deg,${HIGH_BG},#f5fbff)`
+                          : idx%2===0?BG_CARD:BG_MUTED,
                       }}>
-                        <span style={{ fontFamily:MONO, fontSize:10, fontWeight:hl?700:500, color:hl?"#0284c7":"#64748b" }}>
+                        <span style={{ fontFamily:MONO, fontSize:9.5, fontWeight:hl?700:400, color:hl?PRIMARY:TEXT_SEC }}>
                           {row.hour}
                         </span>
-                        <div style={{display:"flex",justifyContent:"center" as const}}>{row.wCode!==null && <WeatherSymbol code={row.wCode} size={11}/>}</div>
-                        <span style={{ fontFamily:MONO, fontSize:10, textAlign:"right" as const, fontWeight:isMax||isMin?700:500, color:isMax?"#0284c7":isMin?"#d97706":"#334155" }}>
+                        <div style={{display:"flex",justifyContent:"center" as const}}>{row.wCode!==null && <WeatherSymbol code={row.wCode} size={10}/>}</div>
+                        <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, fontWeight:isMax||isMin?700:400, color:isMax?HIGH_TEXT:isMin?LOW_TEXT:TEXT_PRI }}>
                           {row.tideH!==null ? (row.tideH>=0?"+":"")+row.tideH.toFixed(3) : "—"}
                         </span>
-                        <span style={{ fontFamily:MONO, fontSize:10, textAlign:"right" as const, color:"#475569" }}>{row.temp!==null?`${Math.round(row.temp)}°`:"—"}</span>
-                        <span style={{ fontFamily:MONO, fontSize:10, textAlign:"right" as const, color:"#475569" }}>
+                        <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, color:TEXT_SEC }}>{row.temp!==null?`${Math.round(row.temp)}°`:"—"}</span>
+                        <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, color:TEXT_SEC }}>
                           {row.windSpd!==null ? (
                             <span style={{display:"flex",alignItems:"center",justifyContent:"flex-end" as const,gap:2}}>
-                              <span style={{color:"#94a3b8",fontSize:9,fontFamily:SANS}}>{row.windDir!==null?windDirLabel(row.windDir):""}</span>
+                              <span style={{color:TEXT_HINT,fontSize:8.5,fontFamily:SANS}}>{row.windDir!==null?windDirLabel(row.windDir):""}</span>
                               {row.windSpd.toFixed(1)}
                             </span>
                           ) : "—"}
                         </span>
-                        <span style={{ fontFamily:MONO, fontSize:10, textAlign:"right" as const, color:waveC, fontWeight:row.waveH!=null&&row.waveH>=1.25?600:400 }}>
+                        <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, color:waveC, fontWeight:row.waveH!=null&&row.waveH>=1.25?600:400 }}>
                           {row.waveH!==null?row.waveH.toFixed(2):"—"}
                         </span>
-                        <span style={{ fontFamily:MONO, fontSize:10, textAlign:"right" as const, color:currC, fontWeight:row.currentSpd!=null&&row.currentSpd>=0.75?600:400 }}>
+                        <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, color:currC, fontWeight:row.currentSpd!=null&&row.currentSpd>=0.75?600:400 }}>
                           {row.currentSpd!==null?row.currentSpd.toFixed(2):"—"}
                         </span>
                       </div>
@@ -1605,65 +1593,61 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 </div>
 
                 {/* Legend footer */}
-                <div style={{ padding:"5px 12px", borderTop:"1px solid #f1f5f9", background:"#fafafa", display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" as const }}>
+                <div style={{ padding:"4px 11px", borderTop:`1px solid ${BORDER_SM}`, background:BG_MUTED, display:"flex", alignItems:"center", gap:9, flexWrap:"wrap" as const }}>
                   {[
                     { color:"#16a34a", label:lang==="en"?"Low":"Rendah" },
                     { color:"#d97706", label:lang==="en"?"Moderate":"Sedang" },
-                    { color:"#dc2626", label:lang==="en"?"High":"Tinggi" },
+                    { color:"#e11d48", label:lang==="en"?"High":"Tinggi" },
                   ].map(({color,label})=>(
-                    <div key={color} style={{ display:"flex", alignItems:"center", gap:4 }}>
-                      <div style={{ width:5, height:5, borderRadius:"50%", background:color, flexShrink:0 }}/>
-                      <span style={{ fontSize:9, color:"#94a3b8", fontFamily:SANS }}>{label}</span>
+                    <div key={color} style={{ display:"flex", alignItems:"center", gap:3 }}>
+                      <div style={{ width:4, height:4, borderRadius:"50%", background:color, flexShrink:0 }}/>
+                      <span style={{ fontSize:8.5, color:TEXT_HINT, fontFamily:SANS }}>{label}</span>
                     </div>
                   ))}
-                  <span style={{ fontSize:9, color:"#cbd5e1", fontFamily:SANS, marginLeft:"auto" }}>
-                    {lang==="en" ? "m/s" : "m/s"}
-                  </span>
+                  <span style={{ fontSize:8.5, color:BORDER, fontFamily:SANS, marginLeft:"auto" }}>m/s</span>
                 </div>
               </div>
             </div>
 
             {/* ── Activity Guide ── */}
-            <div style={{ padding:"14px 14px 0" }}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-                <p style={{ fontSize:9, fontWeight:700, letterSpacing:"0.05em", textTransform:"uppercase" as const, color:"#94a3b8", fontFamily:SANS, margin:0 }}>
-                  {lang==="en" ? "Activity Guide" : "Panduan Aktivitas"}
-                </p>
-                <div style={{ display:"flex", gap:4 }}>
+            <div style={{ padding:"13px 13px 0" }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:7 }}>
+                <SectionLabel>{lang==="en" ? "Activity Guide" : "Panduan Aktivitas"}</SectionLabel>
+                <div style={{ display:"flex", gap:3, marginBottom:7 }}>
                   {(["safe","caution","danger"] as const).map(s => {
                     const count = activities.filter(a=>a.status===s).length;
                     const cfg   = statusStyles[s];
                     return (
-                      <div key={s} style={{ display:"flex", alignItems:"center", gap:3, background:cfg.bg, border:`1px solid ${cfg.border}`, borderRadius:99, padding:"2px 7px" }}>
-                        <div style={{ width:5, height:5, borderRadius:"50%", background:cfg.dot, flexShrink:0 }}/>
-                        <span style={{ fontFamily:SANS, fontSize:9, fontWeight:700, color:cfg.text }}>{count}</span>
+                      <div key={s} style={{ display:"flex", alignItems:"center", gap:3, background:cfg.bg, border:`1px solid ${cfg.border}`, borderRadius:99, padding:"2px 6px" }}>
+                        <div style={{ width:4, height:4, borderRadius:"50%", background:cfg.dot, flexShrink:0 }}/>
+                        <span style={{ fontFamily:SANS, fontSize:8.5, fontWeight:700, color:cfg.text }}>{count}</span>
                       </div>
                     );
                   })}
                 </div>
               </div>
 
-              <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:10, overflow:"hidden" }}>
+              <div style={{ background:BG_CARD, border:`1px solid ${BORDER}`, borderRadius:10, overflow:"hidden" }}>
                 {activities.map((act, idx) => {
                   const st     = statusStyles[act.status];
                   const isLast = idx===activities.length-1;
                   return (
                     <div key={act.id} style={{
-                      display:"flex", alignItems:"center", gap:8, padding:"8px 12px",
-                      borderBottom: isLast?"none":"1px solid #f1f5f9",
-                      background: idx%2===0?"#fff":"#fafafa",
+                      display:"flex", alignItems:"center", gap:7, padding:"7px 11px",
+                      borderBottom: isLast?"none":`1px solid ${BORDER_SM}`,
+                      background: idx%2===0?BG_CARD:BG_MUTED,
                     }}>
-                      <div style={{ width:3, flexShrink:0, alignSelf:"stretch", background:st.dot, borderRadius:99, minHeight:24 }}/>
-                      <div style={{ display:"flex", alignItems:"center", gap:5, flex:"0 0 120px", minWidth:0 }}>
+                      <div style={{ width:2.5, flexShrink:0, alignSelf:"stretch", background:st.dot, borderRadius:99, minHeight:22 }}/>
+                      <div style={{ display:"flex", alignItems:"center", gap:4, flex:"0 0 116px", minWidth:0 }}>
                         <span style={{ color:st.dot, flexShrink:0 }}>{act.icon}</span>
-                        <span style={{ fontFamily:SANS, fontSize:10, fontWeight:600, color:"#0f172a", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                        <span style={{ fontFamily:SANS, fontSize:9.5, fontWeight:600, color:TEXT_PRI, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                           {lang==="en" ? act.labelEn : act.labelId}
                         </span>
                       </div>
-                      <p style={{ fontFamily:SANS, fontSize:10, color:"#64748b", lineHeight:1.35, flex:1, margin:0, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" as const }}>
+                      <p style={{ fontFamily:SANS, fontSize:9.5, color:TEXT_SEC, lineHeight:1.35, flex:1, margin:0, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" as const }}>
                         {lang==="en" ? act.reasonEn : act.reasonId}
                       </p>
-                      <div style={{ flexShrink:0, background:st.bg, border:`1px solid ${st.border}`, borderRadius:99, padding:"2px 7px", fontFamily:SANS, fontSize:9, fontWeight:700, color:st.text, whiteSpace:"nowrap" }}>
+                      <div style={{ flexShrink:0, background:st.bg, border:`1px solid ${st.border}`, borderRadius:99, padding:"2px 6px", fontFamily:SANS, fontSize:8.5, fontWeight:700, color:st.text, whiteSpace:"nowrap" }}>
                         {st.label[lang==="en"?0:1]}
                       </div>
                     </div>
@@ -1673,15 +1657,13 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
             </div>
 
             {/* ── IHO S-104 Compliance Badge + Export ── */}
-            <div style={{ padding:"14px 14px 0" }}>
-              <p style={{ fontSize:9, fontWeight:700, letterSpacing:"0.05em", textTransform:"uppercase" as const, color:"#94a3b8", marginBottom:6, fontFamily:SANS }}>
-                {lang==="en" ? "IHO S-100 / S-104 Compliance" : "Kepatuhan IHO S-100 / S-104"}
-              </p>
+            <div style={{ padding:"13px 13px 0" }}>
+              <SectionLabel>{lang==="en" ? "IHO S-100 / S-104 Compliance" : "Kepatuhan IHO S-100 / S-104"}</SectionLabel>
               <S104Badge coordinates={coordinates} selectedDate={selDate} language={lang}/>
             </div>
 
             {/* ── Metadata Footer ── */}
-            <div style={{ margin:"14px 14px 20px", borderRadius:10, padding:"10px 14px", background:"#f1f5f9", border:"1px solid #e2e8f0" }}>
+            <div style={{ margin:"13px 13px 20px", borderRadius:10, padding:"9px 13px", background:BG_CARD, border:`1px solid ${BORDER}` }}>
               {([
                 [lang==="en"?"Tide model":"Model pasut",     tideData?.metadata.model],
                 ["Datum",                                     tideData?.metadata.datum],
@@ -1694,9 +1676,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 ["S-104",                                     "Ed.2.0.0 (Dec 2024)"],
                 [lang==="en"?"Chart":"Grafik",               lang==="en"?"Per-minute cubic spline":"Cubic spline/menit"],
               ] as [string, string|undefined][]).map(([k,v])=>(
-                <div key={k} style={{ display:"flex", justifyContent:"space-between", marginBottom:2, gap:8 }}>
-                  <span style={{ fontFamily:MONO, fontSize:10, color:"#94a3b8", fontWeight:500, flexShrink:0 }}>{k}</span>
-                  <span style={{ fontFamily:MONO, fontSize:10, color:"#64748b", textAlign:"right" as const, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{v??"—"}</span>
+                <div key={k} style={{ display:"flex", justifyContent:"space-between", marginBottom:2, gap:7 }}>
+                  <span style={{ fontFamily:MONO, fontSize:9.5, color:TEXT_HINT, fontWeight:500, flexShrink:0 }}>{k}</span>
+                  <span style={{ fontFamily:MONO, fontSize:9.5, color:TEXT_SEC, textAlign:"right" as const, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{v??"—"}</span>
                 </div>
               ))}
             </div>
