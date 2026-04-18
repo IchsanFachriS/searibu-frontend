@@ -1,10 +1,10 @@
 /**
- * MapContainer.tsx  —  Peta WebGIS Kepulauan Seribu
+ * MapContainer.tsx — Fixed mobile layout
  * Fixes:
- *  - Legend positioning no longer overlaps basemap toggle or search bar
- *  - Basemap toggle moved to bottom-left on ALL screens (consistent)
- *  - Legend sits top-left on desktop, top-left (below navbar) on mobile too
- *  - Search bar centered at bottom with safe clearance
+ *  - Legend moved to bottom-left ABOVE basemap toggle (stacked vertically)
+ *  - Search bar has proper left margin so it doesn't overlap basemap toggle
+ *  - Legend collapsed by default on mobile so it doesn't cover the menu
+ *  - Basemap toggle stays at very bottom-left
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
@@ -257,9 +257,9 @@ const BottomSearchBar: React.FC<BottomSearchBarProps> = ({ language, onIslandSel
   );
 };
 
-/* ── Legend ── */
-const LegendPanel: React.FC<{ language: string }> = ({ language }) => {
-  const [collapsed, setCollapsed] = useState(false);
+/* ── Legend — compact, collapsible ── */
+const LegendPanel: React.FC<{ language: string; defaultCollapsed?: boolean }> = ({ language, defaultCollapsed = false }) => {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   return (
     <div style={{
       background: 'rgba(255,255,255,0.97)',
@@ -268,7 +268,6 @@ const LegendPanel: React.FC<{ language: string }> = ({ language }) => {
       boxShadow: '0 4px 16px rgba(0,0,0,0.11)',
       border: '1px solid rgba(0,0,0,0.08)',
       overflow: 'hidden',
-      /* Fixed width so it never grows unexpectedly */
       width: collapsed ? 'auto' : 148,
       minWidth: collapsed ? 0 : 148,
     }}>
@@ -367,6 +366,14 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
   const portMarkersRef = useRef<L.Marker[]>([]);
   const luwesMarkerRef = useRef<L.Marker | null>(null);
   const [geojsonData, setGeojsonData] = useState<any>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   const basemaps = {
     osm: { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' },
@@ -526,6 +533,17 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
     if (onGridClick) onGridClick({ lat, lon });
   }, [onCoordinateSearch, onGridClick]);
 
+  // Layout constants
+  // Basemap toggle is rendered by parent (BasemapToggle) at bottom:16, left:12 — height ≈ 40px total
+  // Legend sits at bottom, above basemap toggle: bottom = 16 + 40 + 8 = 64
+  // Search bar: centered, with left padding to clear basemap toggle + legend column
+  const BASEMAP_HEIGHT = 40; // px
+  const BASEMAP_BOTTOM = 16; // same as BasemapToggle
+  const LEGEND_BOTTOM = BASEMAP_BOTTOM + BASEMAP_HEIGHT + 8; // 64px
+
+  // On desktop: legend top-right of left controls column
+  // On mobile: legend collapsed by default, left-bottom stack
+
   return (
     <>
       <style>{`
@@ -570,9 +588,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
         }
         .grid-tooltip::before { display: none !important; }
 
-        /* Scale control: keep it above search bar on mobile */
+        /* Scale control */
         .leaflet-bottom.leaflet-right .leaflet-control-scale {
-          margin-bottom: 76px !important;
+          margin-bottom: 8px !important;
           margin-right: 8px !important;
         }
 
@@ -607,9 +625,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
         }
         @media (max-width: 768px) {
           .island-popup .leaflet-popup-content-wrapper { max-width: 86vw !important; }
-          /* On mobile, scale control sits above the bottom controls */
           .leaflet-bottom.leaflet-right .leaflet-control-scale {
-            margin-bottom: 76px !important;
+            margin-bottom: 8px !important;
           }
         }
 
@@ -624,56 +641,55 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
       />
 
       {/*
-        ── LAYOUT STRATEGY (no overlaps) ──────────────────────────────────
-        Desktop (≥769px):
-          top-left:    Legend (fixed, below navbar clearance)
-          top-right:   Zoom control (Leaflet default)
-          bottom-left: Basemap toggle (from BasemapToggle component via parent)
-          bottom-center: Search bar
+        ── FIXED LAYOUT (no overlaps) ─────────────────────────────────
+        Desktop:
+          top-right:    Zoom control (Leaflet)
+          bottom-left:  [Legend stacked above Basemap toggle]
+          bottom-center: Search bar (with left/right clearance)
           bottom-right: Scale (Leaflet)
 
-        Mobile (≤768px):
-          top-left:    Legend (collapsed by default)
-          top-right:   Zoom control (hidden on <480px)
-          bottom-left: Basemap toggle (shorter height, leaves room for search)
-          bottom-center: Search bar (raised above basemap toggle height)
-          bottom-right: Scale (Leaflet, raised)
+        Mobile:
+          top-right:    Zoom hidden
+          bottom-left:  [Legend (collapsed) stacked above Basemap toggle]
+          bottom: Search bar centered (with enough left margin for left-column)
+          bottom-right: Scale
 
-        Key clearances:
-          Search bar height ≈ 52px → bottom: 16px
-          Basemap toggle sits to the LEFT of search → no vertical conflict
-          Legend sits top-left → never overlaps bottom controls
-        ──────────────────────────────────────────────────────────────────
+        KEY: Legend + Basemap toggle are in the SAME left column.
+        Search bar gets left offset to clear that column.
+        ──────────────────────────────────────────────────────────────
       */}
 
-      {/* Legend — top-left, always */}
+      {/* Left column: Legend sits ABOVE basemap toggle */}
       <div
         style={{
           position: 'absolute',
-          top: 12,
+          bottom: LEGEND_BOTTOM,
           left: 12,
-          zIndex: 1000,
+          zIndex: 1001, // above basemap toggle (1000)
           overscrollBehavior: 'contain',
           touchAction: 'none',
         }}
         onWheel={e => e.stopPropagation()}
         onTouchMove={e => e.stopPropagation()}
       >
-        <LegendPanel language={language} />
+        {/* On mobile, collapse legend by default so it doesn't crowd the UI */}
+        <LegendPanel language={language} defaultCollapsed={isMobile} />
       </div>
 
-      {/* Search bar — bottom-center, always */}
+      {/* Search bar — bottom-center with left clearance for the left column */}
       <div
         style={{
           position: 'absolute',
           bottom: 16,
+          // Center in the available space. Left column (legend/basemap) ≈ 106px + 12px margin = 118px
+          // Right side: scale control ~80px
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 1000,
-          width: '100%',
-          /* Leave room on the left for basemap toggle (≈90px) and right for scale */
-          maxWidth: 380,
-          padding: '0 100px 0 100px',
+          // Use a max-width that fits the center area
+          width: 'calc(100% - 240px)', // 120px clearance each side
+          maxWidth: 400,
+          minWidth: 200,
           boxSizing: 'border-box' as const,
           overscrollBehavior: 'contain',
           touchAction: 'manipulation',

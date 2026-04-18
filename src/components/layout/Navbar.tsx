@@ -397,6 +397,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
   const [modal, setModal]             = useState<ModalType>(null);
   const [scrolled, setScrolled]       = useState(false);
   const [mobileOpen, setMobileOpen]   = useState(false);
+  const [isMobile, setIsMobile]       = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
     try { const s = sessionStorage.getItem('searibu_user'); return s ? JSON.parse(s) : null; }
     catch { return null; }
@@ -407,6 +408,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
     const onScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Track mobile breakpoint
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
   useEffect(() => { setMobileOpen(false); }, [activePage]);
@@ -420,7 +429,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
 
   const navItems = language === 'id' ? NAV_ITEMS_ID : NAV_ITEMS_EN;
   const onHome   = activePage === 'home';
-  const glass    = onHome && !scrolled;
+
+  // On mobile: always solid navy. On desktop: glass when on home and not scrolled
+  const glass = !isMobile && onHome && !scrolled;
 
   return (
     <>
@@ -498,6 +509,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
 
       <header style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 150, height: 62,
+        // Always solid on mobile, glass only on desktop home page
         background: glass
           ? `linear-gradient(to bottom, rgba(2,78,120,0.75) 0%, rgba(2,78,120,0) 100%)`
           : `rgba(2,78,120,0.97)`,

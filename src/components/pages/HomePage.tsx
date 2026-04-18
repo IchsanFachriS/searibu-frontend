@@ -1,6 +1,6 @@
 /**
  * HomePage.tsx — Searibu Landing Page
- * Palette: Navy #024e78 · Ocean #0369a1 · Sky #0ea5e9 · Teal #14b8a6 · Bg #f8fafc
+ * Mobile fixes: Metocean Parameters layout, hero grid, all responsive grids
  */
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -10,7 +10,6 @@ import { ArrowRight, Waves, Wind, Navigation, BarChart2, Map, Shield } from 'luc
 const DISPLAY = '"Cormorant Garamond", "Georgia", serif';
 const SANS    = '"Inter", "Helvetica Neue", Arial, sans-serif';
 
-/* Brand tokens */
 const NAVY         = '#024e78';
 const PRIMARY      = '#0369a1';
 const PRIMARY_SOFT = '#0ea5e9';
@@ -233,20 +232,28 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         }
         .feat-card:hover { box-shadow: 0 8px 28px rgba(3,105,161,0.10); transform: translateY(-3px); border-color: #bae6fd; }
 
-        .act-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f1f5f8; }
-        .act-row:last-child { border-bottom: none; }
-
+        /* ── Mobile-first responsive ── */
         @media (max-width: 768px) {
-          .hero-grid { grid-template-columns: 1fr !important; }
-          .prob-grid  { grid-template-columns: 1fr !important; }
-          .feat-grid  { grid-template-columns: 1fr 1fr !important; }
-          .std-grid   { grid-template-columns: 1fr !important; gap: 32px !important; }
-          .hero-pad   { padding: 120px 24px 80px !important; }
-          .sec-pad    { padding: 72px 24px !important; }
+          .hero-grid   { grid-template-columns: 1fr !important; gap: 32px !important; }
+          .hero-pad    { padding: 100px 20px 64px !important; min-height: auto !important; }
+          .hero-right  { display: none !important; }
+
+          .prob-grid   { grid-template-columns: 1fr !important; gap: 32px !important; }
+          .sec-pad     { padding: 56px 20px !important; }
+
+          /* Metocean parameters: table stacks, image stacks below */
+          .data-header-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
+          .data-body-grid   { grid-template-columns: 1fr !important; gap: 24px !important; }
+          .data-side-image  { display: none !important; }
+
+          .feat-grid   { grid-template-columns: 1fr 1fr !important; }
+          .std-grid    { grid-template-columns: 1fr !important; gap: 32px !important; }
+          .stat-grid   { grid-template-columns: 1fr 1fr !important; }
         }
         @media (max-width: 480px) {
-          .feat-grid { grid-template-columns: 1fr !important; }
-          .stat-grid { grid-template-columns: 1fr 1fr !important; }
+          .feat-grid   { grid-template-columns: 1fr !important; }
+          .hero-pad    { padding: 90px 16px 56px !important; }
+          .sec-pad     { padding: 48px 16px !important; }
         }
       `}</style>
 
@@ -260,7 +267,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
           />
         </div>
 
-        {/* Gradient overlays — deep navy tones */}
         <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(105deg, rgba(2,78,120,0.96) 0%, rgba(2,78,120,0.75) 50%, rgba(2,78,120,0.20) 100%)` }}/>
         <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to top, rgba(2,78,120,1) 0%, transparent 45%)` }}/>
         <div style={{ position: 'absolute', top: '20%', left: '48%', width: 400, height: 400, background: `radial-gradient(circle, rgba(20,184,166,0.08) 0%, transparent 70%)`, pointerEvents: 'none' }}/>
@@ -305,8 +311,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Right — data card */}
-          <div style={{ ...anim(5, 100) }}>
+          {/* Right — data card (hidden on mobile via .hero-right) */}
+          <div className="hero-right" style={{ ...anim(5, 100) }}>
             <div style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid rgba(14,165,233,0.18)`, borderRadius: 8, overflow: 'hidden' }}>
               <div style={{ padding: '14px 20px', borderBottom: `1px solid rgba(14,165,233,0.12)`, display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#16a34a', boxShadow: '0 0 8px #16a34a88' }}/>
@@ -368,7 +374,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               <StatBlock n={c.stat2n} label={c.stat2l} active={prob.inView} />
               <StatBlock n={c.stat3n} label={c.stat3l} active={prob.inView} accent />
               <div style={{ marginTop: 20, borderRadius: 4, overflow: 'hidden', height: 160, position: 'relative' }}>
-                <img src="https://images.unsplash.com/photo-1628413188069-383190077d18?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8M…" alt="Seribu Islands aerial" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', filter: 'brightness(0.6) saturate(0.9)' }}/>
+                <img src="https://images.unsplash.com/photo-1628413188069-383190077d18?q=80&w=1170&auto=format&fit=crop" alt="Seribu Islands aerial" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', filter: 'brightness(0.6) saturate(0.9)' }}/>
                 <div style={{ position: 'absolute', bottom: 10, left: 12 }}>
                   <span style={{ fontFamily: SANS, fontSize: 10, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Kepulauan Seribu · Jakarta Bay</span>
                 </div>
@@ -381,7 +387,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
       {/* ════ 3. ACTIVITY DATA MATRIX ════ */}
       <section className="sec-pad" style={{ background: '#fff', padding: '96px 64px' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto' }} ref={data.ref}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'end', marginBottom: 56 }}>
+          {/* Section header */}
+          <div className="data-header-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'end', marginBottom: 56 }}>
             <div style={secAnim(data.inView)}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                 <div style={{ width: 24, height: 1, background: PRIMARY }}/>
@@ -396,7 +403,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 48, alignItems: 'start', ...secAnim(data.inView, 180) }}>
+          {/* Body: activity table + side image — stacks on mobile */}
+          <div className="data-body-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 48, alignItems: 'start', ...secAnim(data.inView, 180) }}>
+            {/* Activity table */}
             <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', padding: '10px 20px', background: NAVY, borderBottom: `1px solid rgba(255,255,255,0.06)` }}>
                 <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)' }}>
@@ -407,16 +416,23 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 </span>
               </div>
               {c.activities.map((act, i) => (
-                <div key={i} className="act-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 20px', borderBottom: i < c.activities.length - 1 ? '1px solid #f1f5f8' : 'none', background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                  <span style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: NAVY, minWidth: 140 }}>{act.name}</span>
-                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '11px 20px',
+                  borderBottom: i < c.activities.length - 1 ? '1px solid #f1f5f8' : 'none',
+                  background: i % 2 === 0 ? '#fff' : '#f8fafc',
+                  flexWrap: 'wrap', gap: 6,
+                }}>
+                  <span style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: NAVY, minWidth: 120, flexShrink: 0 }}>{act.name}</span>
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     {act.params.map(p => <ParamBadge key={p} label={p} />)}
                   </div>
                 </div>
               ))}
             </div>
 
-            <div>
+            {/* Side image — hidden on mobile via .data-side-image */}
+            <div className="data-side-image">
               <div style={{ borderRadius: 6, overflow: 'hidden', marginBottom: 16 }}>
                 <img src="https://images.unsplash.com/photo-1544551763-77ef2d0cfc6c?w=700&q=80" alt="Scuba diving Seribu Islands" style={{ width: '100%', height: 280, objectFit: 'cover', objectPosition: 'center', display: 'block', filter: 'saturate(0.9)' }}/>
               </div>
