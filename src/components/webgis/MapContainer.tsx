@@ -1,9 +1,10 @@
 /**
  * MapContainer.tsx  —  Peta WebGIS Kepulauan Seribu
  * Fixes:
- *  - Removed accessFrom and travelTimeMin from Island data
- *  - Popup sizing made more proportional (wider, better typography)
- *  - Legend positioned to not overlap on mobile
+ *  - Legend positioning no longer overlaps basemap toggle or search bar
+ *  - Basemap toggle moved to bottom-left on ALL screens (consistent)
+ *  - Legend sits top-left on desktop, top-left (below navbar) on mobile too
+ *  - Search bar centered at bottom with safe clearance
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
@@ -258,10 +259,7 @@ const BottomSearchBar: React.FC<BottomSearchBarProps> = ({ language, onIslandSel
 
 /* ── Legend ── */
 const LegendPanel: React.FC<{ language: string }> = ({ language }) => {
-  // Default collapsed on mobile so it takes minimal vertical space
-  const [collapsed, setCollapsed] = useState(
-    typeof window !== 'undefined' && window.innerWidth <= 768
-  );
+  const [collapsed, setCollapsed] = useState(false);
   return (
     <div style={{
       background: 'rgba(255,255,255,0.97)',
@@ -270,6 +268,9 @@ const LegendPanel: React.FC<{ language: string }> = ({ language }) => {
       boxShadow: '0 4px 16px rgba(0,0,0,0.11)',
       border: '1px solid rgba(0,0,0,0.08)',
       overflow: 'hidden',
+      /* Fixed width so it never grows unexpectedly */
+      width: collapsed ? 'auto' : 148,
+      minWidth: collapsed ? 0 : 148,
     }}>
       <button
         onClick={() => setCollapsed(c => !c)}
@@ -284,13 +285,16 @@ const LegendPanel: React.FC<{ language: string }> = ({ language }) => {
           cursor: 'pointer',
           borderBottom: collapsed ? 'none' : '1px solid #f1f5f9',
           gap: 6,
+          whiteSpace: 'nowrap',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <Layers size={12} style={{ color: '#64748b' }} />
-          <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' as const, color: '#64748b' }}>
-            {language === 'id' ? 'Legenda' : 'Legend'}
-          </span>
+          {!collapsed && (
+            <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' as const, color: '#64748b' }}>
+              {language === 'id' ? 'Legenda' : 'Legend'}
+            </span>
+          )}
         </div>
         {collapsed
           ? <ChevronDown size={11} style={{ color: '#94a3b8' }} />
@@ -299,7 +303,7 @@ const LegendPanel: React.FC<{ language: string }> = ({ language }) => {
       </button>
       {!collapsed && (
         <div
-          style={{ padding: '4px 0 2px' }}
+          style={{ padding: '4px 0 6px' }}
           onWheel={e => e.stopPropagation()}
           onTouchMove={e => e.stopPropagation()}
         >
@@ -339,11 +343,11 @@ const LegendPanel: React.FC<{ language: string }> = ({ language }) => {
               label: language === 'id' ? 'Grid TPXO' : 'TPXO Grid',
             },
           ].map((item, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '4px 10px' }}>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '3px 10px' }}>
               <div style={{ width: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {item.icon}
               </div>
-              <span style={{ fontFamily: SANS, fontSize: 11, fontWeight: 500, color: '#374151' }}>{item.label}</span>
+              <span style={{ fontFamily: SANS, fontSize: 11, fontWeight: 500, color: '#374151', whiteSpace: 'nowrap' }}>{item.label}</span>
             </div>
           ))}
         </div>
@@ -369,7 +373,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
     satellite: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Tiles &copy; Esri' },
   };
 
-  /* ── Island popup: no accessFrom / travelTime, proper fixed width ── */
   const buildIslandPopup = useCallback((island: Island): string => {
     const color = ISLAND_COLOR;
     const title = language === 'id' ? island.name : island.nameEn;
@@ -391,7 +394,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
       </div>`;
   }, [language]);
 
-  /* ── Port popup ── */
   const buildPortPopup = useCallback((port: typeof PORT_LOCATIONS[0]): string => {
     const desc = language === 'id' ? port.descId : port.descEn;
     return `
@@ -406,7 +408,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
       </div>`;
   }, [language]);
 
-  /* ── Luwes popup ── */
   const buildLuwesPopup = useCallback((): string => {
     const title = language === 'id' ? LUWES_STATION.name : LUWES_STATION.nameEn;
     const desc = language === 'id' ? LUWES_STATION.descId : LUWES_STATION.descEn;
@@ -530,7 +531,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-        /* ── Popup: remove all default padding, let our HTML control layout ── */
         .island-popup .leaflet-popup-content-wrapper {
           padding: 0 !important;
           border-radius: 12px !important;
@@ -545,7 +545,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
         }
         .island-popup .leaflet-popup-tip-container { margin-top: -1px; }
 
-        /* Island name tooltip */
         .island-label-tooltip {
           background: rgba(15,23,42,0.88) !important;
           border: none !important;
@@ -560,7 +559,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
         }
         .island-label-tooltip::before { display: none !important; }
 
-        /* Grid tooltip */
         .grid-tooltip {
           background: rgba(255,255,255,0.96) !important;
           border: 1px solid rgba(2,132,199,0.28) !important;
@@ -572,15 +570,18 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
         }
         .grid-tooltip::before { display: none !important; }
 
-        /* Scale: sit above search bar */
+        /* Scale control: keep it above search bar on mobile */
         .leaflet-bottom.leaflet-right .leaflet-control-scale {
-          margin-bottom: 80px !important;
+          margin-bottom: 76px !important;
+          margin-right: 8px !important;
         }
 
         /* Zoom control */
         .leaflet-control-zoom {
           border: none !important;
           box-shadow: 0 2px 12px rgba(0,0,0,0.12) !important;
+          margin-top: 12px !important;
+          margin-right: 12px !important;
         }
         .leaflet-control-zoom a {
           font-family: ${SANS} !important;
@@ -597,7 +598,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
         .leaflet-control-zoom-in { border-radius: 8px 8px 0 0 !important; border-bottom: 1px solid #e2e8f0 !important; }
         .leaflet-control-zoom-out { border-radius: 0 0 8px 8px !important; }
 
-        /* Mobile: hide zoom, constrain popup width */
         @media (max-width: 480px) {
           .leaflet-control-zoom { display: none !important; }
           .island-label-tooltip { font-size: 10px !important; padding: 2px 6px !important; }
@@ -607,6 +607,10 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
         }
         @media (max-width: 768px) {
           .island-popup .leaflet-popup-content-wrapper { max-width: 86vw !important; }
+          /* On mobile, scale control sits above the bottom controls */
+          .leaflet-bottom.leaflet-right .leaflet-control-scale {
+            margin-bottom: 76px !important;
+          }
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -620,15 +624,34 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
       />
 
       {/*
-        Legend — top-left on desktop.
-        On mobile (≤768px) we move it to bottom-left above the basemap toggle,
-        so it does NOT overlap the info panel which slides up from the bottom.
-        The basemap toggle is at bottom:16px left:12px → legend sits above it.
+        ── LAYOUT STRATEGY (no overlaps) ──────────────────────────────────
+        Desktop (≥769px):
+          top-left:    Legend (fixed, below navbar clearance)
+          top-right:   Zoom control (Leaflet default)
+          bottom-left: Basemap toggle (from BasemapToggle component via parent)
+          bottom-center: Search bar
+          bottom-right: Scale (Leaflet)
+
+        Mobile (≤768px):
+          top-left:    Legend (collapsed by default)
+          top-right:   Zoom control (hidden on <480px)
+          bottom-left: Basemap toggle (shorter height, leaves room for search)
+          bottom-center: Search bar (raised above basemap toggle height)
+          bottom-right: Scale (Leaflet, raised)
+
+        Key clearances:
+          Search bar height ≈ 52px → bottom: 16px
+          Basemap toggle sits to the LEFT of search → no vertical conflict
+          Legend sits top-left → never overlaps bottom controls
+        ──────────────────────────────────────────────────────────────────
       */}
+
+      {/* Legend — top-left, always */}
       <div
-        className="map-legend-wrapper"
         style={{
           position: 'absolute',
+          top: 12,
+          left: 12,
           zIndex: 1000,
           overscrollBehavior: 'contain',
           touchAction: 'none',
@@ -639,7 +662,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
         <LegendPanel language={language} />
       </div>
 
-      {/* Bottom-center search bar */}
+      {/* Search bar — bottom-center, always */}
       <div
         style={{
           position: 'absolute',
@@ -648,8 +671,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
           transform: 'translateX(-50%)',
           zIndex: 1000,
           width: '100%',
-          maxWidth: 360,
-          padding: '0 12px',
+          /* Leave room on the left for basemap toggle (≈90px) and right for scale */
+          maxWidth: 380,
+          padding: '0 100px 0 100px',
           boxSizing: 'border-box' as const,
           overscrollBehavior: 'contain',
           touchAction: 'manipulation',
@@ -663,27 +687,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
           onCoordinateSearch={flyToCoords}
         />
       </div>
-
-      {/* Legend positioning via a style tag so it responds to viewport */}
-      <style>{`
-        /* Desktop: top-left, below navbar */
-        .map-legend-wrapper {
-          top: 74px;
-          left: 12px;
-        }
-        /* Mobile: bottom-left, above basemap toggle (toggle is at bottom:16 left:12)
-           Basemap toggle height ~44px, gap 8px → legend bottom = 16 + 44 + 8 = 68px
-           But we also need to clear the search bar (bottom:16, height~52) + gap.
-           Search bar is centered, legend is on the left so they won't overlap.
-           Keep legend at top-left but collapsed by default on mobile.        */
-        @media (max-width: 768px) {
-          .map-legend-wrapper {
-            top: auto !important;
-            bottom: 80px !important;
-            left: 12px !important;
-          }
-        }
-      `}</style>
     </>
   );
 };

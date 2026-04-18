@@ -33,21 +33,39 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-  }
-
-  html, body, #root {
-    background-color: #f8fafc;
+    /* Prevent all overscroll/rubber-band effects globally */
     overscroll-behavior: none;
     overscroll-behavior-x: none;
     overscroll-behavior-y: none;
   }
 
-  * { box-sizing: border-box; }
-
   body {
     font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+    overscroll-behavior-x: none;
+    overscroll-behavior-y: none;
+    /* Prevent iOS bounce entirely */
+    position: fixed;
+    width: 100%;
+    /* We'll let the inner page content scroll */
   }
+
+  /* The root div manages actual scrolling */
+  #root {
+    overscroll-behavior: none;
+    /* Allow normal page scrolling through the root */
+    position: fixed;
+    inset: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    /* Prevent pull-to-refresh and edge swipe navigation */
+    overscroll-behavior-y: contain;
+    overscroll-behavior-x: none;
+  }
+
+  * { box-sizing: border-box; }
 
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -84,6 +102,8 @@
   overscroll-behavior: contain;
   overscroll-behavior-x: contain;
   overscroll-behavior-y: contain;
+  /* Stop touch events from propagating to body */
+  touch-action: pan-x pan-y;
 }
 
 .leaflet-top, .leaflet-bottom, .leaflet-left, .leaflet-right {

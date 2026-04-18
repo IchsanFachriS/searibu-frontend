@@ -30,6 +30,7 @@ const App: React.FC = () => {
   };
 
   const bg = pageBg[activePage] ?? '#f8fafc';
+  const isWebGIS = activePage === 'webgis';
 
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
@@ -39,12 +40,28 @@ const App: React.FC = () => {
 
           *, *::before, *::after { box-sizing: border-box; }
 
-          html, body, #root {
-            background: ${bg} !important;
+          html, body {
+            margin: 0;
+            padding: 0;
             overscroll-behavior: none !important;
+            overscroll-behavior-x: none !important;
+            overscroll-behavior-y: none !important;
             font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif !important;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+          }
+
+          /* Prevent iOS/Chrome pull-to-refresh and overscroll bounce */
+          html {
+            height: 100%;
+          }
+          body {
+            height: 100%;
+            overflow: hidden; /* body itself never scrolls */
+          }
+          #root {
+            height: 100%;
+            overflow: hidden;
           }
 
           p, span, div, a, button, input, label, h1, h2, h3, h4, h5, h6, li, td, th {
@@ -52,11 +69,20 @@ const App: React.FC = () => {
           }
         `}</style>
 
-        <div style={{
-          minHeight: '100vh',
-          background: bg,
-          fontFamily: "'Plus Jakarta Sans', 'Inter', system-ui, sans-serif",
-        }}>
+        {/* Page-level scroll container — only non-WebGIS pages scroll */}
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: bg,
+            fontFamily: "'Plus Jakarta Sans', 'Inter', system-ui, sans-serif",
+            /* WebGIS is fully fixed (map), other pages scroll internally */
+            overflowY: isWebGIS ? 'hidden' : 'auto',
+            overflowX: 'hidden',
+            overscrollBehavior: 'none',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
           <Navbar activePage={activePage} setActivePage={setActivePage} />
           <main>
             {renderPage()}

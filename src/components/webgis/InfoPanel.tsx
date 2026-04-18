@@ -1141,6 +1141,37 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
 
   const { sunrise, sunset } = getSunTimes();
   const rows    = buildRows();
+
+    // Compute single hour index that holds the true max and min
+  // This guarantees exactly ONE highlighted row each
+  const maxHourIdx = (() => {
+    if (!tpxoHighLow) return -1;
+    const dayPred = tideData?.predictions.filter(
+      p => parseToWIB(p.time)?.wibDate === selDate
+    ) ?? [];
+    if (!dayPred.length) return -1;
+    let best = 0;
+    for (let i = 1; i < dayPred.length; i++) {
+      if (dayPred[i].height > dayPred[best].height) best = i;
+    }
+    const w = parseToWIB(dayPred[best].time);
+    return w ? w.wibHour : -1;
+  })();
+
+  const minHourIdx = (() => {
+    if (!tpxoHighLow) return -1;
+    const dayPred = tideData?.predictions.filter(
+      p => parseToWIB(p.time)?.wibDate === selDate
+    ) ?? [];
+    if (!dayPred.length) return -1;
+    let best = 0;
+    for (let i = 1; i < dayPred.length; i++) {
+      if (dayPred[i].height < dayPred[best].height) best = i;
+    }
+    const w = parseToWIB(dayPred[best].time);
+    return w ? w.wibHour : -1;
+  })();
+
   const current = weatherData?.current;
   const currentWindMs = current ? kmhToMs(current.wind_speed_10m) : null;
   const currentWaveH: number|null = marineData?.current?.wave_height != null ? marineData.current.wave_height : (marineData?.hourly.wave_height[0]??null);
@@ -1548,8 +1579,8 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 }}>
                   {rows.map((row, idx) => {
                     const hl    = isToday && row.hour.startsWith(nowHour+":00");
-                    const isMax = tpxoHighLow && row.tideH!==null && Math.abs(row.tideH-tpxoHighLow.max)<0.015;
-                    const isMin = tpxoHighLow && row.tideH!==null && Math.abs(row.tideH-tpxoHighLow.min)<0.015;
+                    const isMax = idx === maxHourIdx;
+                    const isMin = idx === minHourIdx;
                     // Wave/current color: soft semantic
                     const waveC = row.waveH==null?TEXT_HINT: row.waveH<0.5?"#16a34a": row.waveH<1.25?"#d97706":"#e11d48";
                     const currC = row.currentSpd==null?TEXT_HINT: row.currentSpd<0.25?"#16a34a": row.currentSpd<0.75?"#d97706":"#e11d48";

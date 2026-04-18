@@ -33,7 +33,6 @@ export const BasemapToggle: React.FC<BasemapToggleProps> = ({ currentBasemap, on
         gap: 2,
         border: '1px solid rgba(0,0,0,0.07)',
         backdropFilter: 'blur(8px)',
-        /* Prevent scroll propagation when hovering */
         overscrollBehavior: 'contain' as const,
         touchAction: 'manipulation' as const,
       }}
@@ -52,6 +51,7 @@ export const BasemapToggle: React.FC<BasemapToggleProps> = ({ currentBasemap, on
             background: currentBasemap === type ? '#0284c7' : 'transparent',
             color: currentBasemap === type ? '#fff' : '#374151',
             boxShadow: currentBasemap === type ? '0 2px 7px rgba(2,132,199,0.28)' : 'none',
+            whiteSpace: 'nowrap',
           }}
         >
           {type === 'osm' ? <Map size={12} /> : <Satellite size={12} />}
