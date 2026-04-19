@@ -22,6 +22,7 @@ import {
   Loader2, FileDown, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
+import { useSubscription } from "@/hooks/useSubscription";
 
 /* ═══════════════════════════════════════════════════
    TYPES
@@ -448,6 +449,29 @@ function buildRecommendations(
     if(s==="caution") return ["Light rain expected — bring rain gear","Kemungkinan hujan — bawa jas hujan"];
     return ["Storm forecast — limit outdoor activities","Prakiraan badai — batasi aktivitas luar"];
   };
+
+  const { isPro, maxForecastDays } = useSubscription(currentUserEmail);
+  const maxDate = addDays(todayISO(), maxForecastDays);
+
+      <input
+      type="date"
+      value={selDate}
+      max={maxDate}          // HTML max attr blocks picker
+      onChange={e => {
+        const picked = e.target.value;
+        if (picked > maxDate) return;  // guard
+        handleDateChange(e);
+      }}
+    />
+
+    // Lock export buttons if not pro:
+    {!isPro ? (
+      <div style={{ opacity: 0.5, pointerEvents: 'none' }}>
+        <S104Badge ... />
+      </div>
+    ) : (
+      <S104Badge ... />
+    )}
 
   return [
     { id:"snorkeling", labelEn:"Snorkeling",       labelId:"Snorkeling",        icon:<Waves size={13}/>,    status:snorkel(),  reasonEn:snorkelR()[0],  reasonId:snorkelR()[1]  },
@@ -884,7 +908,6 @@ const S104Badge: React.FC<{
     { label: "Encoding",       value: "HDF5" },
     { label: "Adopted",        value: "December 2024" },
   ];
-
   return (
     <div>
       <div
