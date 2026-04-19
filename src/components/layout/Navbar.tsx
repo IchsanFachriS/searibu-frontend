@@ -396,15 +396,14 @@ interface NavbarProps { activePage: string; setActivePage: (p: string) => void; 
 
 export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => {
   const { language, setLanguage } = useLanguage();
-  const [modal, setModal]             = useState<ModalType>(null);
-  const [scrolled, setScrolled]       = useState(false);
-  const [mobileOpen, setMobileOpen]   = useState(false);
-  const [isMobile, setIsMobile]       = useState(false);
+  const [modal, setModal]           = useState<ModalType>(null);
+  const [scrolled, setScrolled]     = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile]     = useState(false);
+  const [toast, setToast]           = useState<{ message: string; userName: string } | null>(null);
+
+  // Pull user & setUser from the subscription context (single source of truth)
   const { user: currentUser, setUser: setCurrentUser } = useSubContext();
-    try { const s = sessionStorage.getItem('searibu_user'); return s ? JSON.parse(s) : null; }
-    catch { return null; }
-  });
-  const [toast, setToast] = useState<{ message: string; userName: string } | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -412,7 +411,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Track mobile breakpoint
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 768);
     check();
@@ -424,16 +422,13 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
 
   const handleSuccess = (user: AuthUser, msg: string) => {
     setCurrentUser(user);
-    sessionStorage.setItem('searibu_user', JSON.stringify(user));
     setModal(null);
     setToast({ message: msg, userName: user.full_name });
   };
 
   const navItems = language === 'id' ? NAV_ITEMS_ID : NAV_ITEMS_EN;
   const onHome   = activePage === 'home';
-
-  // On mobile: always solid navy. On desktop: glass when on home and not scrolled
-  const glass = !isMobile && onHome && !scrolled;
+  const glass    = !isMobile && onHome && !scrolled;
 
   return (
     <>
@@ -511,7 +506,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
 
       <header style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 150, height: 62,
-        // Always solid on mobile, glass only on desktop home page
         background: glass
           ? `linear-gradient(to bottom, rgba(2,78,120,0.75) 0%, rgba(2,78,120,0) 100%)`
           : `rgba(2,78,120,0.97)`,
@@ -574,10 +568,15 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
                 </button>
               ))}
             </div>
+
             <SubscriptionStatusBadge language={language} />
-            
+
             {currentUser ? (
-              <UserDropdown user={currentUser} onLogout={() => { setCurrentUser(null); sessionStorage.removeItem('searibu_user'); }} language={language} />
+              <UserDropdown
+                user={currentUser}
+                onLogout={() => setCurrentUser(null)}
+                language={language}
+              />
             ) : (
               <button
                 onClick={() => setModal('signin')}
