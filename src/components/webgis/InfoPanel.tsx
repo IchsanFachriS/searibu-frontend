@@ -1,6 +1,13 @@
 /**
  * InfoPanel.tsx  —  Marine Info Panel
  * Sistem Searibu — ITB Geodesy & Geomatics Engineering 2026
+ *
+ * Subscription gating:
+ *   - Date picker   : Free → today..today+(FREE_TIDE_DAYS-1)
+ *                     Pro  → today-365..today+13
+ *   - S-104 export  : Free → locked overlay (via S104ExportSection)
+ *                     Pro  → download enabled
+ *   - Weather table : both tiers; data window matches maxWxDays
  */
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
@@ -9,12 +16,11 @@ import {
   Anchor, Wind, Fish, Camera, Waves,
   Sun, Moon, Navigation, Leaf, Flag,
   Users, Ship, Zap, Lock,
-  CheckCircle, ExternalLink,
-  Loader2, FileDown, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import { useSubContext, FREE_TIDE_DAYS, FREE_WX_DAYS } from "../../context/SubscriptionContext";
 import { PricingModal } from "../subscription/PricingModal";
+import { S104ExportSection } from "../subscription/S104ExportSection";
 
 /* ═══════════════════════════════════════════════════
    TYPES
@@ -124,20 +130,20 @@ const todayISO = () => {
 };
 
 const WMO: Record<number, { en: string; id: string }> = {
-  0:  { en: "Clear sky",      id: "Langit cerah"     },
-  1:  { en: "Mainly clear",   id: "Cerah berawan"    },
-  2:  { en: "Partly cloudy",  id: "Sebagian berawan" },
-  3:  { en: "Overcast",       id: "Mendung"          },
-  45: { en: "Foggy",          id: "Berkabut"         },
-  51: { en: "Light drizzle",  id: "Gerimis ringan"   },
-  61: { en: "Light rain",     id: "Hujan ringan"     },
-  63: { en: "Moderate rain",  id: "Hujan sedang"     },
-  65: { en: "Heavy rain",     id: "Hujan lebat"      },
-  80: { en: "Light showers",  id: "Hujan rintik"     },
-  81: { en: "Showers",        id: "Hujan deras"      },
-  82: { en: "Heavy showers",  id: "Hujan sangat deras"},
-  95: { en: "Thunderstorm",   id: "Badai petir"      },
-  99: { en: "Thunderstorm",   id: "Badai petir"      },
+  0:  { en: "Clear sky",       id: "Langit cerah"      },
+  1:  { en: "Mainly clear",    id: "Cerah berawan"     },
+  2:  { en: "Partly cloudy",   id: "Sebagian berawan"  },
+  3:  { en: "Overcast",        id: "Mendung"           },
+  45: { en: "Foggy",           id: "Berkabut"          },
+  51: { en: "Light drizzle",   id: "Gerimis ringan"    },
+  61: { en: "Light rain",      id: "Hujan ringan"      },
+  63: { en: "Moderate rain",   id: "Hujan sedang"      },
+  65: { en: "Heavy rain",      id: "Hujan lebat"       },
+  80: { en: "Light showers",   id: "Hujan rintik"      },
+  81: { en: "Showers",         id: "Hujan deras"       },
+  82: { en: "Heavy showers",   id: "Hujan sangat deras" },
+  95: { en: "Thunderstorm",    id: "Badai petir"       },
+  99: { en: "Thunderstorm",    id: "Badai petir"       },
 };
 
 const wmoLabel = (code: number | null, lang: "en" | "id") => {
@@ -282,7 +288,6 @@ function interpolateTPXOPerMinute(knots: {x: number; y: number}[]): {x: number; 
 
 /* ═══════════════════════════════════════════════════
    ACTIVITY RECOMMENDATIONS ENGINE
-   NOTE: Pure function — no hooks allowed here
 ═══════════════════════════════════════════════════ */
 function buildRecommendations(
   tideData: TideData | null,
@@ -316,140 +321,41 @@ function buildRecommendations(
 
   type S = ActivityRec["status"];
 
-  const snorkel = (): S => {
-    if ((avgWave??0)>1.0||(avgWindMs??0)>7.9||(avgCurrentMs??0)>0.51) return "danger";
-    if ((avgWave??0)>0.5||(avgWindMs??0)>3.3||(avgCurrentMs??0)>0.26) return "caution";
-    return "safe";
-  };
-  const snorkelR = (): [string,string] => {
-    const s=snorkel();
-    if(s==="safe")    return ["Calm sea, good visibility for snorkeling","Laut tenang, visibilitas baik untuk snorkeling"];
-    if(s==="caution") return ["Moderate conditions — experienced snorkelers only","Kondisi sedang — hanya untuk snorkeler berpengalaman"];
-    return ["Rough sea or strong current — avoid water","Laut kasar atau arus kuat — hindari masuk air"];
-  };
-  const scuba = (): S => {
-    if(isStormy||(avgCurrentMs??0)>0.51||(avgWave??0)>1.25) return "danger";
-    if((avgCurrentMs??0)>0.26||(avgWave??0)>0.5)            return "caution";
-    return "safe";
-  };
-  const scubaR = (): [string,string] => {
-    const s=scuba();
-    if(s==="safe")    return ["Good visibility, current within safe limits","Visibilitas baik, arus dalam batas aman"];
-    if(s==="caution") return ["Moderate current — plan with slack tide","Arus sedang — rencanakan saat slack tide"];
-    return ["Current >1 kt or rough sea — diving not safe","Arus melebihi batas aman selam atau laut kasar"];
-  };
-  const freedive = (): S => {
-    if((avgWave??0)>0.8||(avgCurrentMs??0)>0.51) return "danger";
-    if((avgWave??0)>0.5||(avgCurrentMs??0)>0.26) return "caution";
-    return "safe";
-  };
-  const freediveR = (): [string,string] => {
-    const s=freedive();
-    if(s==="safe")    return ["Calm water, safe for breath-hold diving","Air tenang, aman untuk freediving"];
-    if(s==="caution") return ["Moderate swell — buddy required","Ombak sedang — wajib buddy system"];
-    return ["High wave or strong current — hazardous","Ombak tinggi atau arus kuat — berbahaya"];
-  };
-  const jetski = (): S => {
-    if(isStormy||(avgWindMs??0)>10.3||(avgWave??0)>1.5) return "danger";
-    if(isRainy ||(avgWindMs??0)>7.9 ||(avgWave??0)>0.8) return "caution";
-    return "safe";
-  };
-  const jetskiR = (): [string,string] => {
-    const s=jetski();
-    if(s==="safe")    return ["Calm sea, good for water sports","Laut tenang, kondisi baik untuk olahraga air"];
-    if(s==="caution") return ["Choppy water — reduce speed","Air bergelombang — kurangi kecepatan"];
-    return ["Strong wind or high waves — unsafe","Angin kencang atau ombak tinggi — tidak aman"];
-  };
-  const sup = (): S => {
-    if((avgWindMs??0)>6.2||(avgWave??0)>1.0||(avgCurrentMs??0)>0.51) return "danger";
-    if((avgWindMs??0)>4.5||(avgWave??0)>0.5||(avgCurrentMs??0)>0.26) return "caution";
-    return "safe";
-  };
-  const supR = (): [string,string] => {
-    const s=sup();
-    if(s==="safe")    return ["Flat water, ideal for paddling","Air tenang, ideal untuk paddling"];
-    if(s==="caution") return ["Light chop — experienced paddlers only","Sedikit bergelombang — paddler berpengalaman"];
-    return ["Wind/wave exceeds safe SUP limit","Angin/ombak melampaui batas aman SUP"];
-  };
-  const boat = (): S => {
-    if((avgWindMs??0)>10.3||(avgWave??0)>1.5) return "danger";
-    if((avgWindMs??0)>7.9 ||(avgWave??0)>1.0) return "caution";
-    return "safe";
-  };
-  const boatR = (): [string,string] => {
-    const s=boat();
-    if(s==="safe")    return ["Calm sea, good for inter-island travel","Laut tenang, baik untuk perjalanan antar pulau"];
-    if(s==="caution") return ["Moderate sea — check vessel seaworthiness","Laut sedang — periksa kelayakan kapal"];
-    return ["Exceeds small-craft limits — delay trip","Melampaui batas kapal kecil — tunda perjalanan"];
-  };
-  const fishing = (): S => {
-    if(isStormy||(avgWindMs??0)>10.3||(avgWave??0)>1.5) return "danger";
-    if(isRainy ||(avgWindMs??0)>7.9 ||(avgWave??0)>1.0) return "caution";
-    return "safe";
-  };
-  const fishingR = (): [string,string] => {
-    const s=fishing();
-    if(s==="safe")    return ["Good sea conditions for fishing","Kondisi laut baik untuk memancing"];
-    if(s==="caution") return ["Moderate wind/wave — stay close to shore","Angin/ombak sedang — tetap dekat pantai"];
-    return ["Dangerous sea state — not recommended","Kondisi laut berbahaya — tidak disarankan"];
-  };
-  const turtle = (): S => {
-    if(isStormy) return "danger";
-    if(isRainy||(tideRange!==null&&tideRange>1.5)) return "caution";
-    return "safe";
-  };
-  const turtleR = (): [string,string] => {
-    const s=turtle();
-    if(s==="safe")    return ["Good conditions for conservation","Kondisi baik untuk konservasi"];
-    if(s==="caution") return ["Rain or strong tides may affect access","Hujan/pasut kuat dapat ganggu akses"];
-    return ["Storm — field activity unsafe","Badai — kegiatan lapangan tidak aman"];
-  };
-  const camp = (): S => {
-    if(isStormy) return "danger";
-    if(isRainy||(tideRange!==null&&tideRange>1.5)) return "caution";
-    return "safe";
-  };
-  const campR = (): [string,string] => {
-    const s=camp();
-    if(s==="safe")    return ["Clear weather, comfortable beach","Cuaca cerah, pantai nyaman"];
-    if(s==="caution") return ["Rain or high tide — limited beach access","Hujan/pasut tinggi — akses pantai terbatas"];
-    return ["Storm — outdoor activities unsafe","Badai — aktivitas pantai tidak aman"];
-  };
-  const photo = (): S => {
-    if(isStormy||(avgWave??0)>1.0||(avgCurrentMs??0)>0.51) return "danger";
-    if(isRainy ||(avgWave??0)>0.5||(avgCurrentMs??0)>0.26) return "caution";
-    return "safe";
-  };
-  const photoR = (): [string,string] => {
-    const s=photo();
-    if(s==="safe")    return ["Excellent visibility for UW photography","Visibilitas sangat baik untuk foto bawah air"];
-    if(s==="caution") return ["Reduced visibility — challenging","Visibilitas berkurang — menantang"];
-    return ["Poor visibility or strong current","Visibilitas buruk atau arus kuat"];
-  };
-  const general = (): S => {
-    if(isStormy) return "danger";
-    if(isRainy)  return "caution";
-    return "safe";
-  };
-  const generalR = (): [string,string] => {
-    const s=general();
-    if(s==="safe")    return ["Clear weather — enjoy island exploration","Cuaca cerah — nikmati eksplorasi pulau"];
-    if(s==="caution") return ["Light rain expected — bring rain gear","Kemungkinan hujan — bawa jas hujan"];
-    return ["Storm forecast — limit outdoor activities","Prakiraan badai — batasi aktivitas luar"];
-  };
+  const snorkel  = (): S => { if ((avgWave??0)>1.0||(avgWindMs??0)>7.9||(avgCurrentMs??0)>0.51) return "danger"; if ((avgWave??0)>0.5||(avgWindMs??0)>3.3||(avgCurrentMs??0)>0.26) return "caution"; return "safe"; };
+  const snorkelR = (): [string,string] => { const s=snorkel(); if(s==="safe") return ["Calm sea, good visibility for snorkeling","Laut tenang, visibilitas baik untuk snorkeling"]; if(s==="caution") return ["Moderate conditions — experienced snorkelers only","Kondisi sedang — hanya untuk snorkeler berpengalaman"]; return ["Rough sea or strong current — avoid water","Laut kasar atau arus kuat — hindari masuk air"]; };
+  const scuba    = (): S => { if(isStormy||(avgCurrentMs??0)>0.51||(avgWave??0)>1.25) return "danger"; if((avgCurrentMs??0)>0.26||(avgWave??0)>0.5) return "caution"; return "safe"; };
+  const scubaR   = (): [string,string] => { const s=scuba(); if(s==="safe") return ["Good visibility, current within safe limits","Visibilitas baik, arus dalam batas aman"]; if(s==="caution") return ["Moderate current — plan with slack tide","Arus sedang — rencanakan saat slack tide"]; return ["Current >1 kt or rough sea — diving not safe","Arus melebihi batas aman selam atau laut kasar"]; };
+  const freedive = (): S => { if((avgWave??0)>0.8||(avgCurrentMs??0)>0.51) return "danger"; if((avgWave??0)>0.5||(avgCurrentMs??0)>0.26) return "caution"; return "safe"; };
+  const freediveR= (): [string,string] => { const s=freedive(); if(s==="safe") return ["Calm water, safe for breath-hold diving","Air tenang, aman untuk freediving"]; if(s==="caution") return ["Moderate swell — buddy required","Ombak sedang — wajib buddy system"]; return ["High wave or strong current — hazardous","Ombak tinggi atau arus kuat — berbahaya"]; };
+  const jetski   = (): S => { if(isStormy||(avgWindMs??0)>10.3||(avgWave??0)>1.5) return "danger"; if(isRainy||(avgWindMs??0)>7.9||(avgWave??0)>0.8) return "caution"; return "safe"; };
+  const jetskiR  = (): [string,string] => { const s=jetski(); if(s==="safe") return ["Calm sea, good for water sports","Laut tenang, kondisi baik untuk olahraga air"]; if(s==="caution") return ["Choppy water — reduce speed","Air bergelombang — kurangi kecepatan"]; return ["Strong wind or high waves — unsafe","Angin kencang atau ombak tinggi — tidak aman"]; };
+  const sup      = (): S => { if((avgWindMs??0)>6.2||(avgWave??0)>1.0||(avgCurrentMs??0)>0.51) return "danger"; if((avgWindMs??0)>4.5||(avgWave??0)>0.5||(avgCurrentMs??0)>0.26) return "caution"; return "safe"; };
+  const supR     = (): [string,string] => { const s=sup(); if(s==="safe") return ["Flat water, ideal for paddling","Air tenang, ideal untuk paddling"]; if(s==="caution") return ["Light chop — experienced paddlers only","Sedikit bergelombang — paddler berpengalaman"]; return ["Wind/wave exceeds safe SUP limit","Angin/ombak melampaui batas aman SUP"]; };
+  const boat     = (): S => { if((avgWindMs??0)>10.3||(avgWave??0)>1.5) return "danger"; if((avgWindMs??0)>7.9||(avgWave??0)>1.0) return "caution"; return "safe"; };
+  const boatR    = (): [string,string] => { const s=boat(); if(s==="safe") return ["Calm sea, good for inter-island travel","Laut tenang, baik untuk perjalanan antar pulau"]; if(s==="caution") return ["Moderate sea — check vessel seaworthiness","Laut sedang — periksa kelayakan kapal"]; return ["Exceeds small-craft limits — delay trip","Melampaui batas kapal kecil — tunda perjalanan"]; };
+  const fishing  = (): S => { if(isStormy||(avgWindMs??0)>10.3||(avgWave??0)>1.5) return "danger"; if(isRainy||(avgWindMs??0)>7.9||(avgWave??0)>1.0) return "caution"; return "safe"; };
+  const fishingR = (): [string,string] => { const s=fishing(); if(s==="safe") return ["Good sea conditions for fishing","Kondisi laut baik untuk memancing"]; if(s==="caution") return ["Moderate wind/wave — stay close to shore","Angin/ombak sedang — tetap dekat pantai"]; return ["Dangerous sea state — not recommended","Kondisi laut berbahaya — tidak disarankan"]; };
+  const turtle   = (): S => { if(isStormy) return "danger"; if(isRainy||(tideRange!==null&&tideRange>1.5)) return "caution"; return "safe"; };
+  const turtleR  = (): [string,string] => { const s=turtle(); if(s==="safe") return ["Good conditions for conservation","Kondisi baik untuk konservasi"]; if(s==="caution") return ["Rain or strong tides may affect access","Hujan/pasut kuat dapat ganggu akses"]; return ["Storm — field activity unsafe","Badai — kegiatan lapangan tidak aman"]; };
+  const camp     = (): S => { if(isStormy) return "danger"; if(isRainy||(tideRange!==null&&tideRange>1.5)) return "caution"; return "safe"; };
+  const campR    = (): [string,string] => { const s=camp(); if(s==="safe") return ["Clear weather, comfortable beach","Cuaca cerah, pantai nyaman"]; if(s==="caution") return ["Rain or high tide — limited beach access","Hujan/pasut tinggi — akses pantai terbatas"]; return ["Storm — outdoor activities unsafe","Badai — aktivitas pantai tidak aman"]; };
+  const photo    = (): S => { if(isStormy||(avgWave??0)>1.0||(avgCurrentMs??0)>0.51) return "danger"; if(isRainy||(avgWave??0)>0.5||(avgCurrentMs??0)>0.26) return "caution"; return "safe"; };
+  const photoR   = (): [string,string] => { const s=photo(); if(s==="safe") return ["Excellent visibility for UW photography","Visibilitas sangat baik untuk foto bawah air"]; if(s==="caution") return ["Reduced visibility — challenging","Visibilitas berkurang — menantang"]; return ["Poor visibility or strong current","Visibilitas buruk atau arus kuat"]; };
+  const general  = (): S => { if(isStormy) return "danger"; if(isRainy) return "caution"; return "safe"; };
+  const generalR = (): [string,string] => { const s=general(); if(s==="safe") return ["Clear weather — enjoy island exploration","Cuaca cerah — nikmati eksplorasi pulau"]; if(s==="caution") return ["Light rain expected — bring rain gear","Kemungkinan hujan — bawa jas hujan"]; return ["Storm forecast — limit outdoor activities","Prakiraan badai — batasi aktivitas luar"]; };
 
   return [
-    { id:"snorkeling", labelEn:"Snorkeling",       labelId:"Snorkeling",        icon:<Waves size={13}/>,    status:snorkel(),  reasonEn:snorkelR()[0],  reasonId:snorkelR()[1]  },
-    { id:"scuba",      labelEn:"Scuba Diving",      labelId:"Selam Scuba",       icon:<Anchor size={13}/>,   status:scuba(),    reasonEn:scubaR()[0],    reasonId:scubaR()[1]    },
-    { id:"freedive",   labelEn:"Freediving",        labelId:"Freediving",        icon:<Navigation size={13}/>,status:freedive(),reasonEn:freediveR()[0], reasonId:freediveR()[1] },
-    { id:"jetski",     labelEn:"Jet Ski / Sports",  labelId:"Jet Ski / Olahraga",icon:<Zap size={13}/>,      status:jetski(),   reasonEn:jetskiR()[0],   reasonId:jetskiR()[1]   },
-    { id:"sup",        labelEn:"SUP / Kayaking",    labelId:"SUP / Kayak",       icon:<Users size={13}/>,    status:sup(),      reasonEn:supR()[0],      reasonId:supR()[1]      },
-    { id:"boat",       labelEn:"Island Hopping",    labelId:"Wisata Pulau",      icon:<Ship size={13}/>,     status:boat(),     reasonEn:boatR()[0],     reasonId:boatR()[1]     },
-    { id:"fishing",    labelEn:"Fishing",           labelId:"Memancing",         icon:<Fish size={13}/>,     status:fishing(),  reasonEn:fishingR()[0],  reasonId:fishingR()[1]  },
-    { id:"turtle",     labelEn:"Turtle Conservation",labelId:"Konservasi Penyu", icon:<Leaf size={13}/>,     status:turtle(),   reasonEn:turtleR()[0],   reasonId:turtleR()[1]   },
-    { id:"camping",    labelEn:"Camping & Beach",   labelId:"Camping & Pantai",  icon:<Flag size={13}/>,     status:camp(),     reasonEn:campR()[0],     reasonId:campR()[1]     },
-    { id:"uwphoto",    labelEn:"UW Photography",    labelId:"Foto Bawah Air",    icon:<Camera size={13}/>,   status:photo(),    reasonEn:photoR()[0],    reasonId:photoR()[1]    },
-    { id:"general",    labelEn:"General Tourism",   labelId:"Wisata Umum",       icon:<Sun size={13}/>,      status:general(),  reasonEn:generalR()[0],  reasonId:generalR()[1]  },
+    { id:"snorkeling", labelEn:"Snorkeling",        labelId:"Snorkeling",         icon:<Waves size={13}/>,     status:snorkel(),  reasonEn:snorkelR()[0],  reasonId:snorkelR()[1]  },
+    { id:"scuba",      labelEn:"Scuba Diving",       labelId:"Selam Scuba",        icon:<Anchor size={13}/>,    status:scuba(),    reasonEn:scubaR()[0],    reasonId:scubaR()[1]    },
+    { id:"freedive",   labelEn:"Freediving",         labelId:"Freediving",         icon:<Navigation size={13}/>,status:freedive(), reasonEn:freediveR()[0], reasonId:freediveR()[1] },
+    { id:"jetski",     labelEn:"Jet Ski / Sports",   labelId:"Jet Ski / Olahraga", icon:<Zap size={13}/>,       status:jetski(),   reasonEn:jetskiR()[0],   reasonId:jetskiR()[1]   },
+    { id:"sup",        labelEn:"SUP / Kayaking",     labelId:"SUP / Kayak",        icon:<Users size={13}/>,     status:sup(),      reasonEn:supR()[0],      reasonId:supR()[1]      },
+    { id:"boat",       labelEn:"Island Hopping",     labelId:"Wisata Pulau",       icon:<Ship size={13}/>,      status:boat(),     reasonEn:boatR()[0],     reasonId:boatR()[1]     },
+    { id:"fishing",    labelEn:"Fishing",            labelId:"Memancing",          icon:<Fish size={13}/>,      status:fishing(),  reasonEn:fishingR()[0],  reasonId:fishingR()[1]  },
+    { id:"turtle",     labelEn:"Turtle Conservation",labelId:"Konservasi Penyu",   icon:<Leaf size={13}/>,      status:turtle(),   reasonEn:turtleR()[0],   reasonId:turtleR()[1]   },
+    { id:"camping",    labelEn:"Camping & Beach",    labelId:"Camping & Pantai",   icon:<Flag size={13}/>,      status:camp(),     reasonEn:campR()[0],     reasonId:campR()[1]     },
+    { id:"uwphoto",    labelEn:"UW Photography",     labelId:"Foto Bawah Air",     icon:<Camera size={13}/>,    status:photo(),    reasonEn:photoR()[0],    reasonId:photoR()[1]    },
+    { id:"general",    labelEn:"General Tourism",    labelId:"Wisata Umum",        icon:<Sun size={13}/>,       status:general(),  reasonEn:generalR()[0],  reasonId:generalR()[1]  },
   ];
 }
 
@@ -555,10 +461,7 @@ const OverlayChart: React.FC<{
     const nearestY = (pts: {x:number;y:number}[], x: number, maxDist = 0.15): number | null => {
       if (!pts.length) return null;
       let best = pts[0], bestD = Math.abs(x - pts[0].x);
-      for (const pt of pts) {
-        const d = Math.abs(x - pt.x);
-        if (d < bestD) { bestD = d; best = pt; }
-      }
+      for (const pt of pts) { const d = Math.abs(x - pt.x); if (d < bestD) { bestD = d; best = pt; } }
       return bestD <= maxDist ? best.y : null;
     };
 
@@ -645,96 +548,50 @@ const OverlayChart: React.FC<{
           maintainAspectRatio: false,
           animation: false,
           interaction: { mode: "index", intersect: false, axis: "x" },
-          plugins: {
-            legend: { display: false },
-            tooltip: { enabled: false },
-          },
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
           scales: {
             x: {
-              type: "linear",
-              min: 0,
-              max: 24,
-              grid: {
-                color: (c: any) => c.tick.value % 3 === 0
-                  ? "rgba(59,130,246,0.08)"
-                  : "rgba(59,130,246,0.03)",
-              },
+              type: "linear", min: 0, max: 24,
+              grid: { color: (c: any) => c.tick.value % 3 === 0 ? "rgba(59,130,246,0.08)" : "rgba(59,130,246,0.03)" },
               border: { display: false },
               ticks: {
-                color: TEXT_HINT,
-                font: { family: MONO, size: 9 },
-                maxRotation: 0,
-                stepSize: 1,
-                autoSkip: false,
-                includeBounds: true,
-                callback: (v: any) => {
-                  const n = Number(v);
-                  if (n === 0)  return "00:00";
-                  if (n === 24) return "24:00";
-                  return n % 3 === 0 ? `${n.toString().padStart(2,"0")}:00` : "";
-                },
+                color: TEXT_HINT, font: { family: MONO, size: 9 },
+                maxRotation: 0, stepSize: 1, autoSkip: false, includeBounds: true,
+                callback: (v: any) => { const n = Number(v); if (n===0) return "00:00"; if (n===24) return "24:00"; return n%3===0?`${n.toString().padStart(2,"0")}:00`:""; },
               },
             },
             y: {
               grid: { color: "rgba(59,130,246,0.05)" },
               border: { display: false },
-              ticks: {
-                color: TEXT_HINT,
-                font: { family: MONO, size: 9 },
-                callback: (v: any) => `${Number(v).toFixed(2)} m`,
-              },
-              title: {
-                display: true,
-                text: "Water Level (m)",
-                color: TEXT_HINT,
-                font: { size: 9, family: MONO },
-              },
+              ticks: { color: TEXT_HINT, font: { family: MONO, size: 9 }, callback: (v: any) => `${Number(v).toFixed(2)} m` },
+              title: { display: true, text: "Water Level (m)", color: TEXT_HINT, font: { size: 9, family: MONO } },
             },
           },
           onHover: (event: any, _elements: any[], chart: any) => {
             if (!event?.native) { hideTooltip(); return; }
             const xVal = chart.scales.x?.getValueForPixel(event.x);
             if (xVal == null || xVal < 0 || xVal > 24) { hideTooltip(); return; }
-
             const tpxoVal  = nearestTPXO(xVal);
             const luwesVal = nearestY(luwesPts, xVal, 0.12);
             if (tpxoVal === null && luwesVal === null) { hideTooltip(); return; }
-
             const hh = Math.floor(xVal);
             const mm = Math.round((xVal - hh) * 60);
             const timeLabel = `${hh.toString().padStart(2,"0")}:${mm.toString().padStart(2,"0")} WIB`;
-
             let html = `<div style="color:#7dd3fc;font-size:9.5px;font-weight:600;letter-spacing:0.05em;margin-bottom:5px;text-transform:uppercase;">${timeLabel}</div>`;
-            if (tpxoVal !== null) {
-              html += `<div style="display:flex;align-items:center;gap:5px;margin-bottom:${luwesVal!==null?3:0}px;">` +
-                `<span style="width:7px;height:7px;border-radius:50%;background:${CHART_TPXO};flex-shrink:0;"></span>` +
-                `<span style="color:#93c5fd;font-size:10px;">TPXO</span>` +
-                `<span style="margin-left:auto;font-weight:600;color:#dbeafe;">${tpxoVal.toFixed(3)} m</span></div>`;
-            }
-            if (luwesVal !== null) {
-              html += `<div style="display:flex;align-items:center;gap:5px;">` +
-                `<span style="width:7px;height:7px;border-radius:50%;background:${CHART_LUWES};flex-shrink:0;"></span>` +
-                `<span style="color:#f9a8d4;font-size:10px;">Luwes</span>` +
-                `<span style="margin-left:auto;font-weight:600;color:#fce7f3;">${luwesVal.toFixed(3)} m</span></div>`;
-            }
-
+            if (tpxoVal !== null) html += `<div style="display:flex;align-items:center;gap:5px;margin-bottom:${luwesVal!==null?3:0}px;"><span style="width:7px;height:7px;border-radius:50%;background:${CHART_TPXO};flex-shrink:0;"></span><span style="color:#93c5fd;font-size:10px;">TPXO</span><span style="margin-left:auto;font-weight:600;color:#dbeafe;">${tpxoVal.toFixed(3)} m</span></div>`;
+            if (luwesVal !== null) html += `<div style="display:flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:${CHART_LUWES};flex-shrink:0;"></span><span style="color:#f9a8d4;font-size:10px;">Luwes</span><span style="margin-left:auto;font-weight:600;color:#fce7f3;">${luwesVal.toFixed(3)} m</span></div>`;
             const tip = ensureTooltip();
             tip.innerHTML = html;
             tip.style.display = "block";
-
             const canvas = canvasRef.current;
             if (!canvas) return;
             const rect    = canvas.getBoundingClientRect();
             const xPx     = chart.scales.x.getPixelForValue(xVal);
-            const yAnchor = tpxoVal !== null
-              ? chart.scales.y.getPixelForValue(tpxoVal)
-              : chart.scales.y.getPixelForValue(luwesVal!);
-
+            const yAnchor = tpxoVal !== null ? chart.scales.y.getPixelForValue(tpxoVal) : chart.scales.y.getPixelForValue(luwesVal!);
             const scaleX  = rect.width  / (canvas.offsetWidth  || 1);
             const scaleY  = rect.height / (canvas.offsetHeight || 1);
             const screenX = rect.left   + xPx     * scaleX;
             const screenY = rect.top    + yAnchor * scaleY;
-
             if (bulletRef.current && tpxoVal !== null) {
               const tpxoScreenY = rect.top + chart.scales.y.getPixelForValue(tpxoVal) * scaleY;
               const tpxoScreenX = rect.left + xPx * scaleX;
@@ -745,20 +602,13 @@ const OverlayChart: React.FC<{
                 bulletRef.current.style.left = `${tpxoScreenX - parentRect.left - 6}px`;
                 bulletRef.current.style.top  = `${tpxoScreenY - parentRect.top  - 6}px`;
               }
-            } else if (bulletRef.current) {
-              bulletRef.current.style.display = "none";
-            }
-
-            const tipW = 168;
-            const tipH = tpxoVal !== null && luwesVal !== null ? 78 : 54;
-            const gap  = 10;
-            let left = screenX - tipW / 2;
-            let top  = screenY - tipH - gap;
-            if (left < 8)                            left = 8;
+            } else if (bulletRef.current) { bulletRef.current.style.display = "none"; }
+            const tipW = 168; const tipH = tpxoVal !== null && luwesVal !== null ? 78 : 54; const gap = 10;
+            let left = screenX - tipW / 2; let top = screenY - tipH - gap;
+            if (left < 8) left = 8;
             if (left + tipW > window.innerWidth - 8) left = window.innerWidth - tipW - 8;
             if (top < 8) top = screenY + gap;
-            tip.style.left = `${left}px`;
-            tip.style.top  = `${top}px`;
+            tip.style.left = `${left}px`; tip.style.top = `${top}px`;
           },
         },
         plugins: [{
@@ -778,7 +628,6 @@ const OverlayChart: React.FC<{
           },
         }],
       });
-
       canvasRef.current?.addEventListener("mouseleave", hideTooltip);
     });
 
@@ -796,16 +645,11 @@ const OverlayChart: React.FC<{
       <div
         ref={bulletRef}
         style={{
-          position: "absolute",
-          display: "none",
-          width: 11,
-          height: 11,
-          borderRadius: "50%",
-          background: CHART_TPXO,
-          border: "2.5px solid #fff",
+          position: "absolute", display: "none",
+          width: 11, height: 11, borderRadius: "50%",
+          background: CHART_TPXO, border: "2.5px solid #fff",
           boxShadow: `0 0 0 2px rgba(59,130,246,0.30), 0 2px 5px rgba(59,130,246,0.35)`,
-          pointerEvents: "none",
-          zIndex: 10,
+          pointerEvents: "none", zIndex: 10,
           transition: "left 0.04s, top 0.04s",
         }}
       />
@@ -814,142 +658,9 @@ const OverlayChart: React.FC<{
 };
 
 /* ═══════════════════════════════════════════════════
-   S-104 COMPLIANCE BADGE + EXPORT BUTTONS
+   API BASE
 ═══════════════════════════════════════════════════ */
 const API_BASE = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:5000";
-
-const S104Badge: React.FC<{
-  coordinates: {lat:number;lon:number};
-  selectedDate: string;
-  language: "en"|"id";
-}> = ({ coordinates, selectedDate, language: lang }) => {
-  const [open,         setOpen]         = useState(false);
-  const [loadingTpxo,  setLoadingTpxo]  = useState(false);
-  const [loadingLuwes, setLoadingLuwes] = useState(false);
-  const [error,        setError]        = useState<string|null>(null);
-
-  const download = async (url: string, filename: string) => {
-    const res = await fetch(url);
-    if (!res.ok) {
-      const d = await res.json().catch(()=>({error:`HTTP ${res.status}`}));
-      throw new Error((d as any).error ?? `HTTP ${res.status}`);
-    }
-    const blob = await res.blob();
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob); a.download = filename; a.click();
-    URL.revokeObjectURL(a.href);
-  };
-
-  const handleTpxo = async () => {
-    setLoadingTpxo(true); setError(null);
-    try {
-      await download(
-        `${API_BASE}/api/s104/export?lon=${coordinates.lon}&lat=${coordinates.lat}&date=${selectedDate}`,
-        `searibu_s104_tpxo_${selectedDate}.h5`,
-      );
-    } catch(e: any) { setError(e.message); } finally { setLoadingTpxo(false); }
-  };
-
-  const handleLuwes = async () => {
-    setLoadingLuwes(true); setError(null);
-    try {
-      await download(
-        `${API_BASE}/api/s104/export/luwes?date=${selectedDate}`,
-        `searibu_s104_luwes_${selectedDate}.h5`,
-      );
-    } catch(e: any) { setError(e.message); } finally { setLoadingLuwes(false); }
-  };
-
-  const infoRows = [
-    { label: "Standard",       value: "IHO S-104 Ed.2.0.0" },
-    { label: "Horizontal CRS", value: "EPSG:4326 (WGS 84)" },
-    { label: "Vertical Datum", value: "MSL (IHO code 12)"  },
-    { label: "TPXO data",      value: "dataDynamicity = 1 (astronomicalPrediction)" },
-    { label: "Luwes data",     value: "dataDynamicity = 3 (observed)" },
-    { label: "TOL correction", value: "−2.156 m (Luwes → MSL)" },
-    { label: "Encoding",       value: "HDF5" },
-    { label: "Adopted",        value: "December 2024" },
-  ];
-
-  return (
-    <div>
-      <div
-        onClick={() => setOpen(p=>!p)}
-        style={{
-          display:"flex", alignItems:"center", justifyContent:"space-between",
-          padding:"10px 13px", cursor:"pointer",
-          background:`linear-gradient(135deg,${HIGH_BG},#f0fdf4)`,
-          border:`1px solid ${HIGH_BDR}`, borderRadius:10,
-        }}
-      >
-        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ width:26, height:26, borderRadius:6, background:PRIMARY, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-            <CheckCircle size={13} color="#fff"/>
-          </div>
-          <div>
-            <p style={{ fontFamily:SANS, fontSize:11.5, fontWeight:700, color:PRIMARY, margin:0 }}>IHO S-100 / S-104 Ed. 2.0</p>
-            <p style={{ fontFamily:SANS, fontSize:10, color:"#0369a1", margin:0, opacity:0.75 }}>
-              {lang==="en" ? "Water Level Standard" : "Standar Muka Air"}
-            </p>
-          </div>
-        </div>
-        {open ? <ChevronUp size={13} style={{color:PRIMARY,opacity:0.5}}/> : <ChevronDown size={13} style={{color:PRIMARY,opacity:0.5}}/>}
-      </div>
-
-      {open && (
-        <div style={{ marginTop:5, padding:"11px 13px", background:BG_MUTED, border:`1px solid ${BORDER}`, borderRadius:10 }}>
-          <p style={{ fontFamily:SANS, fontSize:11.5, fontWeight:600, color:TEXT_PRI, marginBottom:7 }}>
-            {lang==="en" ? "S-104 Compliance Details" : "Detail Kepatuhan S-104"}
-          </p>
-          <p style={{ fontFamily:SANS, fontSize:11, color:TEXT_SEC, lineHeight:1.65, marginBottom:9 }}>
-            {lang==="en"
-              ? "This data complies with IHO S-104 Edition 2.0.0 (adopted December 2024). Export as HDF5 files compatible with ECDIS, HDFView, and s100py."
-              : "Data ini memenuhi IHO S-104 Edition 2.0.0 (diadopsi Desember 2024). Ekspor ke file HDF5 yang kompatibel dengan ECDIS, HDFView, dan s100py."
-            }
-          </p>
-          <div style={{ borderTop:`1px solid ${BORDER_SM}`, paddingTop:7, marginBottom:9 }}>
-            {infoRows.map(({label,value}) => (
-              <div key={label} style={{ display:"flex", justifyContent:"space-between", gap:8, padding:"2.5px 0" }}>
-                <span style={{ fontFamily:SANS, fontSize:10, color:TEXT_HINT }}>{label}</span>
-                <span style={{ fontFamily:'"Courier New",monospace', fontSize:10, color:TEXT_SEC, textAlign:"right" }}>{value}</span>
-              </div>
-            ))}
-          </div>
-          <a href="https://iho.int/en/s-100-based-product-specifications" target="_blank" rel="noopener noreferrer"
-            style={{ display:"inline-flex", alignItems:"center", gap:3, fontFamily:SANS, fontSize:10.5, color:PRIMARY, textDecoration:"none", marginBottom:10 }}>
-            {lang==="en" ? "IHO S-100 Resources" : "Sumber IHO S-100"} <ExternalLink size={9}/>
-          </a>
-        </div>
-      )}
-
-      <div style={{ display:"flex", flexDirection:"column", gap:5, marginTop:7 }}>
-        <button onClick={handleTpxo} disabled={loadingTpxo}
-          style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:5, width:"100%", padding:"8px 13px", borderRadius:8, border:`1.5px solid ${CHART_TPXO}28`, background:loadingTpxo?"#f8fafc":`${CHART_TPXO}0d`, color:loadingTpxo?TEXT_HINT:HIGH_TEXT, fontFamily:SANS, fontSize:11.5, fontWeight:600, cursor:loadingTpxo?"not-allowed":"pointer", transition:"all 0.18s" }}
-          onMouseEnter={e => { if(!loadingTpxo){ e.currentTarget.style.background=`${CHART_TPXO}18`; e.currentTarget.style.borderColor=`${CHART_TPXO}50`; } }}
-          onMouseLeave={e => { if(!loadingTpxo){ e.currentTarget.style.background=`${CHART_TPXO}0d`; e.currentTarget.style.borderColor=`${CHART_TPXO}28`; } }}>
-          {loadingTpxo ? <Loader2 size={12} style={{animation:"spin 0.7s linear infinite"}}/> : <FileDown size={12}/>}
-          {loadingTpxo ? (lang==="en"?"Preparing...":"Menyiapkan...") : (lang==="en"?"Export S-104 (TPXO)":"Ekspor S-104 (TPXO)")}
-        </button>
-        <button onClick={handleLuwes} disabled={loadingLuwes}
-          style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:5, width:"100%", padding:"8px 13px", borderRadius:8, border:`1.5px solid ${CHART_LUWES}28`, background:loadingLuwes?"#f8fafc":`${CHART_LUWES}0d`, color:loadingLuwes?TEXT_HINT:"#be185d", fontFamily:SANS, fontSize:11.5, fontWeight:600, cursor:loadingLuwes?"not-allowed":"pointer", transition:"all 0.18s" }}
-          onMouseEnter={e => { if(!loadingLuwes){ e.currentTarget.style.background=`${CHART_LUWES}18`; e.currentTarget.style.borderColor=`${CHART_LUWES}50`; } }}
-          onMouseLeave={e => { if(!loadingLuwes){ e.currentTarget.style.background=`${CHART_LUWES}0d`; e.currentTarget.style.borderColor=`${CHART_LUWES}28`; } }}>
-          {loadingLuwes ? <Loader2 size={12} style={{animation:"spin 0.7s linear infinite"}}/> : <FileDown size={12}/>}
-          {loadingLuwes ? (lang==="en"?"Preparing...":"Menyiapkan...") : (lang==="en"?"Export S-104 (Luwes)":"Ekspor S-104 (Luwes)")}
-        </button>
-      </div>
-
-      {error && (
-        <div style={{ marginTop:7, padding:"7px 11px", background:"#fff1f2", border:`1px solid #fecdd3`, borderRadius:8, display:"flex", alignItems:"flex-start", gap:7 }}>
-          <span style={{ color:"#be123c", fontSize:11, fontFamily:SANS, flex:1 }}>
-            <strong>{lang==="en"?"Export failed":"Ekspor gagal"}:</strong> {error}
-          </span>
-          <button onClick={()=>setError(null)} style={{ background:"none", border:"none", cursor:"pointer", color:"#be123c", padding:0, fontSize:13, lineHeight:1, flexShrink:0 }}>×</button>
-        </div>
-      )}
-    </div>
-  );
-};
 
 /* ═══════════════════════════════════════════════════
    MAIN EXPORT — InfoPanel
@@ -957,71 +668,69 @@ const S104Badge: React.FC<{
 export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) => {
   const { language } = useLanguage();
   const lang = language as "en" | "id";
- 
-  /* ── Subscription context ────────────────────────── */
+
+  /* ── Subscription context ── */
   const { isPro, maxTideDays, maxWxDays } = useSubContext();
   const [showPricing, setShowPricing] = useState(false);
- 
-  const [tideData,         setTideData]         = useState<TideData|null>(null);
-  const [weatherData,      setWeatherData]       = useState<WeatherData|null>(null);
-  const [marineData,       setMarineData]        = useState<MarineData|null>(null);
-  const [overlayData,      setOverlayData]       = useState<OverlayData|null>(null);
-  const [loading,          setLoading]           = useState(false);
-  const [error,            setError]             = useState<string|null>(null);
-  const [weatherFromCache, setWeatherFromCache]  = useState(false);
-  const [selDate,          setSelDate]           = useState<string>(todayISO());
- 
-  /* ── max / min dates for the date picker ─────────── */
-  const todayStr = todayISO();
+
+  const [tideData,        setTideData]        = useState<TideData|null>(null);
+  const [weatherData,     setWeatherData]      = useState<WeatherData|null>(null);
+  const [marineData,      setMarineData]       = useState<MarineData|null>(null);
+  const [overlayData,     setOverlayData]      = useState<OverlayData|null>(null);
+  const [loading,         setLoading]          = useState(false);
+  const [error,           setError]            = useState<string|null>(null);
+  const [weatherFromCache,setWeatherFromCache] = useState(false);
+  const [selDate,         setSelDate]          = useState<string>(todayISO());
+
+  /* ── Date bounds based on billing tier ── */
+  const todayStr   = todayISO();
+  // Pro: today-365 (historical) .. today+13
+  // Free: today .. today+(FREE_TIDE_DAYS-1)
+  const minDateISO = isPro ? addDays(todayStr, -365) : todayStr;
   const maxDateISO = addDays(todayStr, maxTideDays - 1);
-  // Free users: today only to today+2 (3 days total, 0-indexed)
-  const minDateISO = !isPro ? todayStr : addDays(todayStr, -365);
- 
+
   const fetchAll = useCallback(async (dateStr: string, forceRefresh = false) => {
     setLoading(true);
     setError(null);
- 
-    /* ── Guard: block out-of-range dates for Free users ── */
-    if (!isPro) {
-      if (dateStr > maxDateISO) {
-        setError(lang === "en"
-          ? `Free plan: tidal forecast limited to ${FREE_TIDE_DAYS} days ahead. Upgrade to Pro for 14-day access.`
-          : `Paket gratis: prediksi pasut terbatas ${FREE_TIDE_DAYS} hari ke depan. Upgrade ke Pro untuk akses 14 hari.`);
-        setLoading(false);
-        return;
-      }
-      if (dateStr < todayStr) {
-        setError(lang === "en"
-          ? "Free plan: historical data not available. Upgrade to Pro."
-          : "Paket gratis: data historis tidak tersedia. Upgrade ke Pro.");
-        setLoading(false);
-        return;
-      }
+
+    /* Hard guard — belt-and-suspenders on top of input[max] */
+    if (dateStr > maxDateISO) {
+      setError(lang === "en"
+        ? `Free plan: tidal forecast limited to ${FREE_TIDE_DAYS} days ahead. Upgrade to Pro for 14-day access.`
+        : `Paket gratis: prediksi pasut terbatas ${FREE_TIDE_DAYS} hari ke depan. Upgrade ke Pro untuk akses 14 hari.`);
+      setLoading(false);
+      return;
     }
- 
+    if (!isPro && dateStr < todayStr) {
+      setError(lang === "en"
+        ? "Free plan: historical data not available. Upgrade to Pro."
+        : "Paket gratis: data historis tidak tersedia. Upgrade ke Pro.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const today = new Date();
       const fmtD  = (d: Date) => d.toISOString().split("T")[0];
- 
+
       let wd: WeatherData|null = null;
       let md: MarineData|null  = null;
       let usedCache = false;
- 
+
       if (!forceRefresh) {
         wd = readCache<WeatherData>(coordinates.lat, coordinates.lon, "wx");
         md = readCache<MarineData>(coordinates.lat, coordinates.lon, "marine");
         if (wd && md) usedCache = true;
       }
- 
+
       if (!wd || !md) {
-        /* ── Weather window: Free = today..today+3; Pro = today-14..today+15 ── */
         const wxDaysBack = isPro ? 14 : 0;
         const wxDaysFwd  = isPro ? 14 : FREE_WX_DAYS;
         const wxStart = new Date(today);
         wxStart.setDate(wxStart.getDate() - wxDaysBack);
         const wxEnd = new Date(today);
         wxEnd.setDate(wxEnd.getDate() + wxDaysFwd + 1);
- 
+
         const [wxRes, marRes] = await Promise.all([
           fetch(
             `https://api.open-meteo.com/v1/forecast` +
@@ -1041,26 +750,26 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
             `&start_date=${fmtD(wxStart)}&end_date=${fmtD(wxEnd)}`
           ),
         ]);
- 
+
         if (!wxRes.ok) throw new Error(lang === "en" ? "Weather service unavailable" : "Layanan cuaca tidak tersedia");
         wd = await wxRes.json() as WeatherData;
         writeCache(coordinates.lat, coordinates.lon, "wx", wd);
         if (marRes.ok) { md = await marRes.json() as MarineData; writeCache(coordinates.lat, coordinates.lon, "marine", md); }
         usedCache = false;
       }
- 
+
       setWeatherData(wd);
       setMarineData(md);
       setWeatherFromCache(usedCache);
- 
+
       const prevDay = addDays(dateStr, -1);
       const nextDay = addDays(dateStr, +1);
- 
+
       const [tr, or_] = await Promise.all([
         fetch(`${API_BASE}/api/tide/prediction?lon=${coordinates.lon}&lat=${coordinates.lat}&start_date=${prevDay}&end_date=${nextDay}&interval_hours=1`),
         fetch(`${API_BASE}/api/luwes/overlay?date=${dateStr}&lon=${coordinates.lon}&lat=${coordinates.lat}`),
       ]);
- 
+
       if (!tr.ok) {
         const e = await tr.json().catch(() => ({}));
         throw new Error((e as any).error ?? (lang === "en" ? "Tide service unavailable" : "Layanan pasut tidak tersedia"));
@@ -1068,27 +777,27 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       setTideData(await tr.json() as TideData);
       if (or_.ok) setOverlayData(await or_.json() as OverlayData);
       else setOverlayData(null);
- 
+
     } catch (e) {
       setError(e instanceof Error ? e.message : (lang === "en" ? "Unknown error" : "Kesalahan tidak dikenal"));
     } finally {
       setLoading(false);
     }
   }, [coordinates, lang, isPro, maxDateISO, todayStr]);
- 
+
   useEffect(() => {
     const d = todayISO();
     setSelDate(d);
     fetchAll(d);
   }, [coordinates.lat, coordinates.lon]);
- 
+
   const getSunTimes = () => {
     if (!weatherData?.daily) return { sunrise: "--:--", sunset: "--:--" };
     const idx = weatherData.daily.time.findIndex(t => t === selDate);
     if (idx === -1) return { sunrise: "--:--", sunset: "--:--" };
     return { sunrise: fmtHHmm(weatherData.daily.sunrise[idx]), sunset: fmtHHmm(weatherData.daily.sunset[idx]) };
   };
- 
+
   const buildRows = (): HourRow[] => {
     const tideMap = new Map<number,number>();
     tideData?.predictions.forEach(p => {
@@ -1115,7 +824,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       return { hour: `${hh}:00`, tideH: tideMap.get(i) ?? null, temp: null, windSpd: null, windDir: null, wCode: null, ...(wxMap.get(hh) ?? {}), ...marine } as HourRow;
     });
   };
- 
+
   const tpxoHighLow = (() => {
     const hs = tideData?.predictions.filter(p => parseToWIB(p.time)?.wibDate === selDate) ?? [];
     if (!hs.length) return null;
@@ -1124,7 +833,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
     const fmtTime = (iso: string) => { const w = parseToWIB(iso); if (!w) return "--:--"; return `${w.wibHour.toString().padStart(2, "0")}:00`; };
     return { max: highPt.height, maxTime: fmtTime(highPt.time), min: lowPt.height, minTime: fmtTime(lowPt.time) };
   })();
- 
+
   const luwesForChart = (overlayData?.luwes_obs ?? [])
     .filter(o => parseToWIB(o.recorded_at)?.wibDate === selDate)
     .map(o => ({ ...o, level_m: o.level_m + TOL_CORRECTION }));
@@ -1132,44 +841,45 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
   const luwesStatsCorrected = hasLuwesObs
     ? { max_m: Math.max(...luwesForChart.map(o => o.level_m)), min_m: Math.min(...luwesForChart.map(o => o.level_m)), count: luwesForChart.length }
     : overlayData?.luwes_stats ?? null;
- 
+
   const { sunrise, sunset } = getSunTimes();
   const rows = buildRows();
- 
+
   const maxHourIdx = (() => { if (!tpxoHighLow) return -1; const dp = tideData?.predictions.filter(p => parseToWIB(p.time)?.wibDate === selDate) ?? []; if (!dp.length) return -1; let b = 0; for (let i = 1; i < dp.length; i++) if (dp[i].height > dp[b].height) b = i; const w = parseToWIB(dp[b].time); return w ? w.wibHour : -1; })();
   const minHourIdx = (() => { if (!tpxoHighLow) return -1; const dp = tideData?.predictions.filter(p => parseToWIB(p.time)?.wibDate === selDate) ?? []; if (!dp.length) return -1; let b = 0; for (let i = 1; i < dp.length; i++) if (dp[i].height < dp[b].height) b = i; const w = parseToWIB(dp[b].time); return w ? w.wibHour : -1; })();
- 
+
   const current = weatherData?.current;
   const currentWindMs = current ? kmhToMs(current.wind_speed_10m) : null;
   const currentWaveH: number|null = marineData?.current?.wave_height != null ? marineData.current.wave_height : (marineData?.hourly.wave_height[0] ?? null);
   const currentCurrentSpd: number|null = marineData?.current?.ocean_current_velocity != null ? marineData.current.ocean_current_velocity : (marineData?.hourly.ocean_current_velocity[0] ?? null);
- 
+
   const nowHour = (() => { const wib = new Date(Date.now() + 7*3600_000); return wib.getUTCHours().toString().padStart(2, "0"); })();
   const isToday = selDate === todayISO();
   const activities = buildRecommendations(tideData, weatherData, marineData, selDate, lang);
- 
+
   const selDateFmt = new Date(selDate + "T12:00:00Z").toLocaleDateString(
     lang === "en" ? "en-US" : "id-ID",
     { weekday: "long", day: "numeric", month: "long", year: "numeric" }
   );
- 
+
+  /* ── Date change: clamp + guard ── */
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const chosen = e.target.value;
-    if (chosen > maxDateISO) return;   // hard clamp
+    if (chosen > maxDateISO) return;
     if (!isPro && chosen < todayStr) return;
     setSelDate(chosen);
     fetchAll(chosen);
   };
- 
+
   const SectionLabel: React.FC<{children: React.ReactNode}> = ({ children }) => (
     <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" as const, color: TEXT_HINT, marginBottom: 7, fontFamily: SANS }}>
       {children}
     </p>
   );
- 
+
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", borderLeft: `1px solid ${BORDER}`, fontFamily: SANS, background: BG_PAGE, overscrollBehavior: "contain", minWidth: 0 }}>
- 
+
       {/* ── Top Bar ── */}
       <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 13px", background: BG_CARD, borderBottom: `1px solid ${BORDER}`, gap: 7, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
@@ -1202,14 +912,14 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
           </button>
         </div>
       </div>
- 
+
       {/* ── Scrollable Body ── */}
       <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", scrollbarWidth: "thin", scrollbarColor: `${BORDER} transparent`, overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", minWidth: 0 }}
         onWheel={e => e.stopPropagation()}
         onTouchMove={e => e.stopPropagation()}
       >
         {loading && (<><SkeletonHero/><div style={{margin:"14px 14px 0"}}><Shimmer w="30%" h="8px"/><div style={{marginTop:7}}><Shimmer w="100%" h="34px" r="10px"/></div></div><SkeletonChart/></>)}
- 
+
         {error && !loading && (
           <div style={{ margin:14, padding:14, borderRadius:12, background:"#fff1f2", border:`1px solid #fecdd3` }}>
             <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
@@ -1233,7 +943,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
             </div>
           </div>
         )}
- 
+
         {!loading && !error && (
           <>
             {/* ════ HERO CARD ════ */}
@@ -1283,8 +993,8 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 ))}
               </div>
             </div>
- 
-            {/* ── Date Picker (gated) ── */}
+
+            {/* ── Date Picker (billing-gated) ── */}
             <div style={{ padding:"11px 13px 0" }}>
               <SectionLabel>{lang === "en" ? "Select Date" : "Pilih Tanggal"}</SectionLabel>
               <input
@@ -1297,15 +1007,15 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 onFocus={e => { e.currentTarget.style.borderColor=SKY; e.currentTarget.style.boxShadow=`0 0 0 2.5px rgba(14,165,233,0.10)`; }}
                 onBlur={e  => { e.currentTarget.style.borderColor=BORDER; e.currentTarget.style.boxShadow="none"; }}
               />
- 
+
               {/* Free-tier horizon notice */}
               {!isPro && (
                 <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:5, padding:"5px 9px", background:"#fffbeb", border:"1px solid #fde68a", borderRadius:7 }}>
                   <Lock size={10} style={{ color:"#b45309", flexShrink:0 }}/>
                   <span style={{ fontFamily:SANS, fontSize:10, color:"#b45309", lineHeight:1.4 }}>
                     {lang === "en"
-                      ? `Free plan: up to ${FREE_TIDE_DAYS} days ahead (today–${maxDateISO}). `
-                      : `Paket gratis: hingga ${FREE_TIDE_DAYS} hari ke depan (hari ini–${maxDateISO}). `}
+                      ? `Free plan: today – ${maxDateISO} (${FREE_TIDE_DAYS} days). `
+                      : `Paket gratis: hari ini – ${maxDateISO} (${FREE_TIDE_DAYS} hari). `}
                     <button onClick={() => setShowPricing(true)} style={{ background:"none", border:"none", cursor:"pointer", color:PRIMARY, fontWeight:700, fontSize:10, padding:0, fontFamily:SANS, textDecoration:"underline" }}>
                       {lang === "en" ? "Upgrade for 14 days →" : "Upgrade 14 hari →"}
                     </button>
@@ -1313,7 +1023,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 </div>
               )}
             </div>
- 
+
             {/* ── Overlay Chart ── */}
             <div style={{ padding:"11px 13px 0" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6, gap:4, flexWrap:"wrap" as const }}>
@@ -1338,7 +1048,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 </div>
               </div>
             </div>
- 
+
             {/* ── TPXO High / Low ── */}
             <div style={{ padding:"9px 13px 0" }}>
               {tpxoHighLow && (
@@ -1372,7 +1082,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 </div>
               )}
             </div>
- 
+
             {/* ── Hourly Table ── */}
             <div style={{ padding:"11px 13px 0" }}>
               <SectionLabel>{lang==="en"?"Hourly Data (00:00–23:00 WIB)":"Data Per Jam (00:00–23:00 WIB)"}</SectionLabel>
@@ -1405,7 +1115,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 </div>
               </div>
             </div>
- 
+
             {/* ── Activity Guide ── */}
             <div style={{ padding:"13px 13px 0" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:7 }}>
@@ -1434,25 +1144,33 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 })}
               </div>
             </div>
- 
-            {/* ── IHO S-104 Badge + Export (gated inside S104Badge) ── */}
+
+            {/* ── IHO S-104 Compliance + Export (subscription-gated) ── */}
             <div style={{ padding:"13px 13px 0" }}>
               <SectionLabel>{lang==="en"?"IHO S-100 / S-104 Compliance":"Kepatuhan IHO S-100 / S-104"}</SectionLabel>
-              <S104Badge coordinates={coordinates} selectedDate={selDate} language={lang}/>
+              {/* S104ExportSection handles its own gate:
+                  - Free  → shows locked overlay with upgrade CTA
+                  - Pro   → shows export buttons                    */}
+              <S104ExportSection
+                coordinates={coordinates}
+                selectedDate={selDate}
+                language={lang}
+              />
             </div>
- 
+
             {/* ── Metadata Footer ── */}
             <div style={{ margin:"13px 13px 20px", borderRadius:10, padding:"9px 13px", background:BG_CARD, border:`1px solid ${BORDER}` }}>
               {([
-                [lang==="en"?"Tide model":"Model pasut", tideData?.metadata.model],
-                ["Datum",                                tideData?.metadata.datum],
-                ...(tideData?[[lang==="en"?"Nearest grid":"Grid terdekat",`${tideData.grid.lat.toFixed(3)}°, ${tideData.grid.lon.toFixed(3)}° · ${tideData.grid.distance_km.toFixed(1)} km`]]:[]),
-                [lang==="en"?"Weather":"Cuaca",         "Open-Meteo API"],
-                [lang==="en"?"Coverage":"Cakupan",      isPro?(lang==="en"?"Today ±14 days":"Hari ini ±14 hari"):(lang==="en"?`Today +${FREE_WX_DAYS} days`:`Hari ini +${FREE_WX_DAYS} hari`)],
+                [lang==="en"?"Tide model":"Model pasut",    tideData?.metadata.model],
+                ["Datum",                                   tideData?.metadata.datum],
+                ...(tideData?[[lang==="en"?"Nearest grid":"Grid terdekat", `${tideData.grid.lat.toFixed(3)}°, ${tideData.grid.lon.toFixed(3)}° · ${tideData.grid.distance_km.toFixed(1)} km`]]:[]),
+                [lang==="en"?"Weather":"Cuaca",             "Open-Meteo API"],
+                [lang==="en"?"Coverage":"Cakupan",          isPro?(lang==="en"?"Today ±14 days":"Hari ini ±14 hari"):(lang==="en"?`Today +${FREE_WX_DAYS} days`:`Hari ini +${FREE_WX_DAYS} hari`)],
                 [lang==="en"?"Obs. station":"Stasiun obs.", overlayData?.imei?`IMEI ${overlayData.imei}`:"—"],
-                ["TOL",                                  "-2.156 m (Luwes → MSL TPXO9)"],
-                ["S-104",                                "Ed.2.0.0 (Dec 2024)"],
-                [lang==="en"?"Tide horizon":"Horizon pasut", `${maxTideDays} ${lang==="en"?"days":"hari"} (${isPro?"Pro":"Free"})`],
+                ["TOL",                                     "-2.156 m (Luwes → MSL TPXO9)"],
+                ["S-104",                                   "Ed.2.0.0 (Dec 2024)"],
+                [lang==="en"?"Tide horizon":"Horizon pasut",`${maxTideDays} ${lang==="en"?"days":"hari"} (${isPro?"Pro":"Free"})`],
+                [lang==="en"?"Plan":"Paket",                isPro?(lang==="en"?"Pro ✓":"Pro ✓"):(lang==="en"?"Free":"Gratis")],
               ] as [string, string|undefined][]).map(([k,v])=>(
                 <div key={k} style={{ display:"flex", justifyContent:"space-between", marginBottom:2, gap:7 }}>
                   <span style={{fontFamily:MONO,fontSize:9.5,color:TEXT_HINT,fontWeight:500,flexShrink:0}}>{k}</span>
@@ -1463,10 +1181,10 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
           </>
         )}
       </div>
- 
+
       {/* ── Pricing Modal (triggered from Free-tier notices) ── */}
       <PricingModal open={showPricing} onClose={() => setShowPricing(false)} language={lang} initialTab="pricing"/>
- 
+
       <style>{`
         @keyframes shimmer { from { background-position:-200% 0; } to { background-position:200% 0; } }
         @keyframes spin    { to   { transform:rotate(360deg); } }
