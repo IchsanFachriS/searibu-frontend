@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { LogIn, X, Eye, EyeOff, CheckCircle, Loader2, LogOut, ChevronDown, Anchor, Menu } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useLanguage } from '../../context/LanguageContext';
+import { SubscriptionStatusBadge } from "../subscription";
+import { useSubContext } from "../../context/SubscriptionContext";
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -398,7 +400,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
   const [scrolled, setScrolled]       = useState(false);
   const [mobileOpen, setMobileOpen]   = useState(false);
   const [isMobile, setIsMobile]       = useState(false);
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
+  const { user: currentUser, setUser: setCurrentUser } = useSubContext();
     try { const s = sessionStorage.getItem('searibu_user'); return s ? JSON.parse(s) : null; }
     catch { return null; }
   });
@@ -572,7 +574,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
                 </button>
               ))}
             </div>
-
+            <SubscriptionStatusBadge language={language} />
+            
             {currentUser ? (
               <UserDropdown user={currentUser} onLogout={() => { setCurrentUser(null); sessionStorage.removeItem('searibu_user'); }} language={language} />
             ) : (

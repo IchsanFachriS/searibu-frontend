@@ -1,15 +1,6 @@
 /**
  * InfoPanel.tsx  —  Marine Info Panel
  * Sistem Searibu — ITB Geodesy & Geomatics Engineering 2026
- *
- * Color palette: soft, cohesive tones aligned with brand navy/ocean/sky
- *  - TPXO chart line:  #3b82f6 (soft blue, brand-aligned)
- *  - Luwes chart dots: #e879a0 (soft rose-magenta, brand-aligned)
- *  - Hero card:        navy gradient (brand)
- *  - Tide high card:   soft sky blue
- *  - Tide low card:    soft amber (warm, not harsh)
- *  - Activity guide:   muted semantic colors
- *  - S104 badge:       soft teal-blue
  */
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
@@ -22,7 +13,6 @@ import {
   Loader2, FileDown, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
-import { useSubscription } from "@/hooks/useSubscription";
 
 /* ═══════════════════════════════════════════════════
    TYPES
@@ -91,34 +81,29 @@ interface InfoPanelProps {
 }
 
 /* ═══════════════════════════════════════════════════
-   DESIGN TOKENS — soft, cohesive palette
+   DESIGN TOKENS
 ═══════════════════════════════════════════════════ */
-// Brand
 const NAVY    = "#0c4a6e";
 const OCEAN   = "#075985";
 const PRIMARY = "#0369a1";
 const SKY     = "#0ea5e9";
 
-// Chart colors — soft, brand-aligned
-const CHART_TPXO  = "#5b7093";   // soft medium blue (not harsh)
-const CHART_LUWES = "#e879a0";   // soft rose-magenta
+const CHART_TPXO  = "#5b7093";
+const CHART_LUWES = "#e879a0";
 
-// Semantic — muted
 const C_SAFE    = { dot: "#22c55e", bg: "#f0fdf4", border: "#bbf7d0", text: "#15803d" };
 const C_CAUTION = { dot: "#f59e0b", bg: "#fffbeb", border: "#fde68a", text: "#b45309" };
 const C_DANGER  = { dot: "#f87171", bg: "#fff1f2", border: "#fecdd3", text: "#be123c" };
 
-// Neutral surfaces
-const BG_PAGE   = "#f0f6fb";   // very soft blue-tinted page
+const BG_PAGE   = "#f0f6fb";
 const BG_CARD   = "#ffffff";
 const BG_MUTED  = "#f5f9fc";
-const BORDER    = "#dbeafe";   // soft blue border
+const BORDER    = "#dbeafe";
 const BORDER_SM = "#e8f0f7";
 const TEXT_PRI  = "#0f2744";
 const TEXT_SEC  = "#4a6580";
 const TEXT_HINT = "#8faabb";
 
-// Tide high/low
 const HIGH_BG   = "#eff8ff";
 const HIGH_BDR  = "#bfdbfe";
 const HIGH_TEXT = "#4f7af3";
@@ -295,6 +280,7 @@ function interpolateTPXOPerMinute(knots: {x: number; y: number}[]): {x: number; 
 
 /* ═══════════════════════════════════════════════════
    ACTIVITY RECOMMENDATIONS ENGINE
+   NOTE: Pure function — no hooks allowed here
 ═══════════════════════════════════════════════════ */
 function buildRecommendations(
   tideData: TideData | null,
@@ -449,29 +435,6 @@ function buildRecommendations(
     if(s==="caution") return ["Light rain expected — bring rain gear","Kemungkinan hujan — bawa jas hujan"];
     return ["Storm forecast — limit outdoor activities","Prakiraan badai — batasi aktivitas luar"];
   };
-
-  const { isPro, maxForecastDays } = useSubscription(currentUserEmail);
-  const maxDate = addDays(todayISO(), maxForecastDays);
-
-      <input
-      type="date"
-      value={selDate}
-      max={maxDate}          // HTML max attr blocks picker
-      onChange={e => {
-        const picked = e.target.value;
-        if (picked > maxDate) return;  // guard
-        handleDateChange(e);
-      }}
-    />
-
-    // Lock export buttons if not pro:
-    {!isPro ? (
-      <div style={{ opacity: 0.5, pointerEvents: 'none' }}>
-        <S104Badge ... />
-      </div>
-    ) : (
-      <S104Badge ... />
-    )}
 
   return [
     { id:"snorkeling", labelEn:"Snorkeling",       labelId:"Snorkeling",        icon:<Waves size={13}/>,    status:snorkel(),  reasonEn:snorkelR()[0],  reasonId:snorkelR()[1]  },
@@ -643,7 +606,6 @@ const OverlayChart: React.FC<{
               label: "TPXO",
               type: "line" as any,
               data: tpxoPts,
-              // Soft blue — brand aligned
               borderColor: CHART_TPXO,
               backgroundColor: (c: any) => {
                 const { chart: { ctx: cx, chartArea: ca } } = c;
@@ -667,7 +629,6 @@ const OverlayChart: React.FC<{
               label: "Luwes RAW",
               type: "scatter" as any,
               data: luwesPts,
-              // Soft rose-magenta
               borderColor: `${CHART_LUWES}bb`,
               backgroundColor: `${CHART_LUWES}99`,
               pointRadius: 1.8,
@@ -807,7 +768,6 @@ const OverlayChart: React.FC<{
             if (x < ca.left || x > ca.right) return;
             c.save();
             c.beginPath(); c.moveTo(x, ca.top); c.lineTo(x, ca.bottom);
-            // Soft coral-red for "now" line
             c.strokeStyle = "rgba(251,113,133,0.65)"; c.lineWidth = 1.5;
             c.setLineDash([4, 4]); c.stroke();
             c.fillStyle = "rgba(251,113,133,0.9)"; c.font = `bold 8.5px ${MONO}`;
@@ -908,6 +868,7 @@ const S104Badge: React.FC<{
     { label: "Encoding",       value: "HDF5" },
     { label: "Adopted",        value: "December 2024" },
   ];
+
   return (
     <div>
       <div
@@ -960,7 +921,6 @@ const S104Badge: React.FC<{
       )}
 
       <div style={{ display:"flex", flexDirection:"column", gap:5, marginTop:7 }}>
-        {/* TPXO export — soft blue */}
         <button onClick={handleTpxo} disabled={loadingTpxo}
           style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:5, width:"100%", padding:"8px 13px", borderRadius:8, border:`1.5px solid ${CHART_TPXO}28`, background:loadingTpxo?"#f8fafc":`${CHART_TPXO}0d`, color:loadingTpxo?TEXT_HINT:HIGH_TEXT, fontFamily:SANS, fontSize:11.5, fontWeight:600, cursor:loadingTpxo?"not-allowed":"pointer", transition:"all 0.18s" }}
           onMouseEnter={e => { if(!loadingTpxo){ e.currentTarget.style.background=`${CHART_TPXO}18`; e.currentTarget.style.borderColor=`${CHART_TPXO}50`; } }}
@@ -968,7 +928,6 @@ const S104Badge: React.FC<{
           {loadingTpxo ? <Loader2 size={12} style={{animation:"spin 0.7s linear infinite"}}/> : <FileDown size={12}/>}
           {loadingTpxo ? (lang==="en"?"Preparing...":"Menyiapkan...") : (lang==="en"?"Export S-104 (TPXO)":"Ekspor S-104 (TPXO)")}
         </button>
-        {/* Luwes export — soft rose */}
         <button onClick={handleLuwes} disabled={loadingLuwes}
           style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:5, width:"100%", padding:"8px 13px", borderRadius:8, border:`1.5px solid ${CHART_LUWES}28`, background:loadingLuwes?"#f8fafc":`${CHART_LUWES}0d`, color:loadingLuwes?TEXT_HINT:"#be185d", fontFamily:SANS, fontSize:11.5, fontWeight:600, cursor:loadingLuwes?"not-allowed":"pointer", transition:"all 0.18s" }}
           onMouseEnter={e => { if(!loadingLuwes){ e.currentTarget.style.background=`${CHART_LUWES}18`; e.currentTarget.style.borderColor=`${CHART_LUWES}50`; } }}
@@ -1165,8 +1124,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
   const { sunrise, sunset } = getSunTimes();
   const rows    = buildRows();
 
-    // Compute single hour index that holds the true max and min
-  // This guarantees exactly ONE highlighted row each
   const maxHourIdx = (() => {
     if (!tpxoHighLow) return -1;
     const dayPred = tideData?.predictions.filter(
@@ -1213,7 +1170,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
     const d = e.target.value; setSelDate(d); fetchAll(d);
   };
 
-  /* ── Section label helper ── */
   const SectionLabel: React.FC<{children: React.ReactNode}> = ({children}) => (
     <p style={{ fontSize:9, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase" as const, color:TEXT_HINT, marginBottom:7, fontFamily:SANS }}>
       {children}
@@ -1322,10 +1278,8 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
 
         {!loading && !error && (
           <>
-            {/* ════ HERO CARD — brand navy gradient ════ */}
+            {/* ════ HERO CARD ════ */}
             <div style={{ margin:"13px 13px 0", borderRadius:13, overflow:"hidden", background:`linear-gradient(135deg,${NAVY} 0%,${OCEAN} 55%,${PRIMARY} 100%)` }}>
-
-              {/* Coord bar */}
               <div style={{ padding:"7px 14px 6px", borderBottom:"1px solid rgba(255,255,255,0.09)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                 <p style={{ fontFamily:MONO, color:"rgba(186,230,253,0.50)", fontSize:9.5, letterSpacing:"0.03em", margin:0 }}>
                   {Math.abs(coordinates.lat).toFixed(4)}°{coordinates.lat>=0?"N":"S"}&ensp;
@@ -1338,7 +1292,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 )}
               </div>
 
-              {/* Temperature + sun times */}
               <div style={{ padding:"13px 14px 9px", display:"flex", alignItems:"center", gap:11 }}>
                 {current && (
                   <div style={{ display:"flex", alignItems:"flex-start", gap:5 }}>
@@ -1376,7 +1329,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 </div>
               </div>
 
-              {/* 3-col marine params */}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", borderTop:"1px solid rgba(186,230,253,0.08)" }}>
                 {[
                   {
@@ -1505,7 +1457,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
             <div style={{ padding:"9px 13px 0" }}>
               {tpxoHighLow && (
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7 }}>
-                  {/* High — soft sky-blue */}
                   <div style={{ borderRadius:10, padding:"9px 13px", background:HIGH_BG, border:`1.5px solid ${HIGH_BDR}` }}>
                     <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:3 }}>
                       <div style={{ width:5, height:5, borderRadius:"50%", background:CHART_TPXO, flexShrink:0 }}/>
@@ -1520,7 +1471,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                       ~{tpxoHighLow.maxTime} WIB
                     </p>
                   </div>
-                  {/* Low — soft warm amber */}
                   <div style={{ borderRadius:10, padding:"9px 13px", background:LOW_BG, border:`1.5px solid ${LOW_BDR}` }}>
                     <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:3 }}>
                       <div style={{ width:5, height:5, borderRadius:"50%", background:"#f59e0b", flexShrink:0 }}/>
@@ -1538,7 +1488,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 </div>
               )}
 
-              {/* Luwes stats — soft rose */}
               {hasLuwesObs && luwesStatsCorrected && luwesStatsCorrected.max_m!=null && (
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7, marginTop:7 }}>
                   <div style={{ borderRadius:10, padding:"9px 13px", background:"#fdf2f8", border:`1.5px solid #fbcfe8` }}>
@@ -1567,7 +1516,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
             <div style={{ padding:"11px 13px 0" }}>
               <SectionLabel>{lang==="en" ? "Hourly Data (00:00–23:00 WIB)" : "Data Per Jam (00:00–23:00 WIB)"}</SectionLabel>
               <div style={{ borderRadius:11, overflow:"hidden", background:BG_CARD, border:`1px solid ${BORDER}` }}>
-                {/* Column headers */}
                 <div style={{
                   display:"grid",
                   gridTemplateColumns:"44px 19px 54px 36px 60px 40px 40px",
@@ -1593,7 +1541,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                   <span style={{textAlign:"right" as const}}>{lang==="en"?"Curr.":"Arus"}</span>
                 </div>
 
-                {/* Fixed-height scrollable rows */}
                 <div style={{
                   height: 316,
                   overflowY: "auto",
@@ -1604,7 +1551,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                     const hl    = isToday && row.hour.startsWith(nowHour+":00");
                     const isMax = idx === maxHourIdx;
                     const isMin = idx === minHourIdx;
-                    // Wave/current color: soft semantic
                     const waveC = row.waveH==null?TEXT_HINT: row.waveH<0.5?"#16a34a": row.waveH<1.25?"#d97706":"#e11d48";
                     const currC = row.currentSpd==null?TEXT_HINT: row.currentSpd<0.25?"#16a34a": row.currentSpd<0.75?"#d97706":"#e11d48";
                     const isLast = idx === rows.length - 1;
@@ -1646,7 +1592,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                   })}
                 </div>
 
-                {/* Legend footer */}
                 <div style={{ padding:"4px 11px", borderTop:`1px solid ${BORDER_SM}`, background:BG_MUTED, display:"flex", alignItems:"center", gap:9, flexWrap:"wrap" as const }}>
                   {[
                     { color:"#16a34a", label:lang==="en"?"Low":"Rendah" },

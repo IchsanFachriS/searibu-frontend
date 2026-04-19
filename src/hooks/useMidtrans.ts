@@ -1,55 +1,78 @@
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const SNAP_JS = import.meta.env.VITE_MIDTRANS_ENV === 'production'
-  ? 'https://app.midtrans.com/snap/snap.js'
-  : 'https://app.sandbox.midtrans.com/snap/snap.js';
+/**
+ * useMidtrans.ts
+ * Loads Snap.js once and exposes openPayment().
+ * Calls POST /api/create-payment → receives snap_token → opens Snap popup.
+ */
 
-// Load Snap.js once
-let snapLoaded = false;
+import { useCallback, useRef } from "react";
+
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const SNAP_URL =
+  import.meta.env.VITE_MIDTRANS_ENV === "production"
+    ? "https://app.midtrans.com/snap/snap.js"
+    : "https://app.sandbox.midtrans.com/snap/snap.js";
+const CLIENT_KEY = import.meta.env.VITE_MIDTRANS_CLIENT_KEY || "";
+
+let _snapLoaded = false;
+
 function loadSnap(): Promise<void> {
-  if (snapLoaded) return Promise.resolve();
+  if (_snapLoaded || (window as any).snap) {
+    _snapLoaded = true;
+    return Promise.resolve();
+  }
   return new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = SNAP_JS;
-    s.setAttribute('data-client-key', import.meta.env.VITE_MIDTRANS_CLIENT_KEY || '');
-    s.onload = () => { snapLoaded = true; resolve(); };
-    s.onerror = reject;
+    const s = document.createElement("script");
+    s.src = SNAP_URL;
+    s.setAttribute("data-client-key", CLIENT_KEY);
+    s.onload = () => { _snapLoaded = true; resolve(); };
+    s.onerror = () => reject(new Error("Failed to load Snap.js"));
     document.head.appendChild(s);
   });
 }
 
-export interface PaymentResult {
-  status: 'success' | 'pending' | 'error' | 'closed';
-}
+export type PaymentCallbacks = {
+  onSuccess: (result: any) => void;
+  onPending: (result: any) => void;
+  onError: (result: any) => void;
+  onClose: () => void;
+};
 
-export async function createPayment(
-  plan: string,
-  email: string,
-  callbacks: {
-    onSuccess: () => void;
-    onPending: () => void;
-    onError: () => void;
-    onClose: () => void;
-  }
-): Promise<void> {
-  await loadSnap();
+export function useMidtrans() {
+  const loading = useRef(false);
 
-  const r = await fetch(`${API}/api/create-payment`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ plan, email }),
-  });
+  const openPayment = useCallback(
+    async (plan: "pro_monthly" | "pro_annual", email: string, cb: PaymentCallbacks) => {
+      if (loading.current) return;
+      loading.current = true;
+      try {
+        await loadSnap();
 
-  if (!r.ok) {
-    const err = await r.json();
-    throw new Error(err.error || 'Payment creation failed');
-  }
+        const res = await fetch(`${API}/api/create-payment`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ plan, email }),
+        });
 
-  const { snap_token } = await r.json();
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error((err as any).error || `HTTP ${res.status}`);
+        }
 
-  (window as any).snap.pay(snap_token, {
-    onSuccess:  callbacks.onSuccess,
-    onPending:  callbacks.onPending,
-    onError:    callbacks.onError,
-    onClose:    callbacks.onClose,
-  });
+        const { snap_token } = await res.json();
+
+        (window as any).snap.pay(snap_token, {
+          onSuccess: (r: any) => { loading.current = false; cb.onSuccess(r); },
+          onPending: (r: any) => { loading.current = false; cb.onPending(r); },
+          onError:   (r: any) => { loading.current = false; cb.onError(r); },
+          onClose:   ()       => { loading.current = false; cb.onClose(); },
+        });
+      } catch (e) {
+        loading.current = false;
+        throw e;
+      }
+    },
+    []
+  );
+
+  return { openPayment };
 }
