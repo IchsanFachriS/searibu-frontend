@@ -1,8 +1,10 @@
 /**
  * useSubscription.ts
- * Fetches and caches the current user's subscription from
- *   GET /api/subscription?email=<email>
- * Also exposes feature-gate helpers used throughout the app.
+ *
+ * Per-plan limits (Table 3):
+ *   free         → tidal 3 days ahead, weather current+3
+ *   pro_monthly  → tidal 14 days, weather ±14 days
+ *   pro_annual   → tidal 14 days, weather ±14 days
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -26,16 +28,23 @@ const DEFAULT_SUB: Subscription = {
   expires_at: null,
 };
 
-/** Max forecast days per plan */
+/** Max tidal forecast days per plan (days AHEAD from today) */
 export const MAX_FORECAST_DAYS: Record<Plan, number> = {
   free: 3,
   pro_monthly: 14,
   pro_annual: 14,
 };
 
+/** Max weather days per plan (days ahead; same symmetrically behind for Pro) */
+export const MAX_WEATHER_DAYS: Record<Plan, number> = {
+  free: 3,        // current day + 3
+  pro_monthly: 14, // ±14 days from today
+  pro_annual: 14,
+};
+
 /** Features gated behind Pro */
 export type ProFeature = "s104_export" | "forecast_14d" | "activity_full" | "luwes_overlay";
-const PRO_FEATURES: ProFeature[] = ["s104_export", "forecast_14d", "activity_full", "luwes_overlay"];
+const PRO_FEATURES: ProFeature[] = ["s104_export", "forecast_14d"];
 
 export function useSubscription(email: string | null) {
   const [sub, setSub] = useState<Subscription>(DEFAULT_SUB);
@@ -56,7 +65,7 @@ export function useSubscription(email: string | null) {
       } else {
         setSub(DEFAULT_SUB);
       }
-    } catch (e) {
+    } catch {
       setError("Failed to load subscription");
       setSub(DEFAULT_SUB);
     } finally {
@@ -71,6 +80,7 @@ export function useSubscription(email: string | null) {
     sub.status === "active";
 
   const maxForecastDays = MAX_FORECAST_DAYS[sub.plan] ?? 3;
+  const maxWeatherDays  = MAX_WEATHER_DAYS[sub.plan] ?? 3;
 
   const canAccess = useCallback(
     (feature: ProFeature) => {
@@ -80,5 +90,5 @@ export function useSubscription(email: string | null) {
     [isPro]
   );
 
-  return { sub, isPro, maxForecastDays, loading, error, refresh, canAccess };
+  return { sub, isPro, maxForecastDays, maxWeatherDays, loading, error, refresh, canAccess };
 }

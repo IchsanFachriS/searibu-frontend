@@ -8,11 +8,13 @@ import {
   X, RefreshCw, AlertCircle,
   Anchor, Wind, Fish, Camera, Waves,
   Sun, Moon, Navigation, Leaf, Flag,
-  Users, Ship, Zap, Download,
-  CheckCircle, ExternalLink, Info,
+  Users, Ship, Zap, Lock,
+  CheckCircle, ExternalLink,
   Loader2, FileDown, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
+import { useSubContext, FREE_TIDE_DAYS, FREE_WX_DAYS } from "../../context/SubscriptionContext";
+import { PricingModal } from "../subscription/PricingModal";
 
 /* ═══════════════════════════════════════════════════
    TYPES
@@ -955,7 +957,11 @@ const S104Badge: React.FC<{
 export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) => {
   const { language } = useLanguage();
   const lang = language as "en" | "id";
-
+ 
+  /* ── Subscription context ────────────────────────── */
+  const { isPro, maxTideDays, maxWxDays } = useSubContext();
+  const [showPricing, setShowPricing] = useState(false);
+ 
   const [tideData,         setTideData]         = useState<TideData|null>(null);
   const [weatherData,      setWeatherData]       = useState<WeatherData|null>(null);
   const [marineData,       setMarineData]        = useState<MarineData|null>(null);
@@ -964,27 +970,58 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
   const [error,            setError]             = useState<string|null>(null);
   const [weatherFromCache, setWeatherFromCache]  = useState(false);
   const [selDate,          setSelDate]           = useState<string>(todayISO());
-
+ 
+  /* ── max / min dates for the date picker ─────────── */
+  const todayStr = todayISO();
+  const maxDateISO = addDays(todayStr, maxTideDays - 1);
+  // Free users: today only to today+2 (3 days total, 0-indexed)
+  const minDateISO = !isPro ? todayStr : addDays(todayStr, -365);
+ 
   const fetchAll = useCallback(async (dateStr: string, forceRefresh = false) => {
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
+ 
+    /* ── Guard: block out-of-range dates for Free users ── */
+    if (!isPro) {
+      if (dateStr > maxDateISO) {
+        setError(lang === "en"
+          ? `Free plan: tidal forecast limited to ${FREE_TIDE_DAYS} days ahead. Upgrade to Pro for 14-day access.`
+          : `Paket gratis: prediksi pasut terbatas ${FREE_TIDE_DAYS} hari ke depan. Upgrade ke Pro untuk akses 14 hari.`);
+        setLoading(false);
+        return;
+      }
+      if (dateStr < todayStr) {
+        setError(lang === "en"
+          ? "Free plan: historical data not available. Upgrade to Pro."
+          : "Paket gratis: data historis tidak tersedia. Upgrade ke Pro.");
+        setLoading(false);
+        return;
+      }
+    }
+ 
     try {
-      const today  = new Date();
-      const fmtD   = (d: Date) => d.toISOString().split("T")[0];
-
+      const today = new Date();
+      const fmtD  = (d: Date) => d.toISOString().split("T")[0];
+ 
       let wd: WeatherData|null = null;
       let md: MarineData|null  = null;
       let usedCache = false;
-
+ 
       if (!forceRefresh) {
         wd = readCache<WeatherData>(coordinates.lat, coordinates.lon, "wx");
         md = readCache<MarineData>(coordinates.lat, coordinates.lon, "marine");
         if (wd && md) usedCache = true;
       }
-
+ 
       if (!wd || !md) {
-        const wxStart = new Date(today); wxStart.setDate(wxStart.getDate()-14);
-        const wxEnd   = new Date(today); wxEnd.setDate(wxEnd.getDate()+15);
-
+        /* ── Weather window: Free = today..today+3; Pro = today-14..today+15 ── */
+        const wxDaysBack = isPro ? 14 : 0;
+        const wxDaysFwd  = isPro ? 14 : FREE_WX_DAYS;
+        const wxStart = new Date(today);
+        wxStart.setDate(wxStart.getDate() - wxDaysBack);
+        const wxEnd = new Date(today);
+        wxEnd.setDate(wxEnd.getDate() + wxDaysFwd + 1);
+ 
         const [wxRes, marRes] = await Promise.all([
           fetch(
             `https://api.open-meteo.com/v1/forecast` +
@@ -1004,50 +1041,54 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
             `&start_date=${fmtD(wxStart)}&end_date=${fmtD(wxEnd)}`
           ),
         ]);
-
-        if (!wxRes.ok) throw new Error(lang==="en" ? "Weather service unavailable" : "Layanan cuaca tidak tersedia");
+ 
+        if (!wxRes.ok) throw new Error(lang === "en" ? "Weather service unavailable" : "Layanan cuaca tidak tersedia");
         wd = await wxRes.json() as WeatherData;
         writeCache(coordinates.lat, coordinates.lon, "wx", wd);
         if (marRes.ok) { md = await marRes.json() as MarineData; writeCache(coordinates.lat, coordinates.lon, "marine", md); }
         usedCache = false;
       }
-
-      setWeatherData(wd); setMarineData(md); setWeatherFromCache(usedCache);
-
+ 
+      setWeatherData(wd);
+      setMarineData(md);
+      setWeatherFromCache(usedCache);
+ 
       const prevDay = addDays(dateStr, -1);
       const nextDay = addDays(dateStr, +1);
-
+ 
       const [tr, or_] = await Promise.all([
         fetch(`${API_BASE}/api/tide/prediction?lon=${coordinates.lon}&lat=${coordinates.lat}&start_date=${prevDay}&end_date=${nextDay}&interval_hours=1`),
         fetch(`${API_BASE}/api/luwes/overlay?date=${dateStr}&lon=${coordinates.lon}&lat=${coordinates.lat}`),
       ]);
-
+ 
       if (!tr.ok) {
-        const e = await tr.json().catch(()=>({}));
-        throw new Error((e as any).error ?? (lang==="en" ? "Tide service unavailable" : "Layanan pasut tidak tersedia"));
+        const e = await tr.json().catch(() => ({}));
+        throw new Error((e as any).error ?? (lang === "en" ? "Tide service unavailable" : "Layanan pasut tidak tersedia"));
       }
       setTideData(await tr.json() as TideData);
       if (or_.ok) setOverlayData(await or_.json() as OverlayData);
       else setOverlayData(null);
-
-    } catch(e) {
-      setError(e instanceof Error ? e.message : (lang==="en" ? "Unknown error" : "Kesalahan tidak dikenal"));
+ 
+    } catch (e) {
+      setError(e instanceof Error ? e.message : (lang === "en" ? "Unknown error" : "Kesalahan tidak dikenal"));
     } finally {
       setLoading(false);
     }
-  }, [coordinates, lang]);
-
+  }, [coordinates, lang, isPro, maxDateISO, todayStr]);
+ 
   useEffect(() => {
-    const d = todayISO(); setSelDate(d); fetchAll(d);
+    const d = todayISO();
+    setSelDate(d);
+    fetchAll(d);
   }, [coordinates.lat, coordinates.lon]);
-
+ 
   const getSunTimes = () => {
-    if (!weatherData?.daily) return { sunrise:"--:--", sunset:"--:--" };
-    const idx = weatherData.daily.time.findIndex(t => t===selDate);
-    if (idx===-1) return { sunrise:"--:--", sunset:"--:--" };
+    if (!weatherData?.daily) return { sunrise: "--:--", sunset: "--:--" };
+    const idx = weatherData.daily.time.findIndex(t => t === selDate);
+    if (idx === -1) return { sunrise: "--:--", sunset: "--:--" };
     return { sunrise: fmtHHmm(weatherData.daily.sunrise[idx]), sunset: fmtHHmm(weatherData.daily.sunset[idx]) };
   };
-
+ 
   const buildRows = (): HourRow[] => {
     const tideMap = new Map<number,number>();
     tideData?.predictions.forEach(p => {
@@ -1055,227 +1096,144 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       if (!w) return;
       if (w.wibDate === selDate) tideMap.set(w.wibHour, p.height);
     });
-
     const wxMap = new Map<string, Partial<HourRow>>();
-    weatherData?.hourly.time.forEach((t,i) => {
+    weatherData?.hourly.time.forEach((t, i) => {
       if (!t.startsWith(selDate)) return;
-      const hh = new Date(t).getHours().toString().padStart(2,"0");
+      const hh = new Date(t).getHours().toString().padStart(2, "0");
       const windKmh = weatherData.hourly.wind_speed_10m[i];
-      wxMap.set(hh, {
-        temp:    weatherData.hourly.temperature_2m[i],
-        windSpd: windKmh!=null ? kmhToMs(windKmh) : null,
-        windDir: weatherData.hourly.wind_direction_10m[i],
-        wCode:   weatherData.hourly.weather_code[i],
-      });
+      wxMap.set(hh, { temp: weatherData.hourly.temperature_2m[i], windSpd: windKmh != null ? kmhToMs(windKmh) : null, windDir: weatherData.hourly.wind_direction_10m[i], wCode: weatherData.hourly.weather_code[i] });
     });
-
-    const marineMap = new Map<string,{waveH:number|null;currentSpd:number|null}>();
-    marineData?.hourly.time.forEach((t,i) => {
+    const marineMap = new Map<string, {waveH:number|null;currentSpd:number|null}>();
+    marineData?.hourly.time.forEach((t, i) => {
       if (!t.startsWith(selDate)) return;
-      const hh = new Date(t).getHours().toString().padStart(2,"0");
-      marineMap.set(hh, { waveH:marineData.hourly.wave_height[i]??null, currentSpd:marineData.hourly.ocean_current_velocity[i]??null });
+      const hh = new Date(t).getHours().toString().padStart(2, "0");
+      marineMap.set(hh, { waveH: marineData.hourly.wave_height[i] ?? null, currentSpd: marineData.hourly.ocean_current_velocity[i] ?? null });
     });
-
-    return Array.from({length:24},(_,i) => {
-      const hh    = i.toString().padStart(2,"0");
-      const label = `${hh}:00`;
-      const marine = marineMap.get(hh) ?? { waveH:null, currentSpd:null };
-      return {
-        hour: label,
-        tideH: tideMap.get(i) ?? null,
-        temp: null, windSpd: null, windDir: null, wCode: null,
-        ...(wxMap.get(hh) ?? {}),
-        ...marine,
-      } as HourRow;
+    return Array.from({ length: 24 }, (_, i) => {
+      const hh = i.toString().padStart(2, "0");
+      const marine = marineMap.get(hh) ?? { waveH: null, currentSpd: null };
+      return { hour: `${hh}:00`, tideH: tideMap.get(i) ?? null, temp: null, windSpd: null, windDir: null, wCode: null, ...(wxMap.get(hh) ?? {}), ...marine } as HourRow;
     });
   };
-
+ 
   const tpxoHighLow = (() => {
-    const hs = tideData?.predictions.filter(p=>parseToWIB(p.time)?.wibDate===selDate) ?? [];
+    const hs = tideData?.predictions.filter(p => parseToWIB(p.time)?.wibDate === selDate) ?? [];
     if (!hs.length) return null;
     let highPt = hs[0], lowPt = hs[0];
-    for (const p of hs) {
-      if (p.height > highPt.height) highPt = p;
-      if (p.height < lowPt.height)  lowPt  = p;
-    }
-    const fmtTime = (iso: string) => {
-      const w = parseToWIB(iso);
-      if (!w) return "--:--";
-      return `${w.wibHour.toString().padStart(2,"0")}:00`;
-    };
-    return {
-      max: highPt.height, maxTime: fmtTime(highPt.time),
-      min: lowPt.height,  minTime: fmtTime(lowPt.time),
-    };
+    for (const p of hs) { if (p.height > highPt.height) highPt = p; if (p.height < lowPt.height) lowPt = p; }
+    const fmtTime = (iso: string) => { const w = parseToWIB(iso); if (!w) return "--:--"; return `${w.wibHour.toString().padStart(2, "0")}:00`; };
+    return { max: highPt.height, maxTime: fmtTime(highPt.time), min: lowPt.height, minTime: fmtTime(lowPt.time) };
   })();
-
-  const luwesForChart = (overlayData?.luwes_obs??[])
-    .filter(o => parseToWIB(o.recorded_at)?.wibDate===selDate)
-    .map(o => ({...o, level_m: o.level_m+TOL_CORRECTION}));
-
+ 
+  const luwesForChart = (overlayData?.luwes_obs ?? [])
+    .filter(o => parseToWIB(o.recorded_at)?.wibDate === selDate)
+    .map(o => ({ ...o, level_m: o.level_m + TOL_CORRECTION }));
   const hasLuwesObs = luwesForChart.length > 0;
-
-  const luwesStatsCorrected = hasLuwesObs ? {
-    max_m: Math.max(...luwesForChart.map(o=>o.level_m)),
-    min_m: Math.min(...luwesForChart.map(o=>o.level_m)),
-    count: luwesForChart.length,
-  } : overlayData?.luwes_stats ?? null;
-
+  const luwesStatsCorrected = hasLuwesObs
+    ? { max_m: Math.max(...luwesForChart.map(o => o.level_m)), min_m: Math.min(...luwesForChart.map(o => o.level_m)), count: luwesForChart.length }
+    : overlayData?.luwes_stats ?? null;
+ 
   const { sunrise, sunset } = getSunTimes();
-  const rows    = buildRows();
-
-  const maxHourIdx = (() => {
-    if (!tpxoHighLow) return -1;
-    const dayPred = tideData?.predictions.filter(
-      p => parseToWIB(p.time)?.wibDate === selDate
-    ) ?? [];
-    if (!dayPred.length) return -1;
-    let best = 0;
-    for (let i = 1; i < dayPred.length; i++) {
-      if (dayPred[i].height > dayPred[best].height) best = i;
-    }
-    const w = parseToWIB(dayPred[best].time);
-    return w ? w.wibHour : -1;
-  })();
-
-  const minHourIdx = (() => {
-    if (!tpxoHighLow) return -1;
-    const dayPred = tideData?.predictions.filter(
-      p => parseToWIB(p.time)?.wibDate === selDate
-    ) ?? [];
-    if (!dayPred.length) return -1;
-    let best = 0;
-    for (let i = 1; i < dayPred.length; i++) {
-      if (dayPred[i].height < dayPred[best].height) best = i;
-    }
-    const w = parseToWIB(dayPred[best].time);
-    return w ? w.wibHour : -1;
-  })();
-
+  const rows = buildRows();
+ 
+  const maxHourIdx = (() => { if (!tpxoHighLow) return -1; const dp = tideData?.predictions.filter(p => parseToWIB(p.time)?.wibDate === selDate) ?? []; if (!dp.length) return -1; let b = 0; for (let i = 1; i < dp.length; i++) if (dp[i].height > dp[b].height) b = i; const w = parseToWIB(dp[b].time); return w ? w.wibHour : -1; })();
+  const minHourIdx = (() => { if (!tpxoHighLow) return -1; const dp = tideData?.predictions.filter(p => parseToWIB(p.time)?.wibDate === selDate) ?? []; if (!dp.length) return -1; let b = 0; for (let i = 1; i < dp.length; i++) if (dp[i].height < dp[b].height) b = i; const w = parseToWIB(dp[b].time); return w ? w.wibHour : -1; })();
+ 
   const current = weatherData?.current;
   const currentWindMs = current ? kmhToMs(current.wind_speed_10m) : null;
-  const currentWaveH: number|null = marineData?.current?.wave_height != null ? marineData.current.wave_height : (marineData?.hourly.wave_height[0]??null);
-  const currentCurrentSpd: number|null = marineData?.current?.ocean_current_velocity != null ? marineData.current.ocean_current_velocity : (marineData?.hourly.ocean_current_velocity[0]??null);
-
-  const nowHour  = (() => { const wib=new Date(Date.now()+7*3600_000); return wib.getUTCHours().toString().padStart(2,"0"); })();
-  const isToday  = selDate===todayISO();
+  const currentWaveH: number|null = marineData?.current?.wave_height != null ? marineData.current.wave_height : (marineData?.hourly.wave_height[0] ?? null);
+  const currentCurrentSpd: number|null = marineData?.current?.ocean_current_velocity != null ? marineData.current.ocean_current_velocity : (marineData?.hourly.ocean_current_velocity[0] ?? null);
+ 
+  const nowHour = (() => { const wib = new Date(Date.now() + 7*3600_000); return wib.getUTCHours().toString().padStart(2, "0"); })();
+  const isToday = selDate === todayISO();
   const activities = buildRecommendations(tideData, weatherData, marineData, selDate, lang);
-
-  const selDateFmt = new Date(selDate+"T12:00:00Z").toLocaleDateString(
-    lang==="en" ? "en-US" : "id-ID",
-    { weekday:"long", day:"numeric", month:"long", year:"numeric" },
+ 
+  const selDateFmt = new Date(selDate + "T12:00:00Z").toLocaleDateString(
+    lang === "en" ? "en-US" : "id-ID",
+    { weekday: "long", day: "numeric", month: "long", year: "numeric" }
   );
-
+ 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const d = e.target.value; setSelDate(d); fetchAll(d);
+    const chosen = e.target.value;
+    if (chosen > maxDateISO) return;   // hard clamp
+    if (!isPro && chosen < todayStr) return;
+    setSelDate(chosen);
+    fetchAll(chosen);
   };
-
-  const SectionLabel: React.FC<{children: React.ReactNode}> = ({children}) => (
-    <p style={{ fontSize:9, fontWeight:700, letterSpacing:"0.06em", textTransform:"uppercase" as const, color:TEXT_HINT, marginBottom:7, fontFamily:SANS }}>
+ 
+  const SectionLabel: React.FC<{children: React.ReactNode}> = ({ children }) => (
+    <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" as const, color: TEXT_HINT, marginBottom: 7, fontFamily: SANS }}>
       {children}
     </p>
   );
-
+ 
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        borderLeft: `1px solid ${BORDER}`,
-        fontFamily: SANS,
-        background: BG_PAGE,
-        overscrollBehavior: "contain",
-        minWidth: 0,
-      }}
-    >
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", borderLeft: `1px solid ${BORDER}`, fontFamily: SANS, background: BG_PAGE, overscrollBehavior: "contain", minWidth: 0 }}>
+ 
       {/* ── Top Bar ── */}
-      <div style={{
-        flexShrink: 0,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "9px 13px",
-        background: BG_CARD,
-        borderBottom: `1px solid ${BORDER}`,
-        gap: 7,
-        minWidth: 0,
-      }}>
+      <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 13px", background: BG_CARD, borderBottom: `1px solid ${BORDER}`, gap: 7, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
           <div style={{ width: 24, height: 24, borderRadius: 7, background: PRIMARY, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Anchor size={12} color="#fff"/>
           </div>
           <h2 style={{ fontSize: 12.5, fontWeight: 700, color: TEXT_PRI, letterSpacing: "-0.01em", fontFamily: SANS, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {lang==="en" ? "Marine Information" : "Informasi Kelautan"}
+            {lang === "en" ? "Marine Information" : "Informasi Kelautan"}
           </h2>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
           {weatherFromCache && (
             <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, fontWeight:600, color:"#b45309", background:"#fef3c7", border:"1px solid #fde68a", padding:"2px 6px", borderRadius:99, fontFamily:SANS, whiteSpace:"nowrap" }}>
               <span style={{width:3,height:3,borderRadius:"50%",background:"#d97706",flexShrink:0}}/>
-              {lang==="en" ? "Cached" : "Cache"}
+              {lang === "en" ? "Cached" : "Cache"}
             </span>
           )}
           <button onClick={() => { clearCache(coordinates.lat, coordinates.lon); fetchAll(selDate, true); }}
-            title={lang==="en" ? "Refresh weather data" : "Perbarui data cuaca"}
+            title={lang === "en" ? "Refresh weather data" : "Perbarui data cuaca"}
             style={{ padding:5, borderRadius:6, border:"none", background:"transparent", cursor:"pointer", color:TEXT_HINT, display:"flex" }}
-            onMouseEnter={e=>(e.currentTarget.style.background=BG_MUTED)}
-            onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>
+            onMouseEnter={e => (e.currentTarget.style.background = BG_MUTED)}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
             <RefreshCw size={11}/>
           </button>
           <button onClick={onClose}
             style={{ padding:5, borderRadius:6, border:"none", background:"transparent", cursor:"pointer", color:TEXT_HINT, display:"flex" }}
-            onMouseEnter={e=>(e.currentTarget.style.background=BG_MUTED)}
-            onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>
+            onMouseEnter={e => (e.currentTarget.style.background = BG_MUTED)}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
             <X size={13}/>
           </button>
         </div>
       </div>
-
+ 
       {/* ── Scrollable Body ── */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          overflowX: "hidden",
-          scrollbarWidth: "thin",
-          scrollbarColor: `${BORDER} transparent`,
-          overscrollBehavior: "contain",
-          WebkitOverflowScrolling: "touch",
-          minWidth: 0,
-        }}
+      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", scrollbarWidth: "thin", scrollbarColor: `${BORDER} transparent`, overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", minWidth: 0 }}
         onWheel={e => e.stopPropagation()}
         onTouchMove={e => e.stopPropagation()}
       >
-        {loading && (
-          <>
-            <SkeletonHero/>
-            <div style={{ margin:"14px 14px 0" }}>
-              <Shimmer w="30%" h="8px"/>
-              <div style={{marginTop:7}}><Shimmer w="100%" h="34px" r="10px"/></div>
-            </div>
-            <SkeletonChart/>
-          </>
-        )}
-
+        {loading && (<><SkeletonHero/><div style={{margin:"14px 14px 0"}}><Shimmer w="30%" h="8px"/><div style={{marginTop:7}}><Shimmer w="100%" h="34px" r="10px"/></div></div><SkeletonChart/></>)}
+ 
         {error && !loading && (
           <div style={{ margin:14, padding:14, borderRadius:12, background:"#fff1f2", border:`1px solid #fecdd3` }}>
             <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
               <AlertCircle size={14} style={{ color:"#f87171", flexShrink:0, marginTop:1 }}/>
               <div>
                 <p style={{ color:"#be123c", fontSize:12.5, fontWeight:600, marginBottom:3, fontFamily:SANS }}>
-                  {lang==="en" ? "Unable to load data" : "Gagal memuat data"}
+                  {lang === "en" ? "Unable to load data" : "Gagal memuat data"}
                 </p>
                 <p style={{ color:"#e11d48", fontSize:11, marginBottom:9, fontFamily:SANS }}>{error}</p>
-                <button onClick={()=>fetchAll(selDate)} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"#be123c", background:"none", border:"none", cursor:"pointer", fontFamily:SANS, fontWeight:600 }}>
-                  <RefreshCw size={10}/>{lang==="en" ? "Try again" : "Coba lagi"}
-                </button>
+                <div style={{ display:"flex", gap:8, flexWrap:"wrap" as const }}>
+                  <button onClick={() => fetchAll(selDate)} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"#be123c", background:"none", border:"none", cursor:"pointer", fontFamily:SANS, fontWeight:600 }}>
+                    <RefreshCw size={10}/>{lang === "en" ? "Try again" : "Coba lagi"}
+                  </button>
+                  {!isPro && (
+                    <button onClick={() => setShowPricing(true)} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:PRIMARY, background:"none", border:"none", cursor:"pointer", fontFamily:SANS, fontWeight:600 }}>
+                      <Zap size={10}/>{lang === "en" ? "Upgrade to Pro" : "Upgrade ke Pro"}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         )}
-
+ 
         {!loading && !error && (
           <>
             {/* ════ HERO CARD ════ */}
@@ -1285,406 +1243,230 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                   {Math.abs(coordinates.lat).toFixed(4)}°{coordinates.lat>=0?"N":"S"}&ensp;
                   {Math.abs(coordinates.lon).toFixed(4)}°{coordinates.lon>=0?"E":"W"}
                 </p>
-                {isToday && (
-                  <span style={{ fontFamily:SANS, fontSize:8.5, fontWeight:700, color:"rgba(186,230,253,0.38)", letterSpacing:"0.05em", textTransform:"uppercase" }}>
-                    {lang==="en"?"Today":"Hari ini"}
-                  </span>
-                )}
+                {isToday && (<span style={{ fontFamily:SANS, fontSize:8.5, fontWeight:700, color:"rgba(186,230,253,0.38)", letterSpacing:"0.05em", textTransform:"uppercase" as const }}>{lang==="en"?"Today":"Hari ini"}</span>)}
               </div>
-
               <div style={{ padding:"13px 14px 9px", display:"flex", alignItems:"center", gap:11 }}>
                 {current && (
                   <div style={{ display:"flex", alignItems:"flex-start", gap:5 }}>
                     <div style={{ lineHeight:1 }}>
-                      <p style={{ color:"#e0f2fe", fontSize:42, fontWeight:800, lineHeight:1, letterSpacing:"-0.04em", fontFamily:SANS, margin:0 }}>
-                        {Math.round(current.temperature_2m)}°
-                      </p>
-                      <p style={{ color:"rgba(186,230,253,0.55)", fontSize:10.5, fontFamily:SANS, margin:"2px 0 0", whiteSpace:"nowrap" }}>
-                        {wmoLabel(current.weather_code, lang)}
-                      </p>
+                      <p style={{ color:"#e0f2fe", fontSize:42, fontWeight:800, lineHeight:1, letterSpacing:"-0.04em", fontFamily:SANS, margin:0 }}>{Math.round(current.temperature_2m)}°</p>
+                      <p style={{ color:"rgba(186,230,253,0.55)", fontSize:10.5, fontFamily:SANS, margin:"2px 0 0", whiteSpace:"nowrap" }}>{wmoLabel(current.weather_code, lang)}</p>
                     </div>
-                    <div style={{ marginTop:3 }}>
-                      <WeatherSymbol code={current.weather_code} size={20}/>
-                    </div>
+                    <div style={{ marginTop:3 }}><WeatherSymbol code={current.weather_code} size={20}/></div>
                   </div>
                 )}
                 <div style={{ width:1, height:48, background:"rgba(186,230,253,0.12)", flexShrink:0 }}/>
                 <div style={{ display:"flex", flexDirection:"column", gap:5, flex:1, minWidth:0 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-                    <Sun size={10} color="#fde68a" style={{ flexShrink:0 }}/>
-                    <span style={{ color:"rgba(186,230,253,0.40)", fontSize:9, fontWeight:600, fontFamily:SANS, textTransform:"uppercase", letterSpacing:"0.04em" }}>
-                      {lang==="en"?"Rise":"Terbit"}
-                    </span>
+                    <Sun size={10} color="#fde68a" style={{flexShrink:0}}/><span style={{ color:"rgba(186,230,253,0.40)", fontSize:9, fontWeight:600, fontFamily:SANS, textTransform:"uppercase" as const, letterSpacing:"0.04em" }}>{lang==="en"?"Rise":"Terbit"}</span>
                     <span style={{ fontFamily:MONO, color:"#e0f2fe", fontSize:12.5, fontWeight:700, marginLeft:"auto" }}>{sunrise}</span>
                     <span style={{ color:"rgba(186,230,253,0.30)", fontSize:8.5, fontFamily:SANS }}>WIB</span>
                   </div>
                   <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-                    <Moon size={10} color="#fda4af" style={{ flexShrink:0 }}/>
-                    <span style={{ color:"rgba(186,230,253,0.40)", fontSize:9, fontWeight:600, fontFamily:SANS, textTransform:"uppercase", letterSpacing:"0.04em" }}>
-                      {lang==="en"?"Set":"Terbenam"}
-                    </span>
+                    <Moon size={10} color="#fda4af" style={{flexShrink:0}}/><span style={{ color:"rgba(186,230,253,0.40)", fontSize:9, fontWeight:600, fontFamily:SANS, textTransform:"uppercase" as const, letterSpacing:"0.04em" }}>{lang==="en"?"Set":"Terbenam"}</span>
                     <span style={{ fontFamily:MONO, color:"#e0f2fe", fontSize:12.5, fontWeight:700, marginLeft:"auto" }}>{sunset}</span>
                     <span style={{ color:"rgba(186,230,253,0.30)", fontSize:8.5, fontFamily:SANS }}>WIB</span>
                   </div>
                 </div>
               </div>
-
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", borderTop:"1px solid rgba(186,230,253,0.08)" }}>
                 {[
-                  {
-                    icon: <Wind size={10} color="rgba(186,230,253,0.40)"/>,
-                    label: lang==="en"?"Wind":"Angin",
-                    value: currentWindMs!=null ? currentWindMs.toFixed(1) : "—",
-                    unit: "m/s",
-                    sub: currentWindMs!=null ? `${windDirLabel(current!.wind_direction_10m)} ${current!.wind_direction_10m.toFixed(0)}°` : "",
-                    accent: "#93c5fd",
-                  },
-                  {
-                    icon: <Waves size={10} color="rgba(186,230,253,0.40)"/>,
-                    label: lang==="en"?"Wave":"Gelombang",
-                    value: currentWaveH!=null ? currentWaveH.toFixed(2) : "—",
-                    unit: "m",
-                    sub: currentWaveH!=null ? (currentWaveH<0.5?(lang==="en"?"Calm":"Tenang"):currentWaveH<1.25?(lang==="en"?"Slight":"Kecil"):currentWaveH<2.5?(lang==="en"?"Moderate":"Sedang"):(lang==="en"?"Rough":"Kasar")) : "",
-                    accent: "#7dd3fc",
-                  },
-                  {
-                    icon: <Navigation size={10} color="rgba(186,230,253,0.40)"/>,
-                    label: lang==="en"?"Current":"Arus",
-                    value: currentCurrentSpd!=null ? currentCurrentSpd.toFixed(2) : "—",
-                    unit: "m/s",
-                    sub: currentCurrentSpd!=null ? (currentCurrentSpd<0.25?(lang==="en"?"Weak":"Lemah"):currentCurrentSpd<0.75?(lang==="en"?"Moderate":"Sedang"):(lang==="en"?"Strong":"Kuat")) : "",
-                    accent: "#a5f3fc",
-                  },
+                  { icon:<Wind size={10} color="rgba(186,230,253,0.40)"/>, label:lang==="en"?"Wind":"Angin", value:currentWindMs!=null?currentWindMs.toFixed(1):"—", unit:"m/s", sub:currentWindMs!=null?`${windDirLabel(current!.wind_direction_10m)} ${current!.wind_direction_10m.toFixed(0)}°`:"", accent:"#93c5fd" },
+                  { icon:<Waves size={10} color="rgba(186,230,253,0.40)"/>, label:lang==="en"?"Wave":"Gelombang", value:currentWaveH!=null?currentWaveH.toFixed(2):"—", unit:"m", sub:currentWaveH!=null?(currentWaveH<0.5?(lang==="en"?"Calm":"Tenang"):currentWaveH<1.25?(lang==="en"?"Slight":"Kecil"):currentWaveH<2.5?(lang==="en"?"Moderate":"Sedang"):(lang==="en"?"Rough":"Kasar")):"", accent:"#7dd3fc" },
+                  { icon:<Navigation size={10} color="rgba(186,230,253,0.40)"/>, label:lang==="en"?"Current":"Arus", value:currentCurrentSpd!=null?currentCurrentSpd.toFixed(2):"—", unit:"m/s", sub:currentCurrentSpd!=null?(currentCurrentSpd<0.25?(lang==="en"?"Weak":"Lemah"):currentCurrentSpd<0.75?(lang==="en"?"Moderate":"Sedang"):(lang==="en"?"Strong":"Kuat")):"", accent:"#a5f3fc" },
                 ].map((item, i) => (
-                  <div key={i} style={{
-                    padding: "9px 11px 11px",
-                    borderRight: i < 2 ? "1px solid rgba(186,230,253,0.07)" : "none",
-                  }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:3, marginBottom:5 }}>
-                      {item.icon}
-                      <span style={{ color:"rgba(186,230,253,0.38)", fontSize:8.5, fontWeight:600, letterSpacing:"0.04em", textTransform:"uppercase" as const, fontFamily:SANS }}>
-                        {item.label}
-                      </span>
-                    </div>
-                    <p style={{ fontFamily:MONO, color:"#e0f2fe", fontSize:16, fontWeight:700, lineHeight:1, margin:0 }}>
-                      {item.value}
-                      <span style={{ fontSize:9, color:item.accent, fontWeight:400, marginLeft:2, opacity:0.7 }}>{item.unit}</span>
-                    </p>
-                    {item.sub && (
-                      <p style={{ color:"rgba(186,230,253,0.28)", fontSize:8.5, marginTop:2, fontFamily:SANS, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                        {item.sub}
-                      </p>
-                    )}
+                  <div key={i} style={{ padding:"9px 11px 11px", borderRight:i<2?"1px solid rgba(186,230,253,0.07)":"none" }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:3, marginBottom:5 }}>{item.icon}<span style={{ color:"rgba(186,230,253,0.38)", fontSize:8.5, fontWeight:600, letterSpacing:"0.04em", textTransform:"uppercase" as const, fontFamily:SANS }}>{item.label}</span></div>
+                    <p style={{ fontFamily:MONO, color:"#e0f2fe", fontSize:16, fontWeight:700, lineHeight:1, margin:0 }}>{item.value}<span style={{ fontSize:9, color:item.accent, fontWeight:400, marginLeft:2, opacity:0.7 }}>{item.unit}</span></p>
+                    {item.sub && (<p style={{ color:"rgba(186,230,253,0.28)", fontSize:8.5, marginTop:2, fontFamily:SANS, whiteSpace:"nowrap" as const, overflow:"hidden", textOverflow:"ellipsis" }}>{item.sub}</p>)}
                   </div>
                 ))}
               </div>
             </div>
-
-            {/* ── Date Picker ── */}
+ 
+            {/* ── Date Picker (gated) ── */}
             <div style={{ padding:"11px 13px 0" }}>
-              <SectionLabel>{lang==="en" ? "Select Date" : "Pilih Tanggal"}</SectionLabel>
+              <SectionLabel>{lang === "en" ? "Select Date" : "Pilih Tanggal"}</SectionLabel>
               <input
                 type="date"
                 value={selDate}
+                min={minDateISO}
+                max={maxDateISO}
                 onChange={handleDateChange}
-                style={{
-                  width:"100%",
-                  padding:"8px 11px",
-                  border:`1.5px solid ${BORDER}`,
-                  borderRadius:9,
-                  fontSize:12.5,
-                  fontWeight:600,
-                  fontFamily:SANS,
-                  color:TEXT_PRI,
-                  background:BG_CARD,
-                  cursor:"pointer",
-                  outline:"none",
-                  boxSizing:"border-box" as const,
-                  WebkitAppearance:"none",
-                  appearance:"none",
-                  display:"block",
-                }}
-                onFocus={e=>{e.currentTarget.style.borderColor=SKY;e.currentTarget.style.boxShadow=`0 0 0 2.5px rgba(14,165,233,0.10)`;}}
-                onBlur={e=>{e.currentTarget.style.borderColor=BORDER;e.currentTarget.style.boxShadow="none";}}
+                style={{ width:"100%", padding:"8px 11px", border:`1.5px solid ${BORDER}`, borderRadius:9, fontSize:12.5, fontWeight:600, fontFamily:SANS, color:TEXT_PRI, background:BG_CARD, cursor:"pointer", outline:"none", boxSizing:"border-box" as const, WebkitAppearance:"none", appearance:"none", display:"block" }}
+                onFocus={e => { e.currentTarget.style.borderColor=SKY; e.currentTarget.style.boxShadow=`0 0 0 2.5px rgba(14,165,233,0.10)`; }}
+                onBlur={e  => { e.currentTarget.style.borderColor=BORDER; e.currentTarget.style.boxShadow="none"; }}
               />
+ 
+              {/* Free-tier horizon notice */}
+              {!isPro && (
+                <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:5, padding:"5px 9px", background:"#fffbeb", border:"1px solid #fde68a", borderRadius:7 }}>
+                  <Lock size={10} style={{ color:"#b45309", flexShrink:0 }}/>
+                  <span style={{ fontFamily:SANS, fontSize:10, color:"#b45309", lineHeight:1.4 }}>
+                    {lang === "en"
+                      ? `Free plan: up to ${FREE_TIDE_DAYS} days ahead (today–${maxDateISO}). `
+                      : `Paket gratis: hingga ${FREE_TIDE_DAYS} hari ke depan (hari ini–${maxDateISO}). `}
+                    <button onClick={() => setShowPricing(true)} style={{ background:"none", border:"none", cursor:"pointer", color:PRIMARY, fontWeight:700, fontSize:10, padding:0, fontFamily:SANS, textDecoration:"underline" }}>
+                      {lang === "en" ? "Upgrade for 14 days →" : "Upgrade 14 hari →"}
+                    </button>
+                  </span>
+                </div>
+              )}
             </div>
-
+ 
             {/* ── Overlay Chart ── */}
             <div style={{ padding:"11px 13px 0" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6, gap:4, flexWrap:"wrap" as const }}>
-                <SectionLabel>
-                  {hasLuwesObs
-                    ? (lang==="en" ? "Observation vs TPXO" : "Observasi vs TPXO")
-                    : (lang==="en" ? "TPXO Tide Levels" : "Tinggi Pasut TPXO")
-                  }
-                </SectionLabel>
+                <SectionLabel>{hasLuwesObs?(lang==="en"?"Observation vs TPXO":"Observasi vs TPXO"):(lang==="en"?"TPXO Tide Levels":"Tinggi Pasut TPXO")}</SectionLabel>
                 <div style={{ display:"flex", alignItems:"center", gap:4, flexWrap:"wrap" as const, marginBottom:7 }}>
                   <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, color:HIGH_TEXT, fontWeight:700, background:HIGH_BG, border:`1px solid ${HIGH_BDR}`, padding:"2px 7px", borderRadius:99, fontFamily:SANS }}>
                     <span style={{ display:"inline-block", width:12, height:2, background:CHART_TPXO, borderRadius:1 }}/>TPXO
                   </span>
                   <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, color:hasLuwesObs?"#be185d":"#8faabb", fontWeight:700, background:hasLuwesObs?"#fdf2f8":"#f0f6fb", border:`1px solid ${hasLuwesObs?"#fbcfe8":"#dbeafe"}`, padding:"2px 7px", borderRadius:99, fontFamily:SANS }}>
-                    <span style={{ display:"inline-block", width:6, height:6, background:hasLuwesObs?CHART_LUWES:"#b0c8d8", borderRadius:"50%" }}/>
-                    Luwes
+                    <span style={{ display:"inline-block", width:6, height:6, background:hasLuwesObs?CHART_LUWES:"#b0c8d8", borderRadius:"50%" }}/>Luwes
                   </span>
-                  {isToday && (
-                    <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, color:"#e11d48", fontWeight:700, background:"#fff1f2", border:"1px solid #fecdd3", padding:"2px 7px", borderRadius:99, fontFamily:SANS }}>
-                      <span style={{ display:"inline-block", width:8, height:1.5, background:"#fb7185", borderRadius:1 }}/>Now
-                    </span>
-                  )}
+                  {isToday && (<span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, color:"#e11d48", fontWeight:700, background:"#fff1f2", border:"1px solid #fecdd3", padding:"2px 7px", borderRadius:99, fontFamily:SANS }}><span style={{ display:"inline-block", width:8, height:1.5, background:"#fb7185", borderRadius:1 }}/>Now</span>)}
                 </div>
               </div>
-
               <div style={{ borderRadius:12, overflow:"hidden", background:BG_CARD, border:`1px solid ${BORDER}` }}>
                 <div style={{ padding:"7px 12px 3px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  <p style={{ fontSize:10, fontWeight:500, color:TEXT_SEC, fontFamily:SANS, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1, paddingRight:7 }}>{selDateFmt}</p>
-                  {overlayData && (
-                    <span style={{ fontSize:9.5, fontWeight:700, fontFamily:MONO, color:hasLuwesObs?"#be185d":TEXT_HINT, background:hasLuwesObs?"#fdf2f8":BG_MUTED, padding:"1px 7px", borderRadius:99 }}>
-                      {overlayData.luwes_stats.count} obs
-                    </span>
-                  )}
+                  <p style={{ fontSize:10, fontWeight:500, color:TEXT_SEC, fontFamily:SANS, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, flex:1, paddingRight:7 }}>{selDateFmt}</p>
+                  {overlayData && (<span style={{ fontSize:9.5, fontWeight:700, fontFamily:MONO, color:hasLuwesObs?"#be185d":TEXT_HINT, background:hasLuwesObs?"#fdf2f8":BG_MUTED, padding:"1px 7px", borderRadius:99 }}>{overlayData.luwes_stats.count} obs</span>)}
                 </div>
                 <div style={{ height:272, padding:"3px 7px 9px", position:"relative" }}>
-                  <OverlayChart
-                    tpxoPredictions={tideData?.predictions??[]}
-                    luwesObs={luwesForChart}
-                    dateStr={selDate}
-                  />
+                  <OverlayChart tpxoPredictions={tideData?.predictions??[]} luwesObs={luwesForChart} dateStr={selDate}/>
                 </div>
               </div>
             </div>
-
+ 
             {/* ── TPXO High / Low ── */}
             <div style={{ padding:"9px 13px 0" }}>
               {tpxoHighLow && (
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7 }}>
                   <div style={{ borderRadius:10, padding:"9px 13px", background:HIGH_BG, border:`1.5px solid ${HIGH_BDR}` }}>
                     <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:3 }}>
-                      <div style={{ width:5, height:5, borderRadius:"50%", background:CHART_TPXO, flexShrink:0 }}/>
-                      <p style={{ fontSize:8.5, fontWeight:700, color:HIGH_TEXT, opacity:0.75, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>
-                        TPXO · {lang==="en"?"High":"Tertinggi"}
-                      </p>
+                      <div style={{ width:5, height:5, borderRadius:"50%", background:CHART_TPXO, flexShrink:0 }}/><p style={{ fontSize:8.5, fontWeight:700, color:HIGH_TEXT, opacity:0.75, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>TPXO · {lang==="en"?"High":"Tertinggi"}</p>
                     </div>
-                    <p style={{ fontFamily:MONO, color:HIGH_TEXT, fontSize:19, fontWeight:800, lineHeight:1, margin:0 }}>
-                      {tpxoHighLow.max>0?"+":""}{tpxoHighLow.max.toFixed(3)} m
-                    </p>
-                    <p style={{ fontFamily:SANS, fontSize:9.5, color:HIGH_TEXT, marginTop:2, opacity:0.55 }}>
-                      ~{tpxoHighLow.maxTime} WIB
-                    </p>
+                    <p style={{ fontFamily:MONO, color:HIGH_TEXT, fontSize:19, fontWeight:800, lineHeight:1, margin:0 }}>{tpxoHighLow.max>0?"+":""}{tpxoHighLow.max.toFixed(3)} m</p>
+                    <p style={{ fontFamily:SANS, fontSize:9.5, color:HIGH_TEXT, marginTop:2, opacity:0.55 }}>~{tpxoHighLow.maxTime} WIB</p>
                   </div>
                   <div style={{ borderRadius:10, padding:"9px 13px", background:LOW_BG, border:`1.5px solid ${LOW_BDR}` }}>
                     <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:3 }}>
-                      <div style={{ width:5, height:5, borderRadius:"50%", background:"#f59e0b", flexShrink:0 }}/>
-                      <p style={{ fontSize:8.5, fontWeight:700, color:LOW_TEXT, opacity:0.75, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>
-                        TPXO · {lang==="en"?"Low":"Terendah"}
-                      </p>
+                      <div style={{ width:5, height:5, borderRadius:"50%", background:"#f59e0b", flexShrink:0 }}/><p style={{ fontSize:8.5, fontWeight:700, color:LOW_TEXT, opacity:0.75, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>TPXO · {lang==="en"?"Low":"Terendah"}</p>
                     </div>
-                    <p style={{ fontFamily:MONO, color:LOW_TEXT, fontSize:19, fontWeight:800, lineHeight:1, margin:0 }}>
-                      {tpxoHighLow.min>0?"+":""}{tpxoHighLow.min.toFixed(3)} m
-                    </p>
-                    <p style={{ fontFamily:SANS, fontSize:9.5, color:LOW_TEXT, marginTop:2, opacity:0.55 }}>
-                      ~{tpxoHighLow.minTime} WIB
-                    </p>
+                    <p style={{ fontFamily:MONO, color:LOW_TEXT, fontSize:19, fontWeight:800, lineHeight:1, margin:0 }}>{tpxoHighLow.min>0?"+":""}{tpxoHighLow.min.toFixed(3)} m</p>
+                    <p style={{ fontFamily:SANS, fontSize:9.5, color:LOW_TEXT, marginTop:2, opacity:0.55 }}>~{tpxoHighLow.minTime} WIB</p>
                   </div>
                 </div>
               )}
-
-              {hasLuwesObs && luwesStatsCorrected && luwesStatsCorrected.max_m!=null && (
+              {hasLuwesObs && luwesStatsCorrected && luwesStatsCorrected.max_m != null && (
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7, marginTop:7 }}>
                   <div style={{ borderRadius:10, padding:"9px 13px", background:"#fdf2f8", border:`1.5px solid #fbcfe8` }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:3 }}>
-                      <div style={{ width:5, height:5, borderRadius:"50%", background:CHART_LUWES, flexShrink:0 }}/>
-                      <p style={{ fontSize:8.5, fontWeight:700, color:"#be185d", opacity:0.75, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>
-                        Luwes · {lang==="en"?"Max (TOL)":"Maks (TOL)"}
-                      </p>
-                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:3 }}><div style={{ width:5, height:5, borderRadius:"50%", background:CHART_LUWES, flexShrink:0 }}/><p style={{ fontSize:8.5, fontWeight:700, color:"#be185d", opacity:0.75, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>Luwes · {lang==="en"?"Max (TOL)":"Maks (TOL)"}</p></div>
                     <p style={{ fontFamily:MONO, color:"#9d174d", fontSize:19, fontWeight:800, lineHeight:1, margin:0 }}>{luwesStatsCorrected.max_m!.toFixed(3)} m</p>
                   </div>
                   <div style={{ borderRadius:10, padding:"9px 13px", background:"#fef9f0", border:`1.5px solid #fde8c8` }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:3 }}>
-                      <div style={{ width:5, height:5, borderRadius:"50%", background:"#ec8e2c", flexShrink:0 }}/>
-                      <p style={{ fontSize:8.5, fontWeight:700, color:"#92400e", opacity:0.75, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>
-                        Luwes · {lang==="en"?"Min (TOL)":"Min (TOL)"}
-                      </p>
-                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:3 }}><div style={{ width:5, height:5, borderRadius:"50%", background:"#ec8e2c", flexShrink:0 }}/><p style={{ fontSize:8.5, fontWeight:700, color:"#92400e", opacity:0.75, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>Luwes · {lang==="en"?"Min (TOL)":"Min (TOL)"}</p></div>
                     <p style={{ fontFamily:MONO, color:"#92400e", fontSize:19, fontWeight:800, lineHeight:1, margin:0 }}>{luwesStatsCorrected.min_m!.toFixed(3)} m</p>
                   </div>
                 </div>
               )}
             </div>
-
+ 
             {/* ── Hourly Table ── */}
             <div style={{ padding:"11px 13px 0" }}>
-              <SectionLabel>{lang==="en" ? "Hourly Data (00:00–23:00 WIB)" : "Data Per Jam (00:00–23:00 WIB)"}</SectionLabel>
+              <SectionLabel>{lang==="en"?"Hourly Data (00:00–23:00 WIB)":"Data Per Jam (00:00–23:00 WIB)"}</SectionLabel>
               <div style={{ borderRadius:11, overflow:"hidden", background:BG_CARD, border:`1px solid ${BORDER}` }}>
-                <div style={{
-                  display:"grid",
-                  gridTemplateColumns:"44px 19px 54px 36px 60px 40px 40px",
-                  padding:"4px 11px",
-                  background:BG_MUTED,
-                  borderBottom:`1px solid ${BORDER_SM}`,
-                  fontSize:8.5,
-                  fontWeight:700,
-                  letterSpacing:"0.04em",
-                  textTransform:"uppercase" as const,
-                  color:TEXT_HINT,
-                  fontFamily:SANS,
-                  position:"sticky" as const,
-                  top:0,
-                  zIndex:1,
-                }}>
-                  <span>{lang==="en"?"Time":"Waktu"}</span>
-                  <span style={{textAlign:"center" as const}}>Wx</span>
-                  <span style={{textAlign:"right" as const}}>{lang==="en"?"Tide m":"Pasut m"}</span>
-                  <span style={{textAlign:"right" as const}}>{lang==="en"?"Temp":"Suhu"}</span>
-                  <span style={{textAlign:"right" as const}}>{lang==="en"?"Wind":"Angin"}</span>
-                  <span style={{textAlign:"right" as const}}>{lang==="en"?"Wave":"Gel."}</span>
-                  <span style={{textAlign:"right" as const}}>{lang==="en"?"Curr.":"Arus"}</span>
+                <div style={{ display:"grid", gridTemplateColumns:"44px 19px 54px 36px 60px 40px 40px", padding:"4px 11px", background:BG_MUTED, borderBottom:`1px solid ${BORDER_SM}`, fontSize:8.5, fontWeight:700, letterSpacing:"0.04em", textTransform:"uppercase" as const, color:TEXT_HINT, fontFamily:SANS, position:"sticky" as const, top:0, zIndex:1 }}>
+                  <span>{lang==="en"?"Time":"Waktu"}</span><span style={{textAlign:"center" as const}}>Wx</span><span style={{textAlign:"right" as const}}>{lang==="en"?"Tide m":"Pasut m"}</span><span style={{textAlign:"right" as const}}>{lang==="en"?"Temp":"Suhu"}</span><span style={{textAlign:"right" as const}}>{lang==="en"?"Wind":"Angin"}</span><span style={{textAlign:"right" as const}}>{lang==="en"?"Wave":"Gel."}</span><span style={{textAlign:"right" as const}}>{lang==="en"?"Curr.":"Arus"}</span>
                 </div>
-
-                <div style={{
-                  height: 316,
-                  overflowY: "auto",
-                  scrollbarWidth: "thin",
-                  scrollbarColor: `${BORDER} transparent`,
-                }}>
+                <div style={{ height:316, overflowY:"auto", scrollbarWidth:"thin", scrollbarColor:`${BORDER} transparent` }}>
                   {rows.map((row, idx) => {
-                    const hl    = isToday && row.hour.startsWith(nowHour+":00");
-                    const isMax = idx === maxHourIdx;
-                    const isMin = idx === minHourIdx;
-                    const waveC = row.waveH==null?TEXT_HINT: row.waveH<0.5?"#16a34a": row.waveH<1.25?"#d97706":"#e11d48";
-                    const currC = row.currentSpd==null?TEXT_HINT: row.currentSpd<0.25?"#16a34a": row.currentSpd<0.75?"#d97706":"#e11d48";
-                    const isLast = idx === rows.length - 1;
+                    const hl=isToday&&row.hour.startsWith(nowHour+":00"),isMax=idx===maxHourIdx,isMin=idx===minHourIdx;
+                    const waveC=row.waveH==null?TEXT_HINT:row.waveH<0.5?"#16a34a":row.waveH<1.25?"#d97706":"#e11d48";
+                    const currC=row.currentSpd==null?TEXT_HINT:row.currentSpd<0.25?"#16a34a":row.currentSpd<0.75?"#d97706":"#e11d48";
+                    const isLast=idx===rows.length-1;
                     return (
-                      <div key={idx} style={{
-                        display:"grid",
-                        gridTemplateColumns:"44px 19px 54px 36px 60px 40px 40px",
-                        padding:"4.5px 11px",
-                        alignItems:"center",
-                        borderBottom: isLast ? "none" : `1px solid ${BORDER_SM}`,
-                        background: hl
-                          ? `linear-gradient(90deg,${HIGH_BG},#f5fbff)`
-                          : idx%2===0?BG_CARD:BG_MUTED,
-                      }}>
-                        <span style={{ fontFamily:MONO, fontSize:9.5, fontWeight:hl?700:400, color:hl?PRIMARY:TEXT_SEC }}>
-                          {row.hour}
-                        </span>
-                        <div style={{display:"flex",justifyContent:"center" as const}}>{row.wCode!==null && <WeatherSymbol code={row.wCode} size={10}/>}</div>
-                        <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, fontWeight:isMax||isMin?700:400, color:isMax?HIGH_TEXT:isMin?LOW_TEXT:TEXT_PRI }}>
-                          {row.tideH!==null ? (row.tideH>=0?"+":"")+row.tideH.toFixed(3) : "—"}
-                        </span>
+                      <div key={idx} style={{ display:"grid", gridTemplateColumns:"44px 19px 54px 36px 60px 40px 40px", padding:"4.5px 11px", alignItems:"center", borderBottom:isLast?"none":`1px solid ${BORDER_SM}`, background:hl?`linear-gradient(90deg,${HIGH_BG},#f5fbff)`:idx%2===0?BG_CARD:BG_MUTED }}>
+                        <span style={{ fontFamily:MONO, fontSize:9.5, fontWeight:hl?700:400, color:hl?PRIMARY:TEXT_SEC }}>{row.hour}</span>
+                        <div style={{display:"flex",justifyContent:"center" as const}}>{row.wCode!==null&&<WeatherSymbol code={row.wCode} size={10}/>}</div>
+                        <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, fontWeight:isMax||isMin?700:400, color:isMax?HIGH_TEXT:isMin?LOW_TEXT:TEXT_PRI }}>{row.tideH!==null?(row.tideH>=0?"+":"")+row.tideH.toFixed(3):"—"}</span>
                         <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, color:TEXT_SEC }}>{row.temp!==null?`${Math.round(row.temp)}°`:"—"}</span>
-                        <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, color:TEXT_SEC }}>
-                          {row.windSpd!==null ? (
-                            <span style={{display:"flex",alignItems:"center",justifyContent:"flex-end" as const,gap:2}}>
-                              <span style={{color:TEXT_HINT,fontSize:8.5,fontFamily:SANS}}>{row.windDir!==null?windDirLabel(row.windDir):""}</span>
-                              {row.windSpd.toFixed(1)}
-                            </span>
-                          ) : "—"}
-                        </span>
-                        <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, color:waveC, fontWeight:row.waveH!=null&&row.waveH>=1.25?600:400 }}>
-                          {row.waveH!==null?row.waveH.toFixed(2):"—"}
-                        </span>
-                        <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, color:currC, fontWeight:row.currentSpd!=null&&row.currentSpd>=0.75?600:400 }}>
-                          {row.currentSpd!==null?row.currentSpd.toFixed(2):"—"}
-                        </span>
+                        <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, color:TEXT_SEC }}>{row.windSpd!==null?(<span style={{display:"flex",alignItems:"center",justifyContent:"flex-end" as const,gap:2}}><span style={{color:TEXT_HINT,fontSize:8.5,fontFamily:SANS}}>{row.windDir!==null?windDirLabel(row.windDir):""}</span>{row.windSpd.toFixed(1)}</span>):"—"}</span>
+                        <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, color:waveC, fontWeight:row.waveH!=null&&row.waveH>=1.25?600:400 }}>{row.waveH!==null?row.waveH.toFixed(2):"—"}</span>
+                        <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, color:currC, fontWeight:row.currentSpd!=null&&row.currentSpd>=0.75?600:400 }}>{row.currentSpd!==null?row.currentSpd.toFixed(2):"—"}</span>
                       </div>
                     );
                   })}
                 </div>
-
                 <div style={{ padding:"4px 11px", borderTop:`1px solid ${BORDER_SM}`, background:BG_MUTED, display:"flex", alignItems:"center", gap:9, flexWrap:"wrap" as const }}>
-                  {[
-                    { color:"#16a34a", label:lang==="en"?"Low":"Rendah" },
-                    { color:"#d97706", label:lang==="en"?"Moderate":"Sedang" },
-                    { color:"#e11d48", label:lang==="en"?"High":"Tinggi" },
-                  ].map(({color,label})=>(
-                    <div key={color} style={{ display:"flex", alignItems:"center", gap:3 }}>
-                      <div style={{ width:4, height:4, borderRadius:"50%", background:color, flexShrink:0 }}/>
-                      <span style={{ fontSize:8.5, color:TEXT_HINT, fontFamily:SANS }}>{label}</span>
-                    </div>
-                  ))}
-                  <span style={{ fontSize:8.5, color:BORDER, fontFamily:SANS, marginLeft:"auto" }}>m/s</span>
+                  {[{color:"#16a34a",label:lang==="en"?"Low":"Rendah"},{color:"#d97706",label:lang==="en"?"Moderate":"Sedang"},{color:"#e11d48",label:lang==="en"?"High":"Tinggi"}].map(({color,label})=>(<div key={color} style={{display:"flex",alignItems:"center",gap:3}}><div style={{width:4,height:4,borderRadius:"50%",background:color,flexShrink:0}}/><span style={{fontSize:8.5,color:TEXT_HINT,fontFamily:SANS}}>{label}</span></div>))}
+                  <span style={{fontSize:8.5,color:BORDER,fontFamily:SANS,marginLeft:"auto"}}>m/s</span>
                 </div>
               </div>
             </div>
-
+ 
             {/* ── Activity Guide ── */}
             <div style={{ padding:"13px 13px 0" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:7 }}>
-                <SectionLabel>{lang==="en" ? "Activity Guide" : "Panduan Aktivitas"}</SectionLabel>
+                <SectionLabel>{lang==="en"?"Activity Guide":"Panduan Aktivitas"}</SectionLabel>
                 <div style={{ display:"flex", gap:3, marginBottom:7 }}>
                   {(["safe","caution","danger"] as const).map(s => {
-                    const count = activities.filter(a=>a.status===s).length;
-                    const cfg   = statusStyles[s];
-                    return (
-                      <div key={s} style={{ display:"flex", alignItems:"center", gap:3, background:cfg.bg, border:`1px solid ${cfg.border}`, borderRadius:99, padding:"2px 6px" }}>
-                        <div style={{ width:4, height:4, borderRadius:"50%", background:cfg.dot, flexShrink:0 }}/>
-                        <span style={{ fontFamily:SANS, fontSize:8.5, fontWeight:700, color:cfg.text }}>{count}</span>
-                      </div>
-                    );
+                    const count=activities.filter(a=>a.status===s).length;const cfg=statusStyles[s];
+                    return(<div key={s} style={{display:"flex",alignItems:"center",gap:3,background:cfg.bg,border:`1px solid ${cfg.border}`,borderRadius:99,padding:"2px 6px"}}><div style={{width:4,height:4,borderRadius:"50%",background:cfg.dot,flexShrink:0}}/><span style={{fontFamily:SANS,fontSize:8.5,fontWeight:700,color:cfg.text}}>{count}</span></div>);
                   })}
                 </div>
               </div>
-
               <div style={{ background:BG_CARD, border:`1px solid ${BORDER}`, borderRadius:10, overflow:"hidden" }}>
                 {activities.map((act, idx) => {
-                  const st     = statusStyles[act.status];
-                  const isLast = idx===activities.length-1;
+                  const st=statusStyles[act.status];const isLast=idx===activities.length-1;
                   return (
-                    <div key={act.id} style={{
-                      display:"flex", alignItems:"center", gap:7, padding:"7px 11px",
-                      borderBottom: isLast?"none":`1px solid ${BORDER_SM}`,
-                      background: idx%2===0?BG_CARD:BG_MUTED,
-                    }}>
+                    <div key={act.id} style={{ display:"flex", alignItems:"center", gap:7, padding:"7px 11px", borderBottom:isLast?"none":`1px solid ${BORDER_SM}`, background:idx%2===0?BG_CARD:BG_MUTED }}>
                       <div style={{ width:2.5, flexShrink:0, alignSelf:"stretch", background:st.dot, borderRadius:99, minHeight:22 }}/>
                       <div style={{ display:"flex", alignItems:"center", gap:4, flex:"0 0 116px", minWidth:0 }}>
-                        <span style={{ color:st.dot, flexShrink:0 }}>{act.icon}</span>
-                        <span style={{ fontFamily:SANS, fontSize:9.5, fontWeight:600, color:TEXT_PRI, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                          {lang==="en" ? act.labelEn : act.labelId}
-                        </span>
+                        <span style={{color:st.dot,flexShrink:0}}>{act.icon}</span>
+                        <span style={{fontFamily:SANS,fontSize:9.5,fontWeight:600,color:TEXT_PRI,whiteSpace:"nowrap" as const,overflow:"hidden",textOverflow:"ellipsis"}}>{lang==="en"?act.labelEn:act.labelId}</span>
                       </div>
-                      <p style={{ fontFamily:SANS, fontSize:9.5, color:TEXT_SEC, lineHeight:1.35, flex:1, margin:0, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" as const }}>
-                        {lang==="en" ? act.reasonEn : act.reasonId}
-                      </p>
-                      <div style={{ flexShrink:0, background:st.bg, border:`1px solid ${st.border}`, borderRadius:99, padding:"2px 6px", fontFamily:SANS, fontSize:8.5, fontWeight:700, color:st.text, whiteSpace:"nowrap" }}>
-                        {st.label[lang==="en"?0:1]}
-                      </div>
+                      <p style={{ fontFamily:SANS, fontSize:9.5, color:TEXT_SEC, lineHeight:1.35, flex:1, margin:0, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" as any }}>{lang==="en"?act.reasonEn:act.reasonId}</p>
+                      <div style={{ flexShrink:0, background:st.bg, border:`1px solid ${st.border}`, borderRadius:99, padding:"2px 6px", fontFamily:SANS, fontSize:8.5, fontWeight:700, color:st.text, whiteSpace:"nowrap" as const }}>{st.label[lang==="en"?0:1]}</div>
                     </div>
                   );
                 })}
               </div>
             </div>
-
-            {/* ── IHO S-104 Compliance Badge + Export ── */}
+ 
+            {/* ── IHO S-104 Badge + Export (gated inside S104Badge) ── */}
             <div style={{ padding:"13px 13px 0" }}>
-              <SectionLabel>{lang==="en" ? "IHO S-100 / S-104 Compliance" : "Kepatuhan IHO S-100 / S-104"}</SectionLabel>
+              <SectionLabel>{lang==="en"?"IHO S-100 / S-104 Compliance":"Kepatuhan IHO S-100 / S-104"}</SectionLabel>
               <S104Badge coordinates={coordinates} selectedDate={selDate} language={lang}/>
             </div>
-
+ 
             {/* ── Metadata Footer ── */}
             <div style={{ margin:"13px 13px 20px", borderRadius:10, padding:"9px 13px", background:BG_CARD, border:`1px solid ${BORDER}` }}>
               {([
-                [lang==="en"?"Tide model":"Model pasut",     tideData?.metadata.model],
-                ["Datum",                                     tideData?.metadata.datum],
-                ...(tideData ? [[lang==="en"?"Nearest grid":"Grid terdekat",
-                  `${tideData.grid.lat.toFixed(3)}°, ${tideData.grid.lon.toFixed(3)}° · ${tideData.grid.distance_km.toFixed(1)} km`]] : []),
-                [lang==="en"?"Weather":"Cuaca",              "Open-Meteo API"],
-                [lang==="en"?"Coverage":"Cakupan",           lang==="en"?"Today ±14 days":"Hari ini ±14 hari"],
-                [lang==="en"?"Obs. station":"Stasiun obs.",  overlayData?.imei ? `IMEI ${overlayData.imei}` : "—"],
-                ["TOL",                                       "-2.156 m (Luwes → MSL TPXO9)"],
-                ["S-104",                                     "Ed.2.0.0 (Dec 2024)"],
-                [lang==="en"?"Chart":"Grafik",               lang==="en"?"Per-minute cubic spline":"Cubic spline/menit"],
+                [lang==="en"?"Tide model":"Model pasut", tideData?.metadata.model],
+                ["Datum",                                tideData?.metadata.datum],
+                ...(tideData?[[lang==="en"?"Nearest grid":"Grid terdekat",`${tideData.grid.lat.toFixed(3)}°, ${tideData.grid.lon.toFixed(3)}° · ${tideData.grid.distance_km.toFixed(1)} km`]]:[]),
+                [lang==="en"?"Weather":"Cuaca",         "Open-Meteo API"],
+                [lang==="en"?"Coverage":"Cakupan",      isPro?(lang==="en"?"Today ±14 days":"Hari ini ±14 hari"):(lang==="en"?`Today +${FREE_WX_DAYS} days`:`Hari ini +${FREE_WX_DAYS} hari`)],
+                [lang==="en"?"Obs. station":"Stasiun obs.", overlayData?.imei?`IMEI ${overlayData.imei}`:"—"],
+                ["TOL",                                  "-2.156 m (Luwes → MSL TPXO9)"],
+                ["S-104",                                "Ed.2.0.0 (Dec 2024)"],
+                [lang==="en"?"Tide horizon":"Horizon pasut", `${maxTideDays} ${lang==="en"?"days":"hari"} (${isPro?"Pro":"Free"})`],
               ] as [string, string|undefined][]).map(([k,v])=>(
                 <div key={k} style={{ display:"flex", justifyContent:"space-between", marginBottom:2, gap:7 }}>
-                  <span style={{ fontFamily:MONO, fontSize:9.5, color:TEXT_HINT, fontWeight:500, flexShrink:0 }}>{k}</span>
-                  <span style={{ fontFamily:MONO, fontSize:9.5, color:TEXT_SEC, textAlign:"right" as const, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{v??"—"}</span>
+                  <span style={{fontFamily:MONO,fontSize:9.5,color:TEXT_HINT,fontWeight:500,flexShrink:0}}>{k}</span>
+                  <span style={{fontFamily:MONO,fontSize:9.5,color:TEXT_SEC,textAlign:"right" as const,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{v??"—"}</span>
                 </div>
               ))}
             </div>
           </>
         )}
       </div>
-
+ 
+      {/* ── Pricing Modal (triggered from Free-tier notices) ── */}
+      <PricingModal open={showPricing} onClose={() => setShowPricing(false)} language={lang} initialTab="pricing"/>
+ 
       <style>{`
         @keyframes shimmer { from { background-position:-200% 0; } to { background-position:200% 0; } }
         @keyframes spin    { to   { transform:rotate(360deg); } }
