@@ -65,7 +65,7 @@ interface OverlayData {
   luwes_obs: LuwesObs[];
   tpxo: Array<{ time: string; height: number }>;
   luwes_stats: { max_m: number | null; min_m: number | null; count: number };
-  tpxo_stats:  { max: number; min: number; mean: number; range: number };
+  tpxo_stats: { max: number; min: number; mean: number; range: number };
 }
 
 interface HourRow {
@@ -91,33 +91,33 @@ interface InfoPanelProps {
 /* ═══════════════════════════════════════════════════
    DESIGN TOKENS
 ═══════════════════════════════════════════════════ */
-const NAVY    = "#0c4a6e";
-const OCEAN   = "#075985";
+const NAVY = "#0c4a6e";
+const OCEAN = "#075985";
 const PRIMARY = "#0369a1";
-const SKY     = "#0ea5e9";
+const SKY = "#0ea5e9";
 
-const CHART_TPXO  = "#5b7093";
+const CHART_TPXO = "#5b7093";
 const CHART_LUWES = "#e879a0";
 
-const C_SAFE    = { dot: "#22c55e", bg: "#f0fdf4", border: "#bbf7d0", text: "#15803d" };
+const C_SAFE = { dot: "#22c55e", bg: "#f0fdf4", border: "#bbf7d0", text: "#15803d" };
 const C_CAUTION = { dot: "#f59e0b", bg: "#fffbeb", border: "#fde68a", text: "#b45309" };
-const C_DANGER  = { dot: "#f87171", bg: "#fff1f2", border: "#fecdd3", text: "#be123c" };
+const C_DANGER = { dot: "#f87171", bg: "#fff1f2", border: "#fecdd3", text: "#be123c" };
 
-const BG_PAGE   = "#f0f6fb";
-const BG_CARD   = "#ffffff";
-const BG_MUTED  = "#f5f9fc";
-const BORDER    = "#dbeafe";
+const BG_PAGE = "#f0f6fb";
+const BG_CARD = "#ffffff";
+const BG_MUTED = "#f5f9fc";
+const BORDER = "#dbeafe";
 const BORDER_SM = "#e8f0f7";
-const TEXT_PRI  = "#0f2744";
-const TEXT_SEC  = "#4a6580";
+const TEXT_PRI = "#0f2744";
+const TEXT_SEC = "#4a6580";
 const TEXT_HINT = "#8faabb";
 
-const HIGH_BG   = "#eff8ff";
-const HIGH_BDR  = "#bfdbfe";
+const HIGH_BG = "#eff8ff";
+const HIGH_BDR = "#bfdbfe";
 const HIGH_TEXT = "#4f7af3";
-const LOW_BG    = "#fffbf0";
-const LOW_BDR   = "#fde68a";
-const LOW_TEXT  = "#b45309";
+const LOW_BG = "#fffbf0";
+const LOW_BDR = "#fde68a";
+const LOW_TEXT = "#b45309";
 
 const SANS = '"Inter", "DM Sans", system-ui, sans-serif';
 const MONO = '"Inter", "DM Sans", system-ui, sans-serif';
@@ -130,20 +130,20 @@ const todayISO = () => {
 };
 
 const WMO: Record<number, { en: string; id: string }> = {
-  0:  { en: "Clear sky",       id: "Langit cerah"      },
-  1:  { en: "Mainly clear",    id: "Cerah berawan"     },
-  2:  { en: "Partly cloudy",   id: "Sebagian berawan"  },
-  3:  { en: "Overcast",        id: "Mendung"           },
-  45: { en: "Foggy",           id: "Berkabut"          },
-  51: { en: "Light drizzle",   id: "Gerimis ringan"    },
-  61: { en: "Light rain",      id: "Hujan ringan"      },
-  63: { en: "Moderate rain",   id: "Hujan sedang"      },
-  65: { en: "Heavy rain",      id: "Hujan lebat"       },
-  80: { en: "Light showers",   id: "Hujan rintik"      },
-  81: { en: "Showers",         id: "Hujan deras"       },
-  82: { en: "Heavy showers",   id: "Hujan sangat deras" },
-  95: { en: "Thunderstorm",    id: "Badai petir"       },
-  99: { en: "Thunderstorm",    id: "Badai petir"       },
+  0: { en: "Clear sky", id: "Langit cerah" },
+  1: { en: "Mainly clear", id: "Cerah berawan" },
+  2: { en: "Partly cloudy", id: "Sebagian berawan" },
+  3: { en: "Overcast", id: "Mendung" },
+  45: { en: "Foggy", id: "Berkabut" },
+  51: { en: "Light drizzle", id: "Gerimis ringan" },
+  61: { en: "Light rain", id: "Hujan ringan" },
+  63: { en: "Moderate rain", id: "Hujan sedang" },
+  65: { en: "Heavy rain", id: "Hujan lebat" },
+  80: { en: "Light showers", id: "Hujan rintik" },
+  81: { en: "Showers", id: "Hujan deras" },
+  82: { en: "Heavy showers", id: "Hujan sangat deras" },
+  95: { en: "Thunderstorm", id: "Badai petir" },
+  99: { en: "Thunderstorm", id: "Badai petir" },
 };
 
 const wmoLabel = (code: number | null, lang: "en" | "id") => {
@@ -156,21 +156,21 @@ const wmoLabel = (code: number | null, lang: "en" | "id") => {
 };
 
 const windDirLabel = (deg: number) => {
-  const d = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+  const d = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
   return d[Math.round(deg / 22.5) % 16];
 };
 
 const fmtHHmm = (iso: string) => {
   const d = new Date(iso);
-  return `${d.getHours().toString().padStart(2,"0")}:${d.getMinutes().toString().padStart(2,"0")}`;
+  return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
 };
 
 const statusStyles: Record<ActivityRec["status"], {
   dot: string; bg: string; border: string; text: string; label: [string, string]
 }> = {
-  safe:    { ...C_SAFE,    label: ["Safe",    "Aman"]    },
+  safe: { ...C_SAFE, label: ["Safe", "Aman"] },
   caution: { ...C_CAUTION, label: ["Caution", "Waspada"] },
-  danger:  { ...C_DANGER,  label: ["Avoid",   "Hindari"] },
+  danger: { ...C_DANGER, label: ["Avoid", "Hindari"] },
 };
 
 /* ═══════════════════════════════════════════════════
@@ -184,13 +184,13 @@ function readCache<T>(lat: number, lon: number, t: "wx" | "marine"): T | null {
   catch { return null; }
 }
 function writeCache<T>(lat: number, lon: number, t: "wx" | "marine", data: T) {
-  try { sessionStorage.setItem(cacheKey(lat, lon, t), JSON.stringify(data)); } catch {}
+  try { sessionStorage.setItem(cacheKey(lat, lon, t), JSON.stringify(data)); } catch { }
 }
 function clearCache(lat: number, lon: number) {
   try {
     sessionStorage.removeItem(cacheKey(lat, lon, "wx"));
     sessionStorage.removeItem(cacheKey(lat, lon, "marine"));
-  } catch {}
+  } catch { }
 }
 
 /* ═══════════════════════════════════════════════════
@@ -200,10 +200,10 @@ function parseToWIB(ts: string): { wibDate: string; wibHour: number; wibMinute: 
   try {
     let ms = NaN;
     if (ts.endsWith("Z") || ts.includes("+")) ms = Date.parse(ts);
-    else if (ts.includes("T"))                 ms = Date.parse(ts + "Z");
+    else if (ts.includes("T")) ms = Date.parse(ts + "Z");
     if (isNaN(ms)) return null;
     const wib = new Date(ms + 7 * 3600_000);
-    return { wibDate: wib.toISOString().slice(0,10), wibHour: wib.getUTCHours(), wibMinute: wib.getUTCMinutes() };
+    return { wibDate: wib.toISOString().slice(0, 10), wibHour: wib.getUTCHours(), wibMinute: wib.getUTCMinutes() };
   } catch { return null; }
 }
 
@@ -216,7 +216,7 @@ function addDays(dateStr: string, days: number): string {
 /* ═══════════════════════════════════════════════════
    CUBIC SPLINE INTERPOLATION
 ═══════════════════════════════════════════════════ */
-function buildCubicSpline(knots: {x:number;y:number}[]): (x: number) => number {
+function buildCubicSpline(knots: { x: number; y: number }[]): (x: number) => number {
   const n = knots.length;
   if (n === 0) return () => 0;
   if (n === 1) return () => knots[0].y;
@@ -226,25 +226,25 @@ function buildCubicSpline(knots: {x:number;y:number}[]): (x: number) => number {
   }
   const xs = knots.map(k => k.x);
   const ys = knots.map(k => k.y);
-  const h  = Array.from({length: n - 1}, (_, i) => xs[i + 1] - xs[i]);
-  const diag  = new Array(n).fill(2.0);
+  const h = Array.from({ length: n - 1 }, (_, i) => xs[i + 1] - xs[i]);
+  const diag = new Array(n).fill(2.0);
   const upper = new Array(n).fill(0.0);
-  const rhs   = new Array(n).fill(0.0);
+  const rhs = new Array(n).fill(0.0);
   for (let i = 1; i < n - 1; i++) {
-    const hi  = h[i - 1];
+    const hi = h[i - 1];
     const hi1 = h[i];
     const tot = hi + hi1;
     upper[i] = hi1 / tot;
-    rhs[i]   = 6.0 * ((ys[i + 1] - ys[i]) / hi1 - (ys[i] - ys[i - 1]) / hi) / tot;
+    rhs[i] = 6.0 * ((ys[i + 1] - ys[i]) / hi1 - (ys[i] - ys[i - 1]) / hi) / tot;
   }
-  const mu   = new Array(n).fill(0.0);
+  const mu = new Array(n).fill(0.0);
   const rhs2 = [...rhs];
   for (let i = 1; i < n - 1; i++) mu[i] = h[i - 1] / (h[i - 1] + h[i]);
   const diagMod = [...diag];
   for (let i = 1; i < n - 1; i++) {
     const w = mu[i] / diagMod[i - 1];
     diagMod[i] -= w * upper[i - 1];
-    rhs2[i]    -= w * rhs2[i - 1];
+    rhs2[i] -= w * rhs2[i - 1];
   }
   const M = new Array(n).fill(0.0);
   M[n - 2] = rhs2[n - 2] / diagMod[n - 2];
@@ -252,7 +252,7 @@ function buildCubicSpline(knots: {x:number;y:number}[]): (x: number) => number {
     M[i] = (rhs2[i] - upper[i] * M[i + 1]) / diagMod[i];
   }
   return (x: number) => {
-    if (x <= xs[0])     return ys[0];
+    if (x <= xs[0]) return ys[0];
     if (x >= xs[n - 1]) return ys[n - 1];
     let lo = 0, hi2 = n - 2;
     while (lo < hi2) {
@@ -260,8 +260,8 @@ function buildCubicSpline(knots: {x:number;y:number}[]): (x: number) => number {
       if (xs[mid + 1] < x) lo = mid + 1;
       else hi2 = mid;
     }
-    const i   = lo;
-    const dx  = x - xs[i];
+    const i = lo;
+    const dx = x - xs[i];
     const hi_ = h[i];
     const a = ys[i];
     const b = (ys[i + 1] - ys[i]) / hi_ - hi_ * (2 * M[i] + M[i + 1]) / 6;
@@ -271,12 +271,12 @@ function buildCubicSpline(knots: {x:number;y:number}[]): (x: number) => number {
   };
 }
 
-function interpolateTPXOPerMinute(knots: {x: number; y: number}[]): {x: number; y: number}[] {
+function interpolateTPXOPerMinute(knots: { x: number; y: number }[]): { x: number; y: number }[] {
   if (knots.length < 2) return knots;
   const spline = buildCubicSpline(knots);
-  const xMin   = knots[0].x;
-  const xMax   = knots[knots.length - 1].x;
-  const result: {x: number; y: number}[] = [];
+  const xMin = knots[0].x;
+  const xMax = knots[knots.length - 1].x;
+  const result: { x: number; y: number }[] = [];
   const STEP = 1 / 60;
   for (let min = 0; min <= (xMax - xMin) * 60 + 0.5; min++) {
     const x = xMin + min * STEP;
@@ -302,60 +302,60 @@ function buildRecommendations(
     .map((t, i) => (t.startsWith(dateStr) ? i : -1)).filter(i => i >= 0) ?? [];
 
   const avgWave: number | null = marineIdxs.length
-    ? marineIdxs.reduce((s,i) => s + (marineData!.hourly.wave_height[i] ?? 0), 0) / marineIdxs.length
+    ? marineIdxs.reduce((s, i) => s + (marineData!.hourly.wave_height[i] ?? 0), 0) / marineIdxs.length
     : null;
   const avgCurrentMs: number | null = marineIdxs.length
-    ? marineIdxs.reduce((s,i) => s + (marineData!.hourly.ocean_current_velocity[i] ?? 0), 0) / marineIdxs.length
+    ? marineIdxs.reduce((s, i) => s + (marineData!.hourly.ocean_current_velocity[i] ?? 0), 0) / marineIdxs.length
     : null;
   const avgWindMs: number | null = hourlyIdxs.length
-    ? hourlyIdxs.reduce((s,i) => s + kmhToMs(weatherData!.hourly.wind_speed_10m[i] ?? 0), 0) / hourlyIdxs.length
+    ? hourlyIdxs.reduce((s, i) => s + kmhToMs(weatherData!.hourly.wind_speed_10m[i] ?? 0), 0) / hourlyIdxs.length
     : null;
 
   const dayPred = tideData?.predictions.filter(p => parseToWIB(p.time)?.wibDate === dateStr) ?? [];
   const tideRange: number | null = dayPred.length
-    ? Math.max(...dayPred.map(p=>p.height)) - Math.min(...dayPred.map(p=>p.height)) : null;
+    ? Math.max(...dayPred.map(p => p.height)) - Math.min(...dayPred.map(p => p.height)) : null;
 
   const wCode = weatherData?.current.weather_code ?? 0;
   const isStormy = wCode >= 95;
-  const isRainy  = wCode >= 51;
+  const isRainy = wCode >= 51;
 
   type S = ActivityRec["status"];
 
-  const snorkel  = (): S => { if ((avgWave??0)>1.0||(avgWindMs??0)>7.9||(avgCurrentMs??0)>0.51) return "danger"; if ((avgWave??0)>0.5||(avgWindMs??0)>3.3||(avgCurrentMs??0)>0.26) return "caution"; return "safe"; };
-  const snorkelR = (): [string,string] => { const s=snorkel(); if(s==="safe") return ["Calm sea, good visibility for snorkeling","Laut tenang, visibilitas baik untuk snorkeling"]; if(s==="caution") return ["Moderate conditions — experienced snorkelers only","Kondisi sedang — hanya untuk snorkeler berpengalaman"]; return ["Rough sea or strong current — avoid water","Laut kasar atau arus kuat — hindari masuk air"]; };
-  const scuba    = (): S => { if(isStormy||(avgCurrentMs??0)>0.51||(avgWave??0)>1.25) return "danger"; if((avgCurrentMs??0)>0.26||(avgWave??0)>0.5) return "caution"; return "safe"; };
-  const scubaR   = (): [string,string] => { const s=scuba(); if(s==="safe") return ["Good visibility, current within safe limits","Visibilitas baik, arus dalam batas aman"]; if(s==="caution") return ["Moderate current — plan with slack tide","Arus sedang — rencanakan saat slack tide"]; return ["Current >1 kt or rough sea — diving not safe","Arus melebihi batas aman selam atau laut kasar"]; };
-  const freedive = (): S => { if((avgWave??0)>0.8||(avgCurrentMs??0)>0.51) return "danger"; if((avgWave??0)>0.5||(avgCurrentMs??0)>0.26) return "caution"; return "safe"; };
-  const freediveR= (): [string,string] => { const s=freedive(); if(s==="safe") return ["Calm water, safe for breath-hold diving","Air tenang, aman untuk freediving"]; if(s==="caution") return ["Moderate swell — buddy required","Ombak sedang — wajib buddy system"]; return ["High wave or strong current — hazardous","Ombak tinggi atau arus kuat — berbahaya"]; };
-  const jetski   = (): S => { if(isStormy||(avgWindMs??0)>10.3||(avgWave??0)>1.5) return "danger"; if(isRainy||(avgWindMs??0)>7.9||(avgWave??0)>0.8) return "caution"; return "safe"; };
-  const jetskiR  = (): [string,string] => { const s=jetski(); if(s==="safe") return ["Calm sea, good for water sports","Laut tenang, kondisi baik untuk olahraga air"]; if(s==="caution") return ["Choppy water — reduce speed","Air bergelombang — kurangi kecepatan"]; return ["Strong wind or high waves — unsafe","Angin kencang atau ombak tinggi — tidak aman"]; };
-  const sup      = (): S => { if((avgWindMs??0)>6.2||(avgWave??0)>1.0||(avgCurrentMs??0)>0.51) return "danger"; if((avgWindMs??0)>4.5||(avgWave??0)>0.5||(avgCurrentMs??0)>0.26) return "caution"; return "safe"; };
-  const supR     = (): [string,string] => { const s=sup(); if(s==="safe") return ["Flat water, ideal for paddling","Air tenang, ideal untuk paddling"]; if(s==="caution") return ["Light chop — experienced paddlers only","Sedikit bergelombang — paddler berpengalaman"]; return ["Wind/wave exceeds safe SUP limit","Angin/ombak melampaui batas aman SUP"]; };
-  const boat     = (): S => { if((avgWindMs??0)>10.3||(avgWave??0)>1.5) return "danger"; if((avgWindMs??0)>7.9||(avgWave??0)>1.0) return "caution"; return "safe"; };
-  const boatR    = (): [string,string] => { const s=boat(); if(s==="safe") return ["Calm sea, good for inter-island travel","Laut tenang, baik untuk perjalanan antar pulau"]; if(s==="caution") return ["Moderate sea — check vessel seaworthiness","Laut sedang — periksa kelayakan kapal"]; return ["Exceeds small-craft limits — delay trip","Melampaui batas kapal kecil — tunda perjalanan"]; };
-  const fishing  = (): S => { if(isStormy||(avgWindMs??0)>10.3||(avgWave??0)>1.5) return "danger"; if(isRainy||(avgWindMs??0)>7.9||(avgWave??0)>1.0) return "caution"; return "safe"; };
-  const fishingR = (): [string,string] => { const s=fishing(); if(s==="safe") return ["Good sea conditions for fishing","Kondisi laut baik untuk memancing"]; if(s==="caution") return ["Moderate wind/wave — stay close to shore","Angin/ombak sedang — tetap dekat pantai"]; return ["Dangerous sea state — not recommended","Kondisi laut berbahaya — tidak disarankan"]; };
-  const turtle   = (): S => { if(isStormy) return "danger"; if(isRainy||(tideRange!==null&&tideRange>1.5)) return "caution"; return "safe"; };
-  const turtleR  = (): [string,string] => { const s=turtle(); if(s==="safe") return ["Good conditions for conservation","Kondisi baik untuk konservasi"]; if(s==="caution") return ["Rain or strong tides may affect access","Hujan/pasut kuat dapat ganggu akses"]; return ["Storm — field activity unsafe","Badai — kegiatan lapangan tidak aman"]; };
-  const camp     = (): S => { if(isStormy) return "danger"; if(isRainy||(tideRange!==null&&tideRange>1.5)) return "caution"; return "safe"; };
-  const campR    = (): [string,string] => { const s=camp(); if(s==="safe") return ["Clear weather, comfortable beach","Cuaca cerah, pantai nyaman"]; if(s==="caution") return ["Rain or high tide — limited beach access","Hujan/pasut tinggi — akses pantai terbatas"]; return ["Storm — outdoor activities unsafe","Badai — aktivitas pantai tidak aman"]; };
-  const photo    = (): S => { if(isStormy||(avgWave??0)>1.0||(avgCurrentMs??0)>0.51) return "danger"; if(isRainy||(avgWave??0)>0.5||(avgCurrentMs??0)>0.26) return "caution"; return "safe"; };
-  const photoR   = (): [string,string] => { const s=photo(); if(s==="safe") return ["Excellent visibility for UW photography","Visibilitas sangat baik untuk foto bawah air"]; if(s==="caution") return ["Reduced visibility — challenging","Visibilitas berkurang — menantang"]; return ["Poor visibility or strong current","Visibilitas buruk atau arus kuat"]; };
-  const general  = (): S => { if(isStormy) return "danger"; if(isRainy) return "caution"; return "safe"; };
-  const generalR = (): [string,string] => { const s=general(); if(s==="safe") return ["Clear weather — enjoy island exploration","Cuaca cerah — nikmati eksplorasi pulau"]; if(s==="caution") return ["Light rain expected — bring rain gear","Kemungkinan hujan — bawa jas hujan"]; return ["Storm forecast — limit outdoor activities","Prakiraan badai — batasi aktivitas luar"]; };
+  const snorkel = (): S => { if ((avgWave ?? 0) > 1.0 || (avgWindMs ?? 0) > 7.9 || (avgCurrentMs ?? 0) > 0.51) return "danger"; if ((avgWave ?? 0) > 0.5 || (avgWindMs ?? 0) > 3.3 || (avgCurrentMs ?? 0) > 0.26) return "caution"; return "safe"; };
+  const snorkelR = (): [string, string] => { const s = snorkel(); if (s === "safe") return ["Calm sea, good visibility for snorkeling", "Laut tenang, visibilitas baik untuk snorkeling"]; if (s === "caution") return ["Moderate conditions — experienced snorkelers only", "Kondisi sedang — hanya untuk snorkeler berpengalaman"]; return ["Rough sea or strong current — avoid water", "Laut kasar atau arus kuat — hindari masuk air"]; };
+  const scuba = (): S => { if (isStormy || (avgCurrentMs ?? 0) > 0.51 || (avgWave ?? 0) > 1.25) return "danger"; if ((avgCurrentMs ?? 0) > 0.26 || (avgWave ?? 0) > 0.5) return "caution"; return "safe"; };
+  const scubaR = (): [string, string] => { const s = scuba(); if (s === "safe") return ["Good visibility, current within safe limits", "Visibilitas baik, arus dalam batas aman"]; if (s === "caution") return ["Moderate current — plan with slack tide", "Arus sedang — rencanakan saat slack tide"]; return ["Current >1 kt or rough sea — diving not safe", "Arus melebihi batas aman selam atau laut kasar"]; };
+  const freedive = (): S => { if ((avgWave ?? 0) > 0.8 || (avgCurrentMs ?? 0) > 0.51) return "danger"; if ((avgWave ?? 0) > 0.5 || (avgCurrentMs ?? 0) > 0.26) return "caution"; return "safe"; };
+  const freediveR = (): [string, string] => { const s = freedive(); if (s === "safe") return ["Calm water, safe for breath-hold diving", "Air tenang, aman untuk freediving"]; if (s === "caution") return ["Moderate swell — buddy required", "Ombak sedang — wajib buddy system"]; return ["High wave or strong current — hazardous", "Ombak tinggi atau arus kuat — berbahaya"]; };
+  const jetski = (): S => { if (isStormy || (avgWindMs ?? 0) > 10.3 || (avgWave ?? 0) > 1.5) return "danger"; if (isRainy || (avgWindMs ?? 0) > 7.9 || (avgWave ?? 0) > 0.8) return "caution"; return "safe"; };
+  const jetskiR = (): [string, string] => { const s = jetski(); if (s === "safe") return ["Calm sea, good for water sports", "Laut tenang, kondisi baik untuk olahraga air"]; if (s === "caution") return ["Choppy water — reduce speed", "Air bergelombang — kurangi kecepatan"]; return ["Strong wind or high waves — unsafe", "Angin kencang atau ombak tinggi — tidak aman"]; };
+  const sup = (): S => { if ((avgWindMs ?? 0) > 6.2 || (avgWave ?? 0) > 1.0 || (avgCurrentMs ?? 0) > 0.51) return "danger"; if ((avgWindMs ?? 0) > 4.5 || (avgWave ?? 0) > 0.5 || (avgCurrentMs ?? 0) > 0.26) return "caution"; return "safe"; };
+  const supR = (): [string, string] => { const s = sup(); if (s === "safe") return ["Flat water, ideal for paddling", "Air tenang, ideal untuk paddling"]; if (s === "caution") return ["Light chop — experienced paddlers only", "Sedikit bergelombang — paddler berpengalaman"]; return ["Wind/wave exceeds safe SUP limit", "Angin/ombak melampaui batas aman SUP"]; };
+  const boat = (): S => { if ((avgWindMs ?? 0) > 10.3 || (avgWave ?? 0) > 1.5) return "danger"; if ((avgWindMs ?? 0) > 7.9 || (avgWave ?? 0) > 1.0) return "caution"; return "safe"; };
+  const boatR = (): [string, string] => { const s = boat(); if (s === "safe") return ["Calm sea, good for inter-island travel", "Laut tenang, baik untuk perjalanan antar pulau"]; if (s === "caution") return ["Moderate sea — check vessel seaworthiness", "Laut sedang — periksa kelayakan kapal"]; return ["Exceeds small-craft limits — delay trip", "Melampaui batas kapal kecil — tunda perjalanan"]; };
+  const fishing = (): S => { if (isStormy || (avgWindMs ?? 0) > 10.3 || (avgWave ?? 0) > 1.5) return "danger"; if (isRainy || (avgWindMs ?? 0) > 7.9 || (avgWave ?? 0) > 1.0) return "caution"; return "safe"; };
+  const fishingR = (): [string, string] => { const s = fishing(); if (s === "safe") return ["Good sea conditions for fishing", "Kondisi laut baik untuk memancing"]; if (s === "caution") return ["Moderate wind/wave — stay close to shore", "Angin/ombak sedang — tetap dekat pantai"]; return ["Dangerous sea state — not recommended", "Kondisi laut berbahaya — tidak disarankan"]; };
+  const turtle = (): S => { if (isStormy) return "danger"; if (isRainy || (tideRange !== null && tideRange > 1.5)) return "caution"; return "safe"; };
+  const turtleR = (): [string, string] => { const s = turtle(); if (s === "safe") return ["Good conditions for conservation", "Kondisi baik untuk konservasi"]; if (s === "caution") return ["Rain or strong tides may affect access", "Hujan/pasut kuat dapat ganggu akses"]; return ["Storm — field activity unsafe", "Badai — kegiatan lapangan tidak aman"]; };
+  const camp = (): S => { if (isStormy) return "danger"; if (isRainy || (tideRange !== null && tideRange > 1.5)) return "caution"; return "safe"; };
+  const campR = (): [string, string] => { const s = camp(); if (s === "safe") return ["Clear weather, comfortable beach", "Cuaca cerah, pantai nyaman"]; if (s === "caution") return ["Rain or high tide — limited beach access", "Hujan/pasut tinggi — akses pantai terbatas"]; return ["Storm — outdoor activities unsafe", "Badai — aktivitas pantai tidak aman"]; };
+  const photo = (): S => { if (isStormy || (avgWave ?? 0) > 1.0 || (avgCurrentMs ?? 0) > 0.51) return "danger"; if (isRainy || (avgWave ?? 0) > 0.5 || (avgCurrentMs ?? 0) > 0.26) return "caution"; return "safe"; };
+  const photoR = (): [string, string] => { const s = photo(); if (s === "safe") return ["Excellent visibility for UW photography", "Visibilitas sangat baik untuk foto bawah air"]; if (s === "caution") return ["Reduced visibility — challenging", "Visibilitas berkurang — menantang"]; return ["Poor visibility or strong current", "Visibilitas buruk atau arus kuat"]; };
+  const general = (): S => { if (isStormy) return "danger"; if (isRainy) return "caution"; return "safe"; };
+  const generalR = (): [string, string] => { const s = general(); if (s === "safe") return ["Clear weather — enjoy island exploration", "Cuaca cerah — nikmati eksplorasi pulau"]; if (s === "caution") return ["Light rain expected — bring rain gear", "Kemungkinan hujan — bawa jas hujan"]; return ["Storm forecast — limit outdoor activities", "Prakiraan badai — batasi aktivitas luar"]; };
 
   return [
-    { id:"snorkeling", labelEn:"Snorkeling",        labelId:"Snorkeling",         icon:<Waves size={13}/>,     status:snorkel(),  reasonEn:snorkelR()[0],  reasonId:snorkelR()[1]  },
-    { id:"scuba",      labelEn:"Scuba Diving",       labelId:"Selam Scuba",        icon:<Anchor size={13}/>,    status:scuba(),    reasonEn:scubaR()[0],    reasonId:scubaR()[1]    },
-    { id:"freedive",   labelEn:"Freediving",         labelId:"Freediving",         icon:<Navigation size={13}/>,status:freedive(), reasonEn:freediveR()[0], reasonId:freediveR()[1] },
-    { id:"jetski",     labelEn:"Jet Ski / Sports",   labelId:"Jet Ski / Olahraga", icon:<Zap size={13}/>,       status:jetski(),   reasonEn:jetskiR()[0],   reasonId:jetskiR()[1]   },
-    { id:"sup",        labelEn:"SUP / Kayaking",     labelId:"SUP / Kayak",        icon:<Users size={13}/>,     status:sup(),      reasonEn:supR()[0],      reasonId:supR()[1]      },
-    { id:"boat",       labelEn:"Island Hopping",     labelId:"Wisata Pulau",       icon:<Ship size={13}/>,      status:boat(),     reasonEn:boatR()[0],     reasonId:boatR()[1]     },
-    { id:"fishing",    labelEn:"Fishing",            labelId:"Memancing",          icon:<Fish size={13}/>,      status:fishing(),  reasonEn:fishingR()[0],  reasonId:fishingR()[1]  },
-    { id:"turtle",     labelEn:"Turtle Conservation",labelId:"Konservasi Penyu",   icon:<Leaf size={13}/>,      status:turtle(),   reasonEn:turtleR()[0],   reasonId:turtleR()[1]   },
-    { id:"camping",    labelEn:"Camping & Beach",    labelId:"Camping & Pantai",   icon:<Flag size={13}/>,      status:camp(),     reasonEn:campR()[0],     reasonId:campR()[1]     },
-    { id:"uwphoto",    labelEn:"UW Photography",     labelId:"Foto Bawah Air",     icon:<Camera size={13}/>,    status:photo(),    reasonEn:photoR()[0],    reasonId:photoR()[1]    },
-    { id:"general",    labelEn:"General Tourism",    labelId:"Wisata Umum",        icon:<Sun size={13}/>,       status:general(),  reasonEn:generalR()[0],  reasonId:generalR()[1]  },
+    { id: "snorkeling", labelEn: "Snorkeling", labelId: "Snorkeling", icon: <Waves size={13} />, status: snorkel(), reasonEn: snorkelR()[0], reasonId: snorkelR()[1] },
+    { id: "scuba", labelEn: "Scuba Diving", labelId: "Selam Scuba", icon: <Anchor size={13} />, status: scuba(), reasonEn: scubaR()[0], reasonId: scubaR()[1] },
+    { id: "freedive", labelEn: "Freediving", labelId: "Freediving", icon: <Navigation size={13} />, status: freedive(), reasonEn: freediveR()[0], reasonId: freediveR()[1] },
+    { id: "jetski", labelEn: "Jet Ski / Sports", labelId: "Jet Ski / Olahraga", icon: <Zap size={13} />, status: jetski(), reasonEn: jetskiR()[0], reasonId: jetskiR()[1] },
+    { id: "sup", labelEn: "SUP / Kayaking", labelId: "SUP / Kayak", icon: <Users size={13} />, status: sup(), reasonEn: supR()[0], reasonId: supR()[1] },
+    { id: "boat", labelEn: "Island Hopping", labelId: "Wisata Pulau", icon: <Ship size={13} />, status: boat(), reasonEn: boatR()[0], reasonId: boatR()[1] },
+    { id: "fishing", labelEn: "Fishing", labelId: "Memancing", icon: <Fish size={13} />, status: fishing(), reasonEn: fishingR()[0], reasonId: fishingR()[1] },
+    { id: "turtle", labelEn: "Turtle Conservation", labelId: "Konservasi Penyu", icon: <Leaf size={13} />, status: turtle(), reasonEn: turtleR()[0], reasonId: turtleR()[1] },
+    { id: "camping", labelEn: "Camping & Beach", labelId: "Camping & Pantai", icon: <Flag size={13} />, status: camp(), reasonEn: campR()[0], reasonId: campR()[1] },
+    { id: "uwphoto", labelEn: "UW Photography", labelId: "Foto Bawah Air", icon: <Camera size={13} />, status: photo(), reasonEn: photoR()[0], reasonId: photoR()[1] },
+    { id: "general", labelEn: "General Tourism", labelId: "Wisata Umum", icon: <Sun size={13} />, status: general(), reasonEn: generalR()[0], reasonId: generalR()[1] },
   ];
 }
 
@@ -363,24 +363,24 @@ function buildRecommendations(
    SKELETON LOADERS
 ═══════════════════════════════════════════════════ */
 const Shimmer: React.FC<{ w?: string; h?: string; r?: string }> = ({
-  w="100%", h="12px", r="4px",
+  w = "100%", h = "12px", r = "4px",
 }) => (
   <div style={{
     width: w, height: h, borderRadius: r,
     background: "linear-gradient(90deg,#dbeafe 25%,#eff6ff 50%,#dbeafe 75%)",
     backgroundSize: "200% 100%",
     animation: "shimmer 1.6s linear infinite",
-  }}/>
+  }} />
 );
 
 const SkeletonHero = () => (
-  <div style={{ margin:"14px 14px 0", borderRadius:14, padding:18, background:"#dbeafe" }}>
-    <Shimmer w="55%" h="9px"/>
-    <div style={{ display:"flex", gap:14, marginTop:10 }}>
-      {[0,1,2,3].map(i=>(
-        <div key={i} style={{ flex:1 }}>
-          <Shimmer w="40%" h="7px"/>
-          <div style={{marginTop:5}}><Shimmer w="60%" h={i===2?"28px":"20px"}/></div>
+  <div style={{ margin: "14px 14px 0", borderRadius: 14, padding: 18, background: "#dbeafe" }}>
+    <Shimmer w="55%" h="9px" />
+    <div style={{ display: "flex", gap: 14, marginTop: 10 }}>
+      {[0, 1, 2, 3].map(i => (
+        <div key={i} style={{ flex: 1 }}>
+          <Shimmer w="40%" h="7px" />
+          <div style={{ marginTop: 5 }}><Shimmer w="60%" h={i === 2 ? "28px" : "20px"} /></div>
         </div>
       ))}
     </div>
@@ -388,17 +388,17 @@ const SkeletonHero = () => (
 );
 
 const SkeletonChart = () => (
-  <div style={{ margin:"14px 14px 0", borderRadius:12, overflow:"hidden", border:`1px solid ${BORDER}` }}>
-    <div style={{ padding:"10px 14px 3px" }}><Shimmer w="50%" h="9px"/></div>
-    <div style={{ padding:10, display:"flex", alignItems:"flex-end", gap:2, height:160 }}>
-      {Array.from({length:24},(_,i)=>(
+  <div style={{ margin: "14px 14px 0", borderRadius: 12, overflow: "hidden", border: `1px solid ${BORDER}` }}>
+    <div style={{ padding: "10px 14px 3px" }}><Shimmer w="50%" h="9px" /></div>
+    <div style={{ padding: 10, display: "flex", alignItems: "flex-end", gap: 2, height: 160 }}>
+      {Array.from({ length: 24 }, (_, i) => (
         <div key={i} style={{
-          flex:1, borderRadius:2,
-          height:`${30+Math.sin(i*0.5)*25+Math.random()*20}%`,
-          background:"linear-gradient(90deg,#dbeafe 25%,#eff6ff 50%,#dbeafe 75%)",
-          backgroundSize:"200% 100%",
-          animation:`shimmer 1.6s linear ${i*0.04}s infinite`,
-        }}/>
+          flex: 1, borderRadius: 2,
+          height: `${30 + Math.sin(i * 0.5) * 25 + Math.random() * 20}%`,
+          background: "linear-gradient(90deg,#dbeafe 25%,#eff6ff 50%,#dbeafe 75%)",
+          backgroundSize: "200% 100%",
+          animation: `shimmer 1.6s linear ${i * 0.04}s infinite`,
+        }} />
       ))}
     </div>
   </div>
@@ -407,14 +407,14 @@ const SkeletonChart = () => (
 /* ═══════════════════════════════════════════════════
    WEATHER SYMBOL
 ═══════════════════════════════════════════════════ */
-const WeatherSymbol: React.FC<{ code: number; size?: number }> = ({ code, size=16 }) => {
+const WeatherSymbol: React.FC<{ code: number; size?: number }> = ({ code, size = 16 }) => {
   const s = { width: size, height: size };
-  const p = { fill:"none", strokeWidth:1.6, strokeLinecap:"round" as const, strokeLinejoin:"round" as const };
-  if (code<=1)  return <svg {...s} viewBox="0 0 24 24" stroke="#f59e0b" {...p}><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>;
-  if (code<=3)  return <svg {...s} viewBox="0 0 24 24" stroke="#94a3b8" {...p}><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>;
-  if (code>=51&&code<=82) return <svg {...s} viewBox="0 0 24 24" stroke="#60a5fa" {...p}><path d="M20 17.58A5 5 0 0018 8h-1.26A8 8 0 104 16.25M8 19v2M12 19v2M16 19v2"/></svg>;
-  if (code>=95) return <svg {...s} viewBox="0 0 24 24" stroke="#a78bfa" {...p}><path d="M19 16.9A5 5 0 0015 9h-1V8a7 7 0 10-13 3M13 16l-4 6h6l-4 6"/></svg>;
-  return <svg {...s} viewBox="0 0 24 24" stroke="#94a3b8" {...p}><path d="M3 8h18M3 12h18M3 16h18"/></svg>;
+  const p = { fill: "none", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (code <= 1) return <svg {...s} viewBox="0 0 24 24" stroke="#f59e0b" {...p}><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>;
+  if (code <= 3) return <svg {...s} viewBox="0 0 24 24" stroke="#94a3b8" {...p}><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z" /></svg>;
+  if (code >= 51 && code <= 82) return <svg {...s} viewBox="0 0 24 24" stroke="#60a5fa" {...p}><path d="M20 17.58A5 5 0 0018 8h-1.26A8 8 0 104 16.25M8 19v2M12 19v2M16 19v2" /></svg>;
+  if (code >= 95) return <svg {...s} viewBox="0 0 24 24" stroke="#a78bfa" {...p}><path d="M19 16.9A5 5 0 0015 9h-1V8a7 7 0 10-13 3M13 16l-4 6h6l-4 6" /></svg>;
+  return <svg {...s} viewBox="0 0 24 24" stroke="#94a3b8" {...p}><path d="M3 8h18M3 12h18M3 16h18" /></svg>;
 };
 
 /* ═══════════════════════════════════════════════════
@@ -426,8 +426,8 @@ const OverlayChart: React.FC<{
   dateStr: string;
 }> = ({ tpxoPredictions, luwesObs, dateStr }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const chartRef  = useRef<any>(null);
-  const tooltipIdRef = useRef(`searibu-tip-${Math.random().toString(36).slice(2,7)}`);
+  const chartRef = useRef<any>(null);
+  const tooltipIdRef = useRef(`searibu-tip-${Math.random().toString(36).slice(2, 7)}`);
   const bulletRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -435,7 +435,7 @@ const OverlayChart: React.FC<{
     if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
 
     const nextDateStr = addDays(dateStr, 1);
-    const tpxoKnots: {x:number;y:number}[] = [];
+    const tpxoKnots: { x: number; y: number }[] = [];
 
     tpxoPredictions.forEach(p => {
       const w = parseToWIB(p.time);
@@ -450,7 +450,7 @@ const OverlayChart: React.FC<{
 
     const tpxoPts = interpolateTPXOPerMinute(tpxoKnots);
 
-    const luwesPts: {x:number;y:number}[] = [];
+    const luwesPts: { x: number; y: number }[] = [];
     luwesObs.forEach(o => {
       const w = parseToWIB(o.recorded_at);
       if (w && w.wibDate === dateStr) {
@@ -458,7 +458,7 @@ const OverlayChart: React.FC<{
       }
     });
 
-    const nearestY = (pts: {x:number;y:number}[], x: number, maxDist = 0.15): number | null => {
+    const nearestY = (pts: { x: number; y: number }[], x: number, maxDist = 0.15): number | null => {
       if (!pts.length) return null;
       let best = pts[0], bestD = Math.abs(x - pts[0].x);
       for (const pt of pts) { const d = Math.abs(x - pt.x); if (d < bestD) { bestD = d; best = pt; } }
@@ -479,11 +479,11 @@ const OverlayChart: React.FC<{
         el = document.createElement("div");
         el.id = tooltipId;
         el.style.cssText = [
-          "position:fixed","pointer-events:none","z-index:99999",
-          `background:${NAVY}`,"color:#e0f2fe","border-radius:8px",
-          "padding:8px 12px",`font-family:${MONO}`,"font-size:11.5px",
-          "box-shadow:0 4px 18px rgba(7,89,133,0.22)","min-width:110px",
-          "line-height:1.65","display:none",`border:1px solid rgba(14,165,233,0.18)`,
+          "position:fixed", "pointer-events:none", "z-index:99999",
+          `background:${NAVY}`, "color:#e0f2fe", "border-radius:8px",
+          "padding:8px 12px", `font-family:${MONO}`, "font-size:11.5px",
+          "box-shadow:0 4px 18px rgba(7,89,133,0.22)", "min-width:110px",
+          "line-height:1.65", "display:none", `border:1px solid rgba(14,165,233,0.18)`,
           "transition:opacity 0.08s",
         ].join(";");
         document.body.appendChild(el);
@@ -557,7 +557,7 @@ const OverlayChart: React.FC<{
               ticks: {
                 color: TEXT_HINT, font: { family: MONO, size: 9 },
                 maxRotation: 0, stepSize: 1, autoSkip: false, includeBounds: true,
-                callback: (v: any) => { const n = Number(v); if (n===0) return "00:00"; if (n===24) return "24:00"; return n%3===0?`${n.toString().padStart(2,"0")}:00`:""; },
+                callback: (v: any) => { const n = Number(v); if (n === 0) return "00:00"; if (n === 24) return "24:00"; return n % 3 === 0 ? `${n.toString().padStart(2, "0")}:00` : ""; },
               },
             },
             y: {
@@ -571,27 +571,27 @@ const OverlayChart: React.FC<{
             if (!event?.native) { hideTooltip(); return; }
             const xVal = chart.scales.x?.getValueForPixel(event.x);
             if (xVal == null || xVal < 0 || xVal > 24) { hideTooltip(); return; }
-            const tpxoVal  = nearestTPXO(xVal);
+            const tpxoVal = nearestTPXO(xVal);
             const luwesVal = nearestY(luwesPts, xVal, 0.12);
             if (tpxoVal === null && luwesVal === null) { hideTooltip(); return; }
             const hh = Math.floor(xVal);
             const mm = Math.round((xVal - hh) * 60);
-            const timeLabel = `${hh.toString().padStart(2,"0")}:${mm.toString().padStart(2,"0")} WIB`;
+            const timeLabel = `${hh.toString().padStart(2, "0")}:${mm.toString().padStart(2, "0")} WIB`;
             let html = `<div style="color:#7dd3fc;font-size:9.5px;font-weight:600;letter-spacing:0.05em;margin-bottom:5px;text-transform:uppercase;">${timeLabel}</div>`;
-            if (tpxoVal !== null) html += `<div style="display:flex;align-items:center;gap:5px;margin-bottom:${luwesVal!==null?3:0}px;"><span style="width:7px;height:7px;border-radius:50%;background:${CHART_TPXO};flex-shrink:0;"></span><span style="color:#93c5fd;font-size:10px;">TPXO</span><span style="margin-left:auto;font-weight:600;color:#dbeafe;">${tpxoVal.toFixed(3)} m</span></div>`;
+            if (tpxoVal !== null) html += `<div style="display:flex;align-items:center;gap:5px;margin-bottom:${luwesVal !== null ? 3 : 0}px;"><span style="width:7px;height:7px;border-radius:50%;background:${CHART_TPXO};flex-shrink:0;"></span><span style="color:#93c5fd;font-size:10px;">TPXO</span><span style="margin-left:auto;font-weight:600;color:#dbeafe;">${tpxoVal.toFixed(3)} m</span></div>`;
             if (luwesVal !== null) html += `<div style="display:flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:${CHART_LUWES};flex-shrink:0;"></span><span style="color:#f9a8d4;font-size:10px;">Luwes</span><span style="margin-left:auto;font-weight:600;color:#fce7f3;">${luwesVal.toFixed(3)} m</span></div>`;
             const tip = ensureTooltip();
             tip.innerHTML = html;
             tip.style.display = "block";
             const canvas = canvasRef.current;
             if (!canvas) return;
-            const rect    = canvas.getBoundingClientRect();
-            const xPx     = chart.scales.x.getPixelForValue(xVal);
+            const rect = canvas.getBoundingClientRect();
+            const xPx = chart.scales.x.getPixelForValue(xVal);
             const yAnchor = tpxoVal !== null ? chart.scales.y.getPixelForValue(tpxoVal) : chart.scales.y.getPixelForValue(luwesVal!);
-            const scaleX  = rect.width  / (canvas.offsetWidth  || 1);
-            const scaleY  = rect.height / (canvas.offsetHeight || 1);
-            const screenX = rect.left   + xPx     * scaleX;
-            const screenY = rect.top    + yAnchor * scaleY;
+            const scaleX = rect.width / (canvas.offsetWidth || 1);
+            const scaleY = rect.height / (canvas.offsetHeight || 1);
+            const screenX = rect.left + xPx * scaleX;
+            const screenY = rect.top + yAnchor * scaleY;
             if (bulletRef.current && tpxoVal !== null) {
               const tpxoScreenY = rect.top + chart.scales.y.getPixelForValue(tpxoVal) * scaleY;
               const tpxoScreenX = rect.left + xPx * scaleX;
@@ -600,7 +600,7 @@ const OverlayChart: React.FC<{
                 const parentRect = canvasParent.getBoundingClientRect();
                 bulletRef.current.style.display = "block";
                 bulletRef.current.style.left = `${tpxoScreenX - parentRect.left - 6}px`;
-                bulletRef.current.style.top  = `${tpxoScreenY - parentRect.top  - 6}px`;
+                bulletRef.current.style.top = `${tpxoScreenY - parentRect.top - 6}px`;
               }
             } else if (bulletRef.current) { bulletRef.current.style.display = "none"; }
             const tipW = 168; const tipH = tpxoVal !== null && luwesVal !== null ? 78 : 54; const gap = 10;
@@ -673,21 +673,23 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
   const { isPro, maxTideDays, maxWxDays } = useSubContext();
   const [showPricing, setShowPricing] = useState(false);
 
-  const [tideData,        setTideData]        = useState<TideData|null>(null);
-  const [weatherData,     setWeatherData]      = useState<WeatherData|null>(null);
-  const [marineData,      setMarineData]       = useState<MarineData|null>(null);
-  const [overlayData,     setOverlayData]      = useState<OverlayData|null>(null);
-  const [loading,         setLoading]          = useState(false);
-  const [error,           setError]            = useState<string|null>(null);
-  const [weatherFromCache,setWeatherFromCache] = useState(false);
-  const [selDate,         setSelDate]          = useState<string>(todayISO());
+  const [tideData, setTideData] = useState<TideData | null>(null);
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [marineData, setMarineData] = useState<MarineData | null>(null);
+  const [overlayData, setOverlayData] = useState<OverlayData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [weatherFromCache, setWeatherFromCache] = useState(false);
+  const [selDate, setSelDate] = useState<string>(todayISO());
 
   /* ── Date bounds based on billing tier ── */
-  const todayStr   = todayISO();
-  // Pro: today-365 (historical) .. today+13
-  // Free: today .. today+(FREE_TIDE_DAYS-1)
-  const minDateISO = isPro ? addDays(todayStr, -365) : todayStr;
-  const maxDateISO = addDays(todayStr, maxTideDays - 1);
+  const todayStr = todayISO();
+  // Pro:  today-365 .. today+13
+  // Free: 2026-03-25 .. today+3
+  const FREE_MIN_DATE = "2026-03-25";
+  const FREE_MAX_DAYS = 3;
+  const minDateISO = isPro ? addDays(todayStr, -365) : FREE_MIN_DATE;
+  const maxDateISO = isPro ? addDays(todayStr, maxTideDays - 1) : addDays(todayStr, FREE_MAX_DAYS);
 
   const fetchAll = useCallback(async (dateStr: string, forceRefresh = false) => {
     setLoading(true);
@@ -696,25 +698,25 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
     /* Hard guard — belt-and-suspenders on top of input[max] */
     if (dateStr > maxDateISO) {
       setError(lang === "en"
-        ? `Free plan: tidal forecast limited to ${FREE_TIDE_DAYS} days ahead. Upgrade to Pro for 14-day access.`
-        : `Paket gratis: prediksi pasut terbatas ${FREE_TIDE_DAYS} hari ke depan. Upgrade ke Pro untuk akses 14 hari.`);
+        ? `Free plan: forecast limited to ${FREE_MAX_DAYS} days ahead. Upgrade to Pro for 14-day access.`
+        : `Paket gratis: prediksi terbatas ${FREE_MAX_DAYS} hari ke depan. Upgrade ke Pro untuk akses 14 hari.`);
       setLoading(false);
       return;
     }
-    if (!isPro && dateStr < todayStr) {
+    if (!isPro && dateStr < FREE_MIN_DATE) {
       setError(lang === "en"
-        ? "Free plan: historical data not available. Upgrade to Pro."
-        : "Paket gratis: data historis tidak tersedia. Upgrade ke Pro.");
+        ? `Free plan: historical data available from 25 March 2026. Upgrade to Pro for full history.`
+        : `Paket gratis: data historis tersedia mulai 25 Maret 2026. Upgrade ke Pro untuk akses penuh.`);
       setLoading(false);
       return;
     }
 
     try {
       const today = new Date();
-      const fmtD  = (d: Date) => d.toISOString().split("T")[0];
+      const fmtD = (d: Date) => d.toISOString().split("T")[0];
 
-      let wd: WeatherData|null = null;
-      let md: MarineData|null  = null;
+      let wd: WeatherData | null = null;
+      let md: MarineData | null = null;
       let usedCache = false;
 
       if (!forceRefresh) {
@@ -724,8 +726,12 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       }
 
       if (!wd || !md) {
-        const wxDaysBack = isPro ? 14 : 0;
-        const wxDaysFwd  = isPro ? 14 : FREE_WX_DAYS;
+        const freeWxDaysBack = isPro ? 14 : Math.ceil(
+          (new Date(todayStr + "T12:00:00Z").getTime() -
+            new Date(FREE_MIN_DATE + "T12:00:00Z").getTime()) / 86_400_000
+        );
+        const wxDaysBack = isPro ? 14 : freeWxDaysBack;
+        const wxDaysFwd = isPro ? 14 : FREE_MAX_DAYS;
         const wxStart = new Date(today);
         wxStart.setDate(wxStart.getDate() - wxDaysBack);
         const wxEnd = new Date(today);
@@ -799,7 +805,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
   };
 
   const buildRows = (): HourRow[] => {
-    const tideMap = new Map<number,number>();
+    const tideMap = new Map<number, number>();
     tideData?.predictions.forEach(p => {
       const w = parseToWIB(p.time);
       if (!w) return;
@@ -812,7 +818,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       const windKmh = weatherData.hourly.wind_speed_10m[i];
       wxMap.set(hh, { temp: weatherData.hourly.temperature_2m[i], windSpd: windKmh != null ? kmhToMs(windKmh) : null, windDir: weatherData.hourly.wind_direction_10m[i], wCode: weatherData.hourly.weather_code[i] });
     });
-    const marineMap = new Map<string, {waveH:number|null;currentSpd:number|null}>();
+    const marineMap = new Map<string, { waveH: number | null; currentSpd: number | null }>();
     marineData?.hourly.time.forEach((t, i) => {
       if (!t.startsWith(selDate)) return;
       const hh = new Date(t).getHours().toString().padStart(2, "0");
@@ -850,10 +856,10 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
 
   const current = weatherData?.current;
   const currentWindMs = current ? kmhToMs(current.wind_speed_10m) : null;
-  const currentWaveH: number|null = marineData?.current?.wave_height != null ? marineData.current.wave_height : (marineData?.hourly.wave_height[0] ?? null);
-  const currentCurrentSpd: number|null = marineData?.current?.ocean_current_velocity != null ? marineData.current.ocean_current_velocity : (marineData?.hourly.ocean_current_velocity[0] ?? null);
+  const currentWaveH: number | null = marineData?.current?.wave_height != null ? marineData.current.wave_height : (marineData?.hourly.wave_height[0] ?? null);
+  const currentCurrentSpd: number | null = marineData?.current?.ocean_current_velocity != null ? marineData.current.ocean_current_velocity : (marineData?.hourly.ocean_current_velocity[0] ?? null);
 
-  const nowHour = (() => { const wib = new Date(Date.now() + 7*3600_000); return wib.getUTCHours().toString().padStart(2, "0"); })();
+  const nowHour = (() => { const wib = new Date(Date.now() + 7 * 3600_000); return wib.getUTCHours().toString().padStart(2, "0"); })();
   const isToday = selDate === todayISO();
   const activities = buildRecommendations(tideData, weatherData, marineData, selDate, lang);
 
@@ -871,7 +877,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
     fetchAll(chosen);
   };
 
-  const SectionLabel: React.FC<{children: React.ReactNode}> = ({ children }) => (
+  const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" as const, color: TEXT_HINT, marginBottom: 7, fontFamily: SANS }}>
       {children}
     </p>
@@ -884,7 +890,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 13px", background: BG_CARD, borderBottom: `1px solid ${BORDER}`, gap: 7, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
           <div style={{ width: 24, height: 24, borderRadius: 7, background: PRIMARY, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <Anchor size={12} color="#fff"/>
+            <Anchor size={12} color="#fff" />
           </div>
           <h2 style={{ fontSize: 12.5, fontWeight: 700, color: TEXT_PRI, letterSpacing: "-0.01em", fontFamily: SANS, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {lang === "en" ? "Marine Information" : "Informasi Kelautan"}
@@ -892,23 +898,23 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
           {weatherFromCache && (
-            <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, fontWeight:600, color:"#b45309", background:"#fef3c7", border:"1px solid #fde68a", padding:"2px 6px", borderRadius:99, fontFamily:SANS, whiteSpace:"nowrap" }}>
-              <span style={{width:3,height:3,borderRadius:"50%",background:"#d97706",flexShrink:0}}/>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 600, color: "#b45309", background: "#fef3c7", border: "1px solid #fde68a", padding: "2px 6px", borderRadius: 99, fontFamily: SANS, whiteSpace: "nowrap" }}>
+              <span style={{ width: 3, height: 3, borderRadius: "50%", background: "#d97706", flexShrink: 0 }} />
               {lang === "en" ? "Cached" : "Cache"}
             </span>
           )}
           <button onClick={() => { clearCache(coordinates.lat, coordinates.lon); fetchAll(selDate, true); }}
             title={lang === "en" ? "Refresh weather data" : "Perbarui data cuaca"}
-            style={{ padding:5, borderRadius:6, border:"none", background:"transparent", cursor:"pointer", color:TEXT_HINT, display:"flex" }}
+            style={{ padding: 5, borderRadius: 6, border: "none", background: "transparent", cursor: "pointer", color: TEXT_HINT, display: "flex" }}
             onMouseEnter={e => (e.currentTarget.style.background = BG_MUTED)}
             onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-            <RefreshCw size={11}/>
+            <RefreshCw size={11} />
           </button>
           <button onClick={onClose}
-            style={{ padding:5, borderRadius:6, border:"none", background:"transparent", cursor:"pointer", color:TEXT_HINT, display:"flex" }}
+            style={{ padding: 5, borderRadius: 6, border: "none", background: "transparent", cursor: "pointer", color: TEXT_HINT, display: "flex" }}
             onMouseEnter={e => (e.currentTarget.style.background = BG_MUTED)}
             onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-            <X size={13}/>
+            <X size={13} />
           </button>
         </div>
       </div>
@@ -918,24 +924,24 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
         onWheel={e => e.stopPropagation()}
         onTouchMove={e => e.stopPropagation()}
       >
-        {loading && (<><SkeletonHero/><div style={{margin:"14px 14px 0"}}><Shimmer w="30%" h="8px"/><div style={{marginTop:7}}><Shimmer w="100%" h="34px" r="10px"/></div></div><SkeletonChart/></>)}
+        {loading && (<><SkeletonHero /><div style={{ margin: "14px 14px 0" }}><Shimmer w="30%" h="8px" /><div style={{ marginTop: 7 }}><Shimmer w="100%" h="34px" r="10px" /></div></div><SkeletonChart /></>)}
 
         {error && !loading && (
-          <div style={{ margin:14, padding:14, borderRadius:12, background:"#fff1f2", border:`1px solid #fecdd3` }}>
-            <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
-              <AlertCircle size={14} style={{ color:"#f87171", flexShrink:0, marginTop:1 }}/>
+          <div style={{ margin: 14, padding: 14, borderRadius: 12, background: "#fff1f2", border: `1px solid #fecdd3` }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <AlertCircle size={14} style={{ color: "#f87171", flexShrink: 0, marginTop: 1 }} />
               <div>
-                <p style={{ color:"#be123c", fontSize:12.5, fontWeight:600, marginBottom:3, fontFamily:SANS }}>
+                <p style={{ color: "#be123c", fontSize: 12.5, fontWeight: 600, marginBottom: 3, fontFamily: SANS }}>
                   {lang === "en" ? "Unable to load data" : "Gagal memuat data"}
                 </p>
-                <p style={{ color:"#e11d48", fontSize:11, marginBottom:9, fontFamily:SANS }}>{error}</p>
-                <div style={{ display:"flex", gap:8, flexWrap:"wrap" as const }}>
-                  <button onClick={() => fetchAll(selDate)} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"#be123c", background:"none", border:"none", cursor:"pointer", fontFamily:SANS, fontWeight:600 }}>
-                    <RefreshCw size={10}/>{lang === "en" ? "Try again" : "Coba lagi"}
+                <p style={{ color: "#e11d48", fontSize: 11, marginBottom: 9, fontFamily: SANS }}>{error}</p>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const }}>
+                  <button onClick={() => fetchAll(selDate)} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#be123c", background: "none", border: "none", cursor: "pointer", fontFamily: SANS, fontWeight: 600 }}>
+                    <RefreshCw size={10} />{lang === "en" ? "Try again" : "Coba lagi"}
                   </button>
                   {!isPro && (
-                    <button onClick={() => setShowPricing(true)} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:PRIMARY, background:"none", border:"none", cursor:"pointer", fontFamily:SANS, fontWeight:600 }}>
-                      <Zap size={10}/>{lang === "en" ? "Upgrade to Pro" : "Upgrade ke Pro"}
+                    <button onClick={() => setShowPricing(true)} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: PRIMARY, background: "none", border: "none", cursor: "pointer", fontFamily: SANS, fontWeight: 600 }}>
+                      <Zap size={10} />{lang === "en" ? "Upgrade to Pro" : "Upgrade ke Pro"}
                     </button>
                   )}
                 </div>
@@ -947,55 +953,55 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
         {!loading && !error && (
           <>
             {/* ════ HERO CARD ════ */}
-            <div style={{ margin:"13px 13px 0", borderRadius:13, overflow:"hidden", background:`linear-gradient(135deg,${NAVY} 0%,${OCEAN} 55%,${PRIMARY} 100%)` }}>
-              <div style={{ padding:"7px 14px 6px", borderBottom:"1px solid rgba(255,255,255,0.09)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                <p style={{ fontFamily:MONO, color:"rgba(186,230,253,0.50)", fontSize:9.5, letterSpacing:"0.03em", margin:0 }}>
-                  {Math.abs(coordinates.lat).toFixed(4)}°{coordinates.lat>=0?"N":"S"}&ensp;
-                  {Math.abs(coordinates.lon).toFixed(4)}°{coordinates.lon>=0?"E":"W"}
+            <div style={{ margin: "13px 13px 0", borderRadius: 13, overflow: "hidden", background: `linear-gradient(135deg,${NAVY} 0%,${OCEAN} 55%,${PRIMARY} 100%)` }}>
+              <div style={{ padding: "7px 14px 6px", borderBottom: "1px solid rgba(255,255,255,0.09)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <p style={{ fontFamily: MONO, color: "rgba(186,230,253,0.50)", fontSize: 9.5, letterSpacing: "0.03em", margin: 0 }}>
+                  {Math.abs(coordinates.lat).toFixed(4)}°{coordinates.lat >= 0 ? "N" : "S"}&ensp;
+                  {Math.abs(coordinates.lon).toFixed(4)}°{coordinates.lon >= 0 ? "E" : "W"}
                 </p>
-                {isToday && (<span style={{ fontFamily:SANS, fontSize:8.5, fontWeight:700, color:"rgba(186,230,253,0.38)", letterSpacing:"0.05em", textTransform:"uppercase" as const }}>{lang==="en"?"Today":"Hari ini"}</span>)}
+                {isToday && (<span style={{ fontFamily: SANS, fontSize: 8.5, fontWeight: 700, color: "rgba(186,230,253,0.38)", letterSpacing: "0.05em", textTransform: "uppercase" as const }}>{lang === "en" ? "Today" : "Hari ini"}</span>)}
               </div>
-              <div style={{ padding:"13px 14px 9px", display:"flex", alignItems:"center", gap:11 }}>
+              <div style={{ padding: "13px 14px 9px", display: "flex", alignItems: "center", gap: 11 }}>
                 {current && (
-                  <div style={{ display:"flex", alignItems:"flex-start", gap:5 }}>
-                    <div style={{ lineHeight:1 }}>
-                      <p style={{ color:"#e0f2fe", fontSize:42, fontWeight:800, lineHeight:1, letterSpacing:"-0.04em", fontFamily:SANS, margin:0 }}>{Math.round(current.temperature_2m)}°</p>
-                      <p style={{ color:"rgba(186,230,253,0.55)", fontSize:10.5, fontFamily:SANS, margin:"2px 0 0", whiteSpace:"nowrap" }}>{wmoLabel(current.weather_code, lang)}</p>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 5 }}>
+                    <div style={{ lineHeight: 1 }}>
+                      <p style={{ color: "#e0f2fe", fontSize: 42, fontWeight: 800, lineHeight: 1, letterSpacing: "-0.04em", fontFamily: SANS, margin: 0 }}>{Math.round(current.temperature_2m)}°</p>
+                      <p style={{ color: "rgba(186,230,253,0.55)", fontSize: 10.5, fontFamily: SANS, margin: "2px 0 0", whiteSpace: "nowrap" }}>{wmoLabel(current.weather_code, lang)}</p>
                     </div>
-                    <div style={{ marginTop:3 }}><WeatherSymbol code={current.weather_code} size={20}/></div>
+                    <div style={{ marginTop: 3 }}><WeatherSymbol code={current.weather_code} size={20} /></div>
                   </div>
                 )}
-                <div style={{ width:1, height:48, background:"rgba(186,230,253,0.12)", flexShrink:0 }}/>
-                <div style={{ display:"flex", flexDirection:"column", gap:5, flex:1, minWidth:0 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-                    <Sun size={10} color="#fde68a" style={{flexShrink:0}}/><span style={{ color:"rgba(186,230,253,0.40)", fontSize:9, fontWeight:600, fontFamily:SANS, textTransform:"uppercase" as const, letterSpacing:"0.04em" }}>{lang==="en"?"Rise":"Terbit"}</span>
-                    <span style={{ fontFamily:MONO, color:"#e0f2fe", fontSize:12.5, fontWeight:700, marginLeft:"auto" }}>{sunrise}</span>
-                    <span style={{ color:"rgba(186,230,253,0.30)", fontSize:8.5, fontFamily:SANS }}>WIB</span>
+                <div style={{ width: 1, height: 48, background: "rgba(186,230,253,0.12)", flexShrink: 0 }} />
+                <div style={{ display: "flex", flexDirection: "column", gap: 5, flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <Sun size={10} color="#fde68a" style={{ flexShrink: 0 }} /><span style={{ color: "rgba(186,230,253,0.40)", fontSize: 9, fontWeight: 600, fontFamily: SANS, textTransform: "uppercase" as const, letterSpacing: "0.04em" }}>{lang === "en" ? "Rise" : "Terbit"}</span>
+                    <span style={{ fontFamily: MONO, color: "#e0f2fe", fontSize: 12.5, fontWeight: 700, marginLeft: "auto" }}>{sunrise}</span>
+                    <span style={{ color: "rgba(186,230,253,0.30)", fontSize: 8.5, fontFamily: SANS }}>WIB</span>
                   </div>
-                  <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-                    <Moon size={10} color="#fda4af" style={{flexShrink:0}}/><span style={{ color:"rgba(186,230,253,0.40)", fontSize:9, fontWeight:600, fontFamily:SANS, textTransform:"uppercase" as const, letterSpacing:"0.04em" }}>{lang==="en"?"Set":"Terbenam"}</span>
-                    <span style={{ fontFamily:MONO, color:"#e0f2fe", fontSize:12.5, fontWeight:700, marginLeft:"auto" }}>{sunset}</span>
-                    <span style={{ color:"rgba(186,230,253,0.30)", fontSize:8.5, fontFamily:SANS }}>WIB</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <Moon size={10} color="#fda4af" style={{ flexShrink: 0 }} /><span style={{ color: "rgba(186,230,253,0.40)", fontSize: 9, fontWeight: 600, fontFamily: SANS, textTransform: "uppercase" as const, letterSpacing: "0.04em" }}>{lang === "en" ? "Set" : "Terbenam"}</span>
+                    <span style={{ fontFamily: MONO, color: "#e0f2fe", fontSize: 12.5, fontWeight: 700, marginLeft: "auto" }}>{sunset}</span>
+                    <span style={{ color: "rgba(186,230,253,0.30)", fontSize: 8.5, fontFamily: SANS }}>WIB</span>
                   </div>
                 </div>
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", borderTop:"1px solid rgba(186,230,253,0.08)" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderTop: "1px solid rgba(186,230,253,0.08)" }}>
                 {[
-                  { icon:<Wind size={10} color="rgba(186,230,253,0.40)"/>, label:lang==="en"?"Wind":"Angin", value:currentWindMs!=null?currentWindMs.toFixed(1):"—", unit:"m/s", sub:currentWindMs!=null?`${windDirLabel(current!.wind_direction_10m)} ${current!.wind_direction_10m.toFixed(0)}°`:"", accent:"#93c5fd" },
-                  { icon:<Waves size={10} color="rgba(186,230,253,0.40)"/>, label:lang==="en"?"Wave":"Gelombang", value:currentWaveH!=null?currentWaveH.toFixed(2):"—", unit:"m", sub:currentWaveH!=null?(currentWaveH<0.5?(lang==="en"?"Calm":"Tenang"):currentWaveH<1.25?(lang==="en"?"Slight":"Kecil"):currentWaveH<2.5?(lang==="en"?"Moderate":"Sedang"):(lang==="en"?"Rough":"Kasar")):"", accent:"#7dd3fc" },
-                  { icon:<Navigation size={10} color="rgba(186,230,253,0.40)"/>, label:lang==="en"?"Current":"Arus", value:currentCurrentSpd!=null?currentCurrentSpd.toFixed(2):"—", unit:"m/s", sub:currentCurrentSpd!=null?(currentCurrentSpd<0.25?(lang==="en"?"Weak":"Lemah"):currentCurrentSpd<0.75?(lang==="en"?"Moderate":"Sedang"):(lang==="en"?"Strong":"Kuat")):"", accent:"#a5f3fc" },
+                  { icon: <Wind size={10} color="rgba(186,230,253,0.40)" />, label: lang === "en" ? "Wind" : "Angin", value: currentWindMs != null ? currentWindMs.toFixed(1) : "—", unit: "m/s", sub: currentWindMs != null ? `${windDirLabel(current!.wind_direction_10m)} ${current!.wind_direction_10m.toFixed(0)}°` : "", accent: "#93c5fd" },
+                  { icon: <Waves size={10} color="rgba(186,230,253,0.40)" />, label: lang === "en" ? "Wave" : "Gelombang", value: currentWaveH != null ? currentWaveH.toFixed(2) : "—", unit: "m", sub: currentWaveH != null ? (currentWaveH < 0.5 ? (lang === "en" ? "Calm" : "Tenang") : currentWaveH < 1.25 ? (lang === "en" ? "Slight" : "Kecil") : currentWaveH < 2.5 ? (lang === "en" ? "Moderate" : "Sedang") : (lang === "en" ? "Rough" : "Kasar")) : "", accent: "#7dd3fc" },
+                  { icon: <Navigation size={10} color="rgba(186,230,253,0.40)" />, label: lang === "en" ? "Current" : "Arus", value: currentCurrentSpd != null ? currentCurrentSpd.toFixed(2) : "—", unit: "m/s", sub: currentCurrentSpd != null ? (currentCurrentSpd < 0.25 ? (lang === "en" ? "Weak" : "Lemah") : currentCurrentSpd < 0.75 ? (lang === "en" ? "Moderate" : "Sedang") : (lang === "en" ? "Strong" : "Kuat")) : "", accent: "#a5f3fc" },
                 ].map((item, i) => (
-                  <div key={i} style={{ padding:"9px 11px 11px", borderRight:i<2?"1px solid rgba(186,230,253,0.07)":"none" }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:3, marginBottom:5 }}>{item.icon}<span style={{ color:"rgba(186,230,253,0.38)", fontSize:8.5, fontWeight:600, letterSpacing:"0.04em", textTransform:"uppercase" as const, fontFamily:SANS }}>{item.label}</span></div>
-                    <p style={{ fontFamily:MONO, color:"#e0f2fe", fontSize:16, fontWeight:700, lineHeight:1, margin:0 }}>{item.value}<span style={{ fontSize:9, color:item.accent, fontWeight:400, marginLeft:2, opacity:0.7 }}>{item.unit}</span></p>
-                    {item.sub && (<p style={{ color:"rgba(186,230,253,0.28)", fontSize:8.5, marginTop:2, fontFamily:SANS, whiteSpace:"nowrap" as const, overflow:"hidden", textOverflow:"ellipsis" }}>{item.sub}</p>)}
+                  <div key={i} style={{ padding: "9px 11px 11px", borderRight: i < 2 ? "1px solid rgba(186,230,253,0.07)" : "none" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 5 }}>{item.icon}<span style={{ color: "rgba(186,230,253,0.38)", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" as const, fontFamily: SANS }}>{item.label}</span></div>
+                    <p style={{ fontFamily: MONO, color: "#e0f2fe", fontSize: 16, fontWeight: 700, lineHeight: 1, margin: 0 }}>{item.value}<span style={{ fontSize: 9, color: item.accent, fontWeight: 400, marginLeft: 2, opacity: 0.7 }}>{item.unit}</span></p>
+                    {item.sub && (<p style={{ color: "rgba(186,230,253,0.28)", fontSize: 8.5, marginTop: 2, fontFamily: SANS, whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>{item.sub}</p>)}
                   </div>
                 ))}
               </div>
             </div>
 
             {/* ── Date Picker (billing-gated) ── */}
-            <div style={{ padding:"11px 13px 0" }}>
+            <div style={{ padding: "11px 13px 0" }}>
               <SectionLabel>{lang === "en" ? "Select Date" : "Pilih Tanggal"}</SectionLabel>
               <input
                 type="date"
@@ -1003,20 +1009,20 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 min={minDateISO}
                 max={maxDateISO}
                 onChange={handleDateChange}
-                style={{ width:"100%", padding:"8px 11px", border:`1.5px solid ${BORDER}`, borderRadius:9, fontSize:12.5, fontWeight:600, fontFamily:SANS, color:TEXT_PRI, background:BG_CARD, cursor:"pointer", outline:"none", boxSizing:"border-box" as const, WebkitAppearance:"none", appearance:"none", display:"block" }}
-                onFocus={e => { e.currentTarget.style.borderColor=SKY; e.currentTarget.style.boxShadow=`0 0 0 2.5px rgba(14,165,233,0.10)`; }}
-                onBlur={e  => { e.currentTarget.style.borderColor=BORDER; e.currentTarget.style.boxShadow="none"; }}
+                style={{ width: "100%", padding: "8px 11px", border: `1.5px solid ${BORDER}`, borderRadius: 9, fontSize: 12.5, fontWeight: 600, fontFamily: SANS, color: TEXT_PRI, background: BG_CARD, cursor: "pointer", outline: "none", boxSizing: "border-box" as const, WebkitAppearance: "none", appearance: "none", display: "block" }}
+                onFocus={e => { e.currentTarget.style.borderColor = SKY; e.currentTarget.style.boxShadow = `0 0 0 2.5px rgba(14,165,233,0.10)`; }}
+                onBlur={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.boxShadow = "none"; }}
               />
 
               {/* Free-tier horizon notice */}
               {!isPro && (
-                <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:5, padding:"5px 9px", background:"#fffbeb", border:"1px solid #fde68a", borderRadius:7 }}>
-                  <Lock size={10} style={{ color:"#b45309", flexShrink:0 }}/>
-                  <span style={{ fontFamily:SANS, fontSize:10, color:"#b45309", lineHeight:1.4 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 5, padding: "5px 9px", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 7 }}>
+                  <Lock size={10} style={{ color: "#b45309", flexShrink: 0 }} />
+                  <span style={{ fontFamily: SANS, fontSize: 10, color: "#b45309", lineHeight: 1.4 }}>
                     {lang === "en"
-                      ? `Free plan: today – ${maxDateISO} (${FREE_TIDE_DAYS} days). `
-                      : `Paket gratis: hari ini – ${maxDateISO} (${FREE_TIDE_DAYS} hari). `}
-                    <button onClick={() => setShowPricing(true)} style={{ background:"none", border:"none", cursor:"pointer", color:PRIMARY, fontWeight:700, fontSize:10, padding:0, fontFamily:SANS, textDecoration:"underline" }}>
+                      ? `Free: 25 Mar 2026 – ${maxDateISO} (${FREE_MAX_DAYS} days ahead). `
+                      : `Gratis: 25 Mar 2026 – ${maxDateISO} (${FREE_MAX_DAYS} hari ke depan). `}
+                    <button onClick={() => setShowPricing(true)} style={{ background: "none", border: "none", cursor: "pointer", color: PRIMARY, fontWeight: 700, fontSize: 10, padding: 0, fontFamily: SANS, textDecoration: "underline" }}>
                       {lang === "en" ? "Upgrade for 14 days →" : "Upgrade 14 hari →"}
                     </button>
                   </span>
@@ -1025,120 +1031,120 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
             </div>
 
             {/* ── Overlay Chart ── */}
-            <div style={{ padding:"11px 13px 0" }}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6, gap:4, flexWrap:"wrap" as const }}>
-                <SectionLabel>{hasLuwesObs?(lang==="en"?"Observation vs TPXO":"Observasi vs TPXO"):(lang==="en"?"TPXO Tide Levels":"Tinggi Pasut TPXO")}</SectionLabel>
-                <div style={{ display:"flex", alignItems:"center", gap:4, flexWrap:"wrap" as const, marginBottom:7 }}>
-                  <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, color:HIGH_TEXT, fontWeight:700, background:HIGH_BG, border:`1px solid ${HIGH_BDR}`, padding:"2px 7px", borderRadius:99, fontFamily:SANS }}>
-                    <span style={{ display:"inline-block", width:12, height:2, background:CHART_TPXO, borderRadius:1 }}/>TPXO
+            <div style={{ padding: "11px 13px 0" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 4, flexWrap: "wrap" as const }}>
+                <SectionLabel>{hasLuwesObs ? (lang === "en" ? "Observation vs TPXO" : "Observasi vs TPXO") : (lang === "en" ? "TPXO Tide Levels" : "Tinggi Pasut TPXO")}</SectionLabel>
+                <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" as const, marginBottom: 7 }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, color: HIGH_TEXT, fontWeight: 700, background: HIGH_BG, border: `1px solid ${HIGH_BDR}`, padding: "2px 7px", borderRadius: 99, fontFamily: SANS }}>
+                    <span style={{ display: "inline-block", width: 12, height: 2, background: CHART_TPXO, borderRadius: 1 }} />TPXO
                   </span>
-                  <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, color:hasLuwesObs?"#be185d":"#8faabb", fontWeight:700, background:hasLuwesObs?"#fdf2f8":"#f0f6fb", border:`1px solid ${hasLuwesObs?"#fbcfe8":"#dbeafe"}`, padding:"2px 7px", borderRadius:99, fontFamily:SANS }}>
-                    <span style={{ display:"inline-block", width:6, height:6, background:hasLuwesObs?CHART_LUWES:"#b0c8d8", borderRadius:"50%" }}/>Luwes
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, color: hasLuwesObs ? "#be185d" : "#8faabb", fontWeight: 700, background: hasLuwesObs ? "#fdf2f8" : "#f0f6fb", border: `1px solid ${hasLuwesObs ? "#fbcfe8" : "#dbeafe"}`, padding: "2px 7px", borderRadius: 99, fontFamily: SANS }}>
+                    <span style={{ display: "inline-block", width: 6, height: 6, background: hasLuwesObs ? CHART_LUWES : "#b0c8d8", borderRadius: "50%" }} />Luwes
                   </span>
-                  {isToday && (<span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, color:"#e11d48", fontWeight:700, background:"#fff1f2", border:"1px solid #fecdd3", padding:"2px 7px", borderRadius:99, fontFamily:SANS }}><span style={{ display:"inline-block", width:8, height:1.5, background:"#fb7185", borderRadius:1 }}/>Now</span>)}
+                  {isToday && (<span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, color: "#e11d48", fontWeight: 700, background: "#fff1f2", border: "1px solid #fecdd3", padding: "2px 7px", borderRadius: 99, fontFamily: SANS }}><span style={{ display: "inline-block", width: 8, height: 1.5, background: "#fb7185", borderRadius: 1 }} />Now</span>)}
                 </div>
               </div>
-              <div style={{ borderRadius:12, overflow:"hidden", background:BG_CARD, border:`1px solid ${BORDER}` }}>
-                <div style={{ padding:"7px 12px 3px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  <p style={{ fontSize:10, fontWeight:500, color:TEXT_SEC, fontFamily:SANS, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const, flex:1, paddingRight:7 }}>{selDateFmt}</p>
-                  {overlayData && (<span style={{ fontSize:9.5, fontWeight:700, fontFamily:MONO, color:hasLuwesObs?"#be185d":TEXT_HINT, background:hasLuwesObs?"#fdf2f8":BG_MUTED, padding:"1px 7px", borderRadius:99 }}>{overlayData.luwes_stats.count} obs</span>)}
+              <div style={{ borderRadius: 12, overflow: "hidden", background: BG_CARD, border: `1px solid ${BORDER}` }}>
+                <div style={{ padding: "7px 12px 3px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <p style={{ fontSize: 10, fontWeight: 500, color: TEXT_SEC, fontFamily: SANS, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, flex: 1, paddingRight: 7 }}>{selDateFmt}</p>
+                  {overlayData && (<span style={{ fontSize: 9.5, fontWeight: 700, fontFamily: MONO, color: hasLuwesObs ? "#be185d" : TEXT_HINT, background: hasLuwesObs ? "#fdf2f8" : BG_MUTED, padding: "1px 7px", borderRadius: 99 }}>{overlayData.luwes_stats.count} obs</span>)}
                 </div>
-                <div style={{ height:272, padding:"3px 7px 9px", position:"relative" }}>
-                  <OverlayChart tpxoPredictions={tideData?.predictions??[]} luwesObs={luwesForChart} dateStr={selDate}/>
+                <div style={{ height: 272, padding: "3px 7px 9px", position: "relative" }}>
+                  <OverlayChart tpxoPredictions={tideData?.predictions ?? []} luwesObs={luwesForChart} dateStr={selDate} />
                 </div>
               </div>
             </div>
 
             {/* ── TPXO High / Low ── */}
-            <div style={{ padding:"9px 13px 0" }}>
+            <div style={{ padding: "9px 13px 0" }}>
               {tpxoHighLow && (
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7 }}>
-                  <div style={{ borderRadius:10, padding:"9px 13px", background:HIGH_BG, border:`1.5px solid ${HIGH_BDR}` }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:3 }}>
-                      <div style={{ width:5, height:5, borderRadius:"50%", background:CHART_TPXO, flexShrink:0 }}/><p style={{ fontSize:8.5, fontWeight:700, color:HIGH_TEXT, opacity:0.75, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>TPXO · {lang==="en"?"High":"Tertinggi"}</p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
+                  <div style={{ borderRadius: 10, padding: "9px 13px", background: HIGH_BG, border: `1.5px solid ${HIGH_BDR}` }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}>
+                      <div style={{ width: 5, height: 5, borderRadius: "50%", background: CHART_TPXO, flexShrink: 0 }} /><p style={{ fontSize: 8.5, fontWeight: 700, color: HIGH_TEXT, opacity: 0.75, textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: SANS, margin: 0 }}>TPXO · {lang === "en" ? "High" : "Tertinggi"}</p>
                     </div>
-                    <p style={{ fontFamily:MONO, color:HIGH_TEXT, fontSize:19, fontWeight:800, lineHeight:1, margin:0 }}>{tpxoHighLow.max>0?"+":""}{tpxoHighLow.max.toFixed(3)} m</p>
-                    <p style={{ fontFamily:SANS, fontSize:9.5, color:HIGH_TEXT, marginTop:2, opacity:0.55 }}>~{tpxoHighLow.maxTime} WIB</p>
+                    <p style={{ fontFamily: MONO, color: HIGH_TEXT, fontSize: 19, fontWeight: 800, lineHeight: 1, margin: 0 }}>{tpxoHighLow.max > 0 ? "+" : ""}{tpxoHighLow.max.toFixed(3)} m</p>
+                    <p style={{ fontFamily: SANS, fontSize: 9.5, color: HIGH_TEXT, marginTop: 2, opacity: 0.55 }}>~{tpxoHighLow.maxTime} WIB</p>
                   </div>
-                  <div style={{ borderRadius:10, padding:"9px 13px", background:LOW_BG, border:`1.5px solid ${LOW_BDR}` }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:3 }}>
-                      <div style={{ width:5, height:5, borderRadius:"50%", background:"#f59e0b", flexShrink:0 }}/><p style={{ fontSize:8.5, fontWeight:700, color:LOW_TEXT, opacity:0.75, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>TPXO · {lang==="en"?"Low":"Terendah"}</p>
+                  <div style={{ borderRadius: 10, padding: "9px 13px", background: LOW_BG, border: `1.5px solid ${LOW_BDR}` }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}>
+                      <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#f59e0b", flexShrink: 0 }} /><p style={{ fontSize: 8.5, fontWeight: 700, color: LOW_TEXT, opacity: 0.75, textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: SANS, margin: 0 }}>TPXO · {lang === "en" ? "Low" : "Terendah"}</p>
                     </div>
-                    <p style={{ fontFamily:MONO, color:LOW_TEXT, fontSize:19, fontWeight:800, lineHeight:1, margin:0 }}>{tpxoHighLow.min>0?"+":""}{tpxoHighLow.min.toFixed(3)} m</p>
-                    <p style={{ fontFamily:SANS, fontSize:9.5, color:LOW_TEXT, marginTop:2, opacity:0.55 }}>~{tpxoHighLow.minTime} WIB</p>
+                    <p style={{ fontFamily: MONO, color: LOW_TEXT, fontSize: 19, fontWeight: 800, lineHeight: 1, margin: 0 }}>{tpxoHighLow.min > 0 ? "+" : ""}{tpxoHighLow.min.toFixed(3)} m</p>
+                    <p style={{ fontFamily: SANS, fontSize: 9.5, color: LOW_TEXT, marginTop: 2, opacity: 0.55 }}>~{tpxoHighLow.minTime} WIB</p>
                   </div>
                 </div>
               )}
               {hasLuwesObs && luwesStatsCorrected && luwesStatsCorrected.max_m != null && (
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7, marginTop:7 }}>
-                  <div style={{ borderRadius:10, padding:"9px 13px", background:"#fdf2f8", border:`1.5px solid #fbcfe8` }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:3 }}><div style={{ width:5, height:5, borderRadius:"50%", background:CHART_LUWES, flexShrink:0 }}/><p style={{ fontSize:8.5, fontWeight:700, color:"#be185d", opacity:0.75, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>Luwes · {lang==="en"?"Max (TOL)":"Maks (TOL)"}</p></div>
-                    <p style={{ fontFamily:MONO, color:"#9d174d", fontSize:19, fontWeight:800, lineHeight:1, margin:0 }}>{luwesStatsCorrected.max_m!.toFixed(3)} m</p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginTop: 7 }}>
+                  <div style={{ borderRadius: 10, padding: "9px 13px", background: "#fdf2f8", border: `1.5px solid #fbcfe8` }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: CHART_LUWES, flexShrink: 0 }} /><p style={{ fontSize: 8.5, fontWeight: 700, color: "#be185d", opacity: 0.75, textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: SANS, margin: 0 }}>Luwes · {lang === "en" ? "Max (TOL)" : "Maks (TOL)"}</p></div>
+                    <p style={{ fontFamily: MONO, color: "#9d174d", fontSize: 19, fontWeight: 800, lineHeight: 1, margin: 0 }}>{luwesStatsCorrected.max_m!.toFixed(3)} m</p>
                   </div>
-                  <div style={{ borderRadius:10, padding:"9px 13px", background:"#fef9f0", border:`1.5px solid #fde8c8` }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:3 }}><div style={{ width:5, height:5, borderRadius:"50%", background:"#ec8e2c", flexShrink:0 }}/><p style={{ fontSize:8.5, fontWeight:700, color:"#92400e", opacity:0.75, textTransform:"uppercase" as const, letterSpacing:"0.04em", fontFamily:SANS, margin:0 }}>Luwes · {lang==="en"?"Min (TOL)":"Min (TOL)"}</p></div>
-                    <p style={{ fontFamily:MONO, color:"#92400e", fontSize:19, fontWeight:800, lineHeight:1, margin:0 }}>{luwesStatsCorrected.min_m!.toFixed(3)} m</p>
+                  <div style={{ borderRadius: 10, padding: "9px 13px", background: "#fef9f0", border: `1.5px solid #fde8c8` }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: "#ec8e2c", flexShrink: 0 }} /><p style={{ fontSize: 8.5, fontWeight: 700, color: "#92400e", opacity: 0.75, textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: SANS, margin: 0 }}>Luwes · {lang === "en" ? "Min (TOL)" : "Min (TOL)"}</p></div>
+                    <p style={{ fontFamily: MONO, color: "#92400e", fontSize: 19, fontWeight: 800, lineHeight: 1, margin: 0 }}>{luwesStatsCorrected.min_m!.toFixed(3)} m</p>
                   </div>
                 </div>
               )}
             </div>
 
             {/* ── Hourly Table ── */}
-            <div style={{ padding:"11px 13px 0" }}>
-              <SectionLabel>{lang==="en"?"Hourly Data (00:00–23:00 WIB)":"Data Per Jam (00:00–23:00 WIB)"}</SectionLabel>
-              <div style={{ borderRadius:11, overflow:"hidden", background:BG_CARD, border:`1px solid ${BORDER}` }}>
-                <div style={{ display:"grid", gridTemplateColumns:"44px 19px 54px 36px 60px 40px 40px", padding:"4px 11px", background:BG_MUTED, borderBottom:`1px solid ${BORDER_SM}`, fontSize:8.5, fontWeight:700, letterSpacing:"0.04em", textTransform:"uppercase" as const, color:TEXT_HINT, fontFamily:SANS, position:"sticky" as const, top:0, zIndex:1 }}>
-                  <span>{lang==="en"?"Time":"Waktu"}</span><span style={{textAlign:"center" as const}}>Wx</span><span style={{textAlign:"right" as const}}>{lang==="en"?"Tide m":"Pasut m"}</span><span style={{textAlign:"right" as const}}>{lang==="en"?"Temp":"Suhu"}</span><span style={{textAlign:"right" as const}}>{lang==="en"?"Wind":"Angin"}</span><span style={{textAlign:"right" as const}}>{lang==="en"?"Wave":"Gel."}</span><span style={{textAlign:"right" as const}}>{lang==="en"?"Curr.":"Arus"}</span>
+            <div style={{ padding: "11px 13px 0" }}>
+              <SectionLabel>{lang === "en" ? "Hourly Data (00:00–23:00 WIB)" : "Data Per Jam (00:00–23:00 WIB)"}</SectionLabel>
+              <div style={{ borderRadius: 11, overflow: "hidden", background: BG_CARD, border: `1px solid ${BORDER}` }}>
+                <div style={{ display: "grid", gridTemplateColumns: "44px 19px 54px 36px 60px 40px 40px", padding: "4px 11px", background: BG_MUTED, borderBottom: `1px solid ${BORDER_SM}`, fontSize: 8.5, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" as const, color: TEXT_HINT, fontFamily: SANS, position: "sticky" as const, top: 0, zIndex: 1 }}>
+                  <span>{lang === "en" ? "Time" : "Waktu"}</span><span style={{ textAlign: "center" as const }}>Wx</span><span style={{ textAlign: "right" as const }}>{lang === "en" ? "Tide m" : "Pasut m"}</span><span style={{ textAlign: "right" as const }}>{lang === "en" ? "Temp" : "Suhu"}</span><span style={{ textAlign: "right" as const }}>{lang === "en" ? "Wind" : "Angin"}</span><span style={{ textAlign: "right" as const }}>{lang === "en" ? "Wave" : "Gel."}</span><span style={{ textAlign: "right" as const }}>{lang === "en" ? "Curr." : "Arus"}</span>
                 </div>
-                <div style={{ height:316, overflowY:"auto", scrollbarWidth:"thin", scrollbarColor:`${BORDER} transparent` }}>
+                <div style={{ height: 316, overflowY: "auto", scrollbarWidth: "thin", scrollbarColor: `${BORDER} transparent` }}>
                   {rows.map((row, idx) => {
-                    const hl=isToday&&row.hour.startsWith(nowHour+":00"),isMax=idx===maxHourIdx,isMin=idx===minHourIdx;
-                    const waveC=row.waveH==null?TEXT_HINT:row.waveH<0.5?"#16a34a":row.waveH<1.25?"#d97706":"#e11d48";
-                    const currC=row.currentSpd==null?TEXT_HINT:row.currentSpd<0.25?"#16a34a":row.currentSpd<0.75?"#d97706":"#e11d48";
-                    const isLast=idx===rows.length-1;
+                    const hl = isToday && row.hour.startsWith(nowHour + ":00"), isMax = idx === maxHourIdx, isMin = idx === minHourIdx;
+                    const waveC = row.waveH == null ? TEXT_HINT : row.waveH < 0.5 ? "#16a34a" : row.waveH < 1.25 ? "#d97706" : "#e11d48";
+                    const currC = row.currentSpd == null ? TEXT_HINT : row.currentSpd < 0.25 ? "#16a34a" : row.currentSpd < 0.75 ? "#d97706" : "#e11d48";
+                    const isLast = idx === rows.length - 1;
                     return (
-                      <div key={idx} style={{ display:"grid", gridTemplateColumns:"44px 19px 54px 36px 60px 40px 40px", padding:"4.5px 11px", alignItems:"center", borderBottom:isLast?"none":`1px solid ${BORDER_SM}`, background:hl?`linear-gradient(90deg,${HIGH_BG},#f5fbff)`:idx%2===0?BG_CARD:BG_MUTED }}>
-                        <span style={{ fontFamily:MONO, fontSize:9.5, fontWeight:hl?700:400, color:hl?PRIMARY:TEXT_SEC }}>{row.hour}</span>
-                        <div style={{display:"flex",justifyContent:"center" as const}}>{row.wCode!==null&&<WeatherSymbol code={row.wCode} size={10}/>}</div>
-                        <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, fontWeight:isMax||isMin?700:400, color:isMax?HIGH_TEXT:isMin?LOW_TEXT:TEXT_PRI }}>{row.tideH!==null?(row.tideH>=0?"+":"")+row.tideH.toFixed(3):"—"}</span>
-                        <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, color:TEXT_SEC }}>{row.temp!==null?`${Math.round(row.temp)}°`:"—"}</span>
-                        <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, color:TEXT_SEC }}>{row.windSpd!==null?(<span style={{display:"flex",alignItems:"center",justifyContent:"flex-end" as const,gap:2}}><span style={{color:TEXT_HINT,fontSize:8.5,fontFamily:SANS}}>{row.windDir!==null?windDirLabel(row.windDir):""}</span>{row.windSpd.toFixed(1)}</span>):"—"}</span>
-                        <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, color:waveC, fontWeight:row.waveH!=null&&row.waveH>=1.25?600:400 }}>{row.waveH!==null?row.waveH.toFixed(2):"—"}</span>
-                        <span style={{ fontFamily:MONO, fontSize:9.5, textAlign:"right" as const, color:currC, fontWeight:row.currentSpd!=null&&row.currentSpd>=0.75?600:400 }}>{row.currentSpd!==null?row.currentSpd.toFixed(2):"—"}</span>
+                      <div key={idx} style={{ display: "grid", gridTemplateColumns: "44px 19px 54px 36px 60px 40px 40px", padding: "4.5px 11px", alignItems: "center", borderBottom: isLast ? "none" : `1px solid ${BORDER_SM}`, background: hl ? `linear-gradient(90deg,${HIGH_BG},#f5fbff)` : idx % 2 === 0 ? BG_CARD : BG_MUTED }}>
+                        <span style={{ fontFamily: MONO, fontSize: 9.5, fontWeight: hl ? 700 : 400, color: hl ? PRIMARY : TEXT_SEC }}>{row.hour}</span>
+                        <div style={{ display: "flex", justifyContent: "center" as const }}>{row.wCode !== null && <WeatherSymbol code={row.wCode} size={10} />}</div>
+                        <span style={{ fontFamily: MONO, fontSize: 9.5, textAlign: "right" as const, fontWeight: isMax || isMin ? 700 : 400, color: isMax ? HIGH_TEXT : isMin ? LOW_TEXT : TEXT_PRI }}>{row.tideH !== null ? (row.tideH >= 0 ? "+" : "") + row.tideH.toFixed(3) : "—"}</span>
+                        <span style={{ fontFamily: MONO, fontSize: 9.5, textAlign: "right" as const, color: TEXT_SEC }}>{row.temp !== null ? `${Math.round(row.temp)}°` : "—"}</span>
+                        <span style={{ fontFamily: MONO, fontSize: 9.5, textAlign: "right" as const, color: TEXT_SEC }}>{row.windSpd !== null ? (<span style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" as const, gap: 2 }}><span style={{ color: TEXT_HINT, fontSize: 8.5, fontFamily: SANS }}>{row.windDir !== null ? windDirLabel(row.windDir) : ""}</span>{row.windSpd.toFixed(1)}</span>) : "—"}</span>
+                        <span style={{ fontFamily: MONO, fontSize: 9.5, textAlign: "right" as const, color: waveC, fontWeight: row.waveH != null && row.waveH >= 1.25 ? 600 : 400 }}>{row.waveH !== null ? row.waveH.toFixed(2) : "—"}</span>
+                        <span style={{ fontFamily: MONO, fontSize: 9.5, textAlign: "right" as const, color: currC, fontWeight: row.currentSpd != null && row.currentSpd >= 0.75 ? 600 : 400 }}>{row.currentSpd !== null ? row.currentSpd.toFixed(2) : "—"}</span>
                       </div>
                     );
                   })}
                 </div>
-                <div style={{ padding:"4px 11px", borderTop:`1px solid ${BORDER_SM}`, background:BG_MUTED, display:"flex", alignItems:"center", gap:9, flexWrap:"wrap" as const }}>
-                  {[{color:"#16a34a",label:lang==="en"?"Low":"Rendah"},{color:"#d97706",label:lang==="en"?"Moderate":"Sedang"},{color:"#e11d48",label:lang==="en"?"High":"Tinggi"}].map(({color,label})=>(<div key={color} style={{display:"flex",alignItems:"center",gap:3}}><div style={{width:4,height:4,borderRadius:"50%",background:color,flexShrink:0}}/><span style={{fontSize:8.5,color:TEXT_HINT,fontFamily:SANS}}>{label}</span></div>))}
-                  <span style={{fontSize:8.5,color:BORDER,fontFamily:SANS,marginLeft:"auto"}}>m/s</span>
+                <div style={{ padding: "4px 11px", borderTop: `1px solid ${BORDER_SM}`, background: BG_MUTED, display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" as const }}>
+                  {[{ color: "#16a34a", label: lang === "en" ? "Low" : "Rendah" }, { color: "#d97706", label: lang === "en" ? "Moderate" : "Sedang" }, { color: "#e11d48", label: lang === "en" ? "High" : "Tinggi" }].map(({ color, label }) => (<div key={color} style={{ display: "flex", alignItems: "center", gap: 3 }}><div style={{ width: 4, height: 4, borderRadius: "50%", background: color, flexShrink: 0 }} /><span style={{ fontSize: 8.5, color: TEXT_HINT, fontFamily: SANS }}>{label}</span></div>))}
+                  <span style={{ fontSize: 8.5, color: BORDER, fontFamily: SANS, marginLeft: "auto" }}>m/s</span>
                 </div>
               </div>
             </div>
 
             {/* ── Activity Guide ── */}
-            <div style={{ padding:"13px 13px 0" }}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:7 }}>
-                <SectionLabel>{lang==="en"?"Activity Guide":"Panduan Aktivitas"}</SectionLabel>
-                <div style={{ display:"flex", gap:3, marginBottom:7 }}>
-                  {(["safe","caution","danger"] as const).map(s => {
-                    const count=activities.filter(a=>a.status===s).length;const cfg=statusStyles[s];
-                    return(<div key={s} style={{display:"flex",alignItems:"center",gap:3,background:cfg.bg,border:`1px solid ${cfg.border}`,borderRadius:99,padding:"2px 6px"}}><div style={{width:4,height:4,borderRadius:"50%",background:cfg.dot,flexShrink:0}}/><span style={{fontFamily:SANS,fontSize:8.5,fontWeight:700,color:cfg.text}}>{count}</span></div>);
+            <div style={{ padding: "13px 13px 0" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
+                <SectionLabel>{lang === "en" ? "Activity Guide" : "Panduan Aktivitas"}</SectionLabel>
+                <div style={{ display: "flex", gap: 3, marginBottom: 7 }}>
+                  {(["safe", "caution", "danger"] as const).map(s => {
+                    const count = activities.filter(a => a.status === s).length; const cfg = statusStyles[s];
+                    return (<div key={s} style={{ display: "flex", alignItems: "center", gap: 3, background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 99, padding: "2px 6px" }}><div style={{ width: 4, height: 4, borderRadius: "50%", background: cfg.dot, flexShrink: 0 }} /><span style={{ fontFamily: SANS, fontSize: 8.5, fontWeight: 700, color: cfg.text }}>{count}</span></div>);
                   })}
                 </div>
               </div>
-              <div style={{ background:BG_CARD, border:`1px solid ${BORDER}`, borderRadius:10, overflow:"hidden" }}>
+              <div style={{ background: BG_CARD, border: `1px solid ${BORDER}`, borderRadius: 10, overflow: "hidden" }}>
                 {activities.map((act, idx) => {
-                  const st=statusStyles[act.status];const isLast=idx===activities.length-1;
+                  const st = statusStyles[act.status]; const isLast = idx === activities.length - 1;
                   return (
-                    <div key={act.id} style={{ display:"flex", alignItems:"center", gap:7, padding:"7px 11px", borderBottom:isLast?"none":`1px solid ${BORDER_SM}`, background:idx%2===0?BG_CARD:BG_MUTED }}>
-                      <div style={{ width:2.5, flexShrink:0, alignSelf:"stretch", background:st.dot, borderRadius:99, minHeight:22 }}/>
-                      <div style={{ display:"flex", alignItems:"center", gap:4, flex:"0 0 116px", minWidth:0 }}>
-                        <span style={{color:st.dot,flexShrink:0}}>{act.icon}</span>
-                        <span style={{fontFamily:SANS,fontSize:9.5,fontWeight:600,color:TEXT_PRI,whiteSpace:"nowrap" as const,overflow:"hidden",textOverflow:"ellipsis"}}>{lang==="en"?act.labelEn:act.labelId}</span>
+                    <div key={act.id} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 11px", borderBottom: isLast ? "none" : `1px solid ${BORDER_SM}`, background: idx % 2 === 0 ? BG_CARD : BG_MUTED }}>
+                      <div style={{ width: 2.5, flexShrink: 0, alignSelf: "stretch", background: st.dot, borderRadius: 99, minHeight: 22 }} />
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, flex: "0 0 116px", minWidth: 0 }}>
+                        <span style={{ color: st.dot, flexShrink: 0 }}>{act.icon}</span>
+                        <span style={{ fontFamily: SANS, fontSize: 9.5, fontWeight: 600, color: TEXT_PRI, whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>{lang === "en" ? act.labelEn : act.labelId}</span>
                       </div>
-                      <p style={{ fontFamily:SANS, fontSize:9.5, color:TEXT_SEC, lineHeight:1.35, flex:1, margin:0, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" as any }}>{lang==="en"?act.reasonEn:act.reasonId}</p>
-                      <div style={{ flexShrink:0, background:st.bg, border:`1px solid ${st.border}`, borderRadius:99, padding:"2px 6px", fontFamily:SANS, fontSize:8.5, fontWeight:700, color:st.text, whiteSpace:"nowrap" as const }}>{st.label[lang==="en"?0:1]}</div>
+                      <p style={{ fontFamily: SANS, fontSize: 9.5, color: TEXT_SEC, lineHeight: 1.35, flex: 1, margin: 0, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any }}>{lang === "en" ? act.reasonEn : act.reasonId}</p>
+                      <div style={{ flexShrink: 0, background: st.bg, border: `1px solid ${st.border}`, borderRadius: 99, padding: "2px 6px", fontFamily: SANS, fontSize: 8.5, fontWeight: 700, color: st.text, whiteSpace: "nowrap" as const }}>{st.label[lang === "en" ? 0 : 1]}</div>
                     </div>
                   );
                 })}
@@ -1146,8 +1152,8 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
             </div>
 
             {/* ── IHO S-104 Compliance + Export (subscription-gated) ── */}
-            <div style={{ padding:"13px 13px 0" }}>
-              <SectionLabel>{lang==="en"?"IHO S-100 / S-104 Compliance":"Kepatuhan IHO S-100 / S-104"}</SectionLabel>
+            <div style={{ padding: "13px 13px 0" }}>
+              <SectionLabel>{lang === "en" ? "IHO S-100 / S-104 Compliance" : "Kepatuhan IHO S-100 / S-104"}</SectionLabel>
               {/* S104ExportSection handles its own gate:
                   - Free  → shows locked overlay with upgrade CTA
                   - Pro   → shows export buttons                    */}
@@ -1159,22 +1165,22 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
             </div>
 
             {/* ── Metadata Footer ── */}
-            <div style={{ margin:"13px 13px 20px", borderRadius:10, padding:"9px 13px", background:BG_CARD, border:`1px solid ${BORDER}` }}>
+            <div style={{ margin: "13px 13px 20px", borderRadius: 10, padding: "9px 13px", background: BG_CARD, border: `1px solid ${BORDER}` }}>
               {([
-                [lang==="en"?"Tide model":"Model pasut",    tideData?.metadata.model],
-                ["Datum",                                   tideData?.metadata.datum],
-                ...(tideData?[[lang==="en"?"Nearest grid":"Grid terdekat", `${tideData.grid.lat.toFixed(3)}°, ${tideData.grid.lon.toFixed(3)}° · ${tideData.grid.distance_km.toFixed(1)} km`]]:[]),
-                [lang==="en"?"Weather":"Cuaca",             "Open-Meteo API"],
-                [lang==="en"?"Coverage":"Cakupan",          isPro?(lang==="en"?"Today ±14 days":"Hari ini ±14 hari"):(lang==="en"?`Today +${FREE_WX_DAYS} days`:`Hari ini +${FREE_WX_DAYS} hari`)],
-                [lang==="en"?"Obs. station":"Stasiun obs.", overlayData?.imei?`IMEI ${overlayData.imei}`:"—"],
-                ["TOL",                                     "-2.156 m (Luwes → MSL TPXO9)"],
-                ["S-104",                                   "Ed.2.0.0 (Dec 2024)"],
-                [lang==="en"?"Tide horizon":"Horizon pasut",`${maxTideDays} ${lang==="en"?"days":"hari"} (${isPro?"Pro":"Free"})`],
-                [lang==="en"?"Plan":"Paket",                isPro?(lang==="en"?"Pro ✓":"Pro ✓"):(lang==="en"?"Free":"Gratis")],
-              ] as [string, string|undefined][]).map(([k,v])=>(
-                <div key={k} style={{ display:"flex", justifyContent:"space-between", marginBottom:2, gap:7 }}>
-                  <span style={{fontFamily:MONO,fontSize:9.5,color:TEXT_HINT,fontWeight:500,flexShrink:0}}>{k}</span>
-                  <span style={{fontFamily:MONO,fontSize:9.5,color:TEXT_SEC,textAlign:"right" as const,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{v??"—"}</span>
+                [lang === "en" ? "Tide model" : "Model pasut", tideData?.metadata.model],
+                ["Datum", tideData?.metadata.datum],
+                ...(tideData ? [[lang === "en" ? "Nearest grid" : "Grid terdekat", `${tideData.grid.lat.toFixed(3)}°, ${tideData.grid.lon.toFixed(3)}° · ${tideData.grid.distance_km.toFixed(1)} km`]] : []),
+                [lang === "en" ? "Weather" : "Cuaca", "Open-Meteo API"],
+                [lang === "en" ? "Coverage" : "Cakupan", isPro ? (lang === "en" ? "Today ±14 days" : "Hari ini ±14 hari") : (lang === "en" ? `Today +${FREE_WX_DAYS} days` : `Hari ini +${FREE_WX_DAYS} hari`)],
+                [lang === "en" ? "Obs. station" : "Stasiun obs.", overlayData?.imei ? `IMEI ${overlayData.imei}` : "—"],
+                ["TOL", "-2.156 m (Luwes → MSL TPXO9)"],
+                ["S-104", "Ed.2.0.0 (Dec 2024)"],
+                [lang === "en" ? "Tide horizon" : "Horizon pasut", `${maxTideDays} ${lang === "en" ? "days" : "hari"} (${isPro ? "Pro" : "Free"})`],
+                [lang === "en" ? "Plan" : "Paket", isPro ? (lang === "en" ? "Pro ✓" : "Pro ✓") : (lang === "en" ? "Free" : "Gratis")],
+              ] as [string, string | undefined][]).map(([k, v]) => (
+                <div key={k} style={{ display: "flex", justifyContent: "space-between", marginBottom: 2, gap: 7 }}>
+                  <span style={{ fontFamily: MONO, fontSize: 9.5, color: TEXT_HINT, fontWeight: 500, flexShrink: 0 }}>{k}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 9.5, color: TEXT_SEC, textAlign: "right" as const, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{v ?? "—"}</span>
                 </div>
               ))}
             </div>
@@ -1183,7 +1189,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       </div>
 
       {/* ── Pricing Modal (triggered from Free-tier notices) ── */}
-      <PricingModal open={showPricing} onClose={() => setShowPricing(false)} language={lang} initialTab="pricing"/>
+      <PricingModal open={showPricing} onClose={() => setShowPricing(false)} language={lang} initialTab="pricing" />
 
       <style>{`
         @keyframes shimmer { from { background-position:-200% 0; } to { background-position:200% 0; } }
