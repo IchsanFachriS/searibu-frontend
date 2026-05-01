@@ -1,17 +1,20 @@
 /**
- * useMidtrans.ts
- * Loads Snap.js once and exposes openPayment().
- * Calls POST /api/create-payment → receives snap_token → opens Snap popup.
+ * useMidtrans — loads Snap.js once and exposes openPayment().
+ *
+ * Flow:
+ *   1. POST /api/create-payment → receives snap_token
+ *   2. Opens Midtrans Snap popup
+ *   3. Calls the appropriate callback on result
  */
 
 import { useCallback, useRef } from "react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const CLIENT_KEY = import.meta.env.VITE_MIDTRANS_CLIENT_KEY || "";
 const SNAP_URL =
   import.meta.env.VITE_MIDTRANS_ENV === "production"
     ? "https://app.midtrans.com/snap/snap.js"
     : "https://app.sandbox.midtrans.com/snap/snap.js";
-const CLIENT_KEY = import.meta.env.VITE_MIDTRANS_CLIENT_KEY || "";
 
 let _snapLoaded = false;
 
@@ -30,20 +33,20 @@ function loadSnap(): Promise<void> {
   });
 }
 
-export type PaymentCallbacks = {
+export interface PaymentCallbacks {
   onSuccess: (result: any) => void;
   onPending: (result: any) => void;
-  onError: (result: any) => void;
-  onClose: () => void;
-};
+  onError:   (result: any) => void;
+  onClose:   ()            => void;
+}
 
 export function useMidtrans() {
-  const loading = useRef(false);
+  const busy = useRef(false);
 
   const openPayment = useCallback(
     async (plan: "pro_monthly" | "pro_annual", email: string, cb: PaymentCallbacks) => {
-      if (loading.current) return;
-      loading.current = true;
+      if (busy.current) return;
+      busy.current = true;
       try {
         await loadSnap();
 
@@ -59,19 +62,18 @@ export function useMidtrans() {
         }
 
         const { snap_token } = await res.json();
-
         (window as any).snap.pay(snap_token, {
-          onSuccess: (r: any) => { loading.current = false; cb.onSuccess(r); },
-          onPending: (r: any) => { loading.current = false; cb.onPending(r); },
-          onError:   (r: any) => { loading.current = false; cb.onError(r); },
-          onClose:   ()       => { loading.current = false; cb.onClose(); },
+          onSuccess: (r: any) => { busy.current = false; cb.onSuccess(r); },
+          onPending: (r: any) => { busy.current = false; cb.onPending(r); },
+          onError:   (r: any) => { busy.current = false; cb.onError(r); },
+          onClose:   ()       => { busy.current = false; cb.onClose(); },
         });
       } catch (e) {
-        loading.current = false;
+        busy.current = false;
         throw e;
       }
     },
-    []
+    [],
   );
 
   return { openPayment };

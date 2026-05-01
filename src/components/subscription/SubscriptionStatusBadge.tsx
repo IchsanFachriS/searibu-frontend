@@ -1,26 +1,20 @@
-/**
- * SubscriptionStatusBadge.tsx
- * Compact badge for the Navbar showing Free / Pro + opens PricingModal.
- */
-
 import React, { useState } from "react";
 import { Zap } from "lucide-react";
 import { useSubContext } from "../../context/SubscriptionContext";
 import { PricingModal } from "./PricingModal";
 
-const SANS = '"Plus Jakarta Sans","Inter",system-ui,sans-serif';
-const PRIMARY = "#0369a1";
+const SANS = '"Plus Jakarta Sans", "Inter", system-ui, sans-serif';
 
 interface Props {
   language?: "en" | "id";
 }
 
 export const SubscriptionStatusBadge: React.FC<Props> = ({ language = "en" }) => {
-  const { isPro, sub } = useSubContext();
+  const { isPro } = useSubContext();
   const [open, setOpen] = useState(false);
 
   const label = isPro
-    ? language === "en" ? "Pro" : "Pro"
+    ? "Pro"
     : language === "en" ? "Free" : "Gratis";
 
   return (
@@ -41,11 +35,11 @@ export const SubscriptionStatusBadge: React.FC<Props> = ({ language = "en" }) =>
             ? "rgba(74,222,128,0.15)"
             : "rgba(255,255,255,0.08)",
           cursor: "pointer",
-          transition: "all .18s",
           fontFamily: SANS,
           fontSize: 11,
           fontWeight: 700,
           color: isPro ? "#4ade80" : "rgba(255,255,255,0.65)",
+          transition: "all .18s",
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = isPro
@@ -71,5 +65,3 @@ export const SubscriptionStatusBadge: React.FC<Props> = ({ language = "en" }) =>
     </>
   );
 };
-
-export default SubscriptionStatusBadge;

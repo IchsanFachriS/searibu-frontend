@@ -1,27 +1,16 @@
-/**
- * LockedOverlay.tsx
- * Drop this over any element to gate it behind Pro.
- *
- * Usage:
- *   <LockedOverlay feature="s104_export" onUpgrade={() => setShowPricing(true)}>
- *     <S104Badge ... />
- *   </LockedOverlay>
- */
-
 import React from "react";
 import { Lock } from "lucide-react";
 import { useSubContext } from "../../context/SubscriptionContext";
-import type { ProFeature } from "../../hooks/useSubscription";
+import type { ProFeature } from "../../types";
 
-const SANS = '"Plus Jakarta Sans", "Inter", system-ui, sans-serif';
+const SANS    = '"Plus Jakarta Sans", "Inter", system-ui, sans-serif';
 const PRIMARY = "#0369a1";
 
 interface Props {
-  feature: ProFeature;
-  onUpgrade: () => void;
-  language?: "en" | "id";
-  children: React.ReactNode;
-  /** If true the children are still rendered (dimmed) instead of hidden */
+  feature:     ProFeature;
+  onUpgrade:   () => void;
+  language?:   "en" | "id";
+  children:    React.ReactNode;
   showPreview?: boolean;
 }
 
@@ -59,9 +48,7 @@ export const LockedOverlay: React.FC<Props> = ({
           alignItems: "center",
           justifyContent: "center",
           gap: 8,
-          background: showPreview
-            ? "rgba(255,255,255,0.70)"
-            : "rgba(248,250,252,0.98)",
+          background: showPreview ? "rgba(255,255,255,0.70)" : "rgba(248,250,252,0.98)",
           backdropFilter: showPreview ? "blur(3px)" : "none",
           borderRadius: 10,
           padding: showPreview ? 0 : "14px 16px",
@@ -86,16 +73,11 @@ export const LockedOverlay: React.FC<Props> = ({
           <Lock size={10} />
           {l.badge}
         </div>
-        <p
-          style={{
-            fontFamily: SANS,
-            fontSize: 11,
-            color: "#94a3b8",
-            margin: 0,
-          }}
-        >
+
+        <p style={{ fontFamily: SANS, fontSize: 11, color: "#94a3b8", margin: 0 }}>
           {l.hint}
         </p>
+
         <button
           onClick={onUpgrade}
           style={{
@@ -117,5 +99,3 @@ export const LockedOverlay: React.FC<Props> = ({
     </div>
   );
 };
-
-export default LockedOverlay;

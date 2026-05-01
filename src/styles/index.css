@@ -1,142 +1,116 @@
-@import 'leaflet/dist/leaflet.css';
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap');
+@import "leaflet/dist/leaflet.css";
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Brand tokens */
+/* ── Brand tokens ────────────────────────────────────────────────────────── */
 :root {
-  --navy:         #024e78;
-  --primary:      #0369a1;
-  --primary-soft: #0ea5e9;
-  --primary-dark: #024e78;
-  --teal:         #14b8a6;
-  --bg:           #f8fafc;
-  --surface:      #ffffff;
-  --card:         #e2e8f0;
-  --border:       #e2e8f0;
-  --text:         #0f172a;
-  --text-sec:     #475569;
-  --safe:         #16a34a;
-  --danger:       #dc2626;
-  --warning:      #d97706;
-  --info:         #0284c7;
-  --chart-primary: #000000;
-  --chart-sec:    #d946ef;
-  --gridline:     #e5e7eb;
+  --navy:          #024e78;
+  --primary:       #0369a1;
+  --primary-soft:  #0ea5e9;
+  --teal:          #14b8a6;
+  --bg:            #f8fafc;
+  --surface:       #ffffff;
+  --border:        #e2e8f0;
+  --text:          #0f172a;
+  --text-sec:      #475569;
+  --safe:          #16a34a;
+  --danger:        #dc2626;
+  --warning:       #d97706;
 }
 
 @layer base {
   html {
-    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-    /* Prevent all overscroll/rubber-band effects globally */
     overscroll-behavior: none;
-    overscroll-behavior-x: none;
-    overscroll-behavior-y: none;
   }
 
   body {
-    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     overscroll-behavior: none;
-    overscroll-behavior-x: none;
-    overscroll-behavior-y: none;
-    /* Prevent iOS bounce entirely */
     position: fixed;
     width: 100%;
-    /* We'll let the inner page content scroll */
   }
 
-  /* The root div manages actual scrolling */
   #root {
-    overscroll-behavior: none;
-    /* Allow normal page scrolling through the root */
     position: fixed;
     inset: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-    /* Prevent pull-to-refresh and edge swipe navigation */
     overscroll-behavior-y: contain;
     overscroll-behavior-x: none;
+    -webkit-overflow-scrolling: touch;
   }
 
   * { box-sizing: border-box; }
 
-  ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #bae6fd; border-radius: 3px; }
+  ::-webkit-scrollbar          { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track    { background: transparent; }
+  ::-webkit-scrollbar-thumb    { background: #bae6fd; border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: #7dd3fc; }
 }
 
-@layer utilities {
-  .animate-fade-in { animation: fadeIn 0.8s ease; }
-  .animate-slide-in { animation: slideIn 0.3s ease-out; }
-}
+/* ── Animations ──────────────────────────────────────────────────────────── */
+@keyframes fadeIn  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes shimmer { from { background-position: -200% 0; }           to { background-position: 200% 0; } }
+@keyframes spin    { to   { transform: rotate(360deg); } }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes slideIn {
-  from { opacity: 0; transform: translateX(16px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ── Leaflet ── */
+/* ── Leaflet overrides ───────────────────────────────────────────────────── */
 .leaflet-container {
   width: 100%;
   height: 100%;
   z-index: 1;
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
   background: #0a1628;
   overscroll-behavior: contain;
-  overscroll-behavior-x: contain;
-  overscroll-behavior-y: contain;
-  /* Stop touch events from propagating to body */
   touch-action: pan-x pan-y;
-}
-
-.leaflet-top, .leaflet-bottom, .leaflet-left, .leaflet-right {
-  overscroll-behavior: contain;
-}
-
-.leaflet-control {
-  overscroll-behavior: contain;
-  touch-action: manipulation;
 }
 
 .leaflet-control-attribution {
   font-size: 10px;
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-  background: rgba(255,255,255,0.85) !important;
+  background: rgba(255, 255, 255, 0.85) !important;
   padding: 2px 6px;
   border-radius: 4px 0 0 0;
 }
 
 .leaflet-popup-content-wrapper {
   border-radius: 10px;
-  box-shadow: 0 8px 28px rgba(2,78,120,0.14);
+  box-shadow: 0 8px 28px rgba(2, 78, 120, 0.14);
 }
 
 .leaflet-popup-content {
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
   font-size: 13px;
   margin: 0 !important;
 }
 
-.leaflet-control-zoom a {
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12) !important;
+  margin-top: 12px !important;
+  margin-right: 12px !important;
 }
+
+.leaflet-control-zoom a {
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif !important;
+  background: rgba(255, 255, 255, 0.97) !important;
+  color: #374151 !important;
+  border: none !important;
+  width: 32px !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  font-size: 18px !important;
+  font-weight: 300 !important;
+}
+
+.leaflet-control-zoom a:hover      { background: #f1f5f9 !important; }
+.leaflet-control-zoom-in           { border-radius: 8px 8px 0 0 !important; border-bottom: 1px solid #e2e8f0 !important; }
+.leaflet-control-zoom-out          { border-radius: 0 0 8px 8px !important; }
 
 @media (max-width: 768px) {
   .leaflet-bottom.leaflet-right { bottom: 72px !important; }
