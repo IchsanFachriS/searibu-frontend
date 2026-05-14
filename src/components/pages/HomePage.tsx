@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useLanguage } from "../../context/LanguageContext";
-import { ArrowRight, Waves, Wind, Navigation, BarChart2, Map, Shield } from "lucide-react";
+import { ArrowRight, Waves, Wind, Navigation, BarChart2, Map, Shield, ChevronDown, CheckCircle, AlertTriangle, XCircle, Anchor, Fish, Camera, Leaf, Flag, Users, Ship, Zap, Search } from "lucide-react";
 
 const DISPLAY      = '"Cormorant Garamond", "Georgia", serif';
 const SANS         = '"Inter", "Helvetica Neue", Arial, sans-serif';
@@ -11,13 +11,107 @@ const TEAL         = "#14b8a6";
 
 interface HomePageProps { onNavigate?: (page: string) => void; }
 
+/* ── Islands list (same as MapContainer) ─────────────────────────── */
+const ISLANDS = [
+  { id: "bidadari",    name: "Pulau Bidadari",    nameEn: "Bidadari Island",    lat: -6.035347, lon: 106.746234 },
+  { id: "tidung",      name: "Pulau Tidung",      nameEn: "Tidung Island",      lat: -5.797360, lon: 106.497220 },
+  { id: "pari",        name: "Pulau Pari",        nameEn: "Pari Island",        lat: -5.857626, lon: 106.617560 },
+  { id: "kelapa",      name: "Pulau Kelapa",      nameEn: "Kelapa Island",      lat: -5.653659, lon: 106.569023 },
+  { id: "pramuka",     name: "Pulau Pramuka",     nameEn: "Pramuka Island",     lat: -5.745159, lon: 106.613782 },
+  { id: "untung_jawa", name: "Pulau Untung Jawa", nameEn: "Untung Jawa Island", lat: -5.977321, lon: 106.705921 },
+  { id: "kotok",       name: "Pulau Kotok",       nameEn: "Kotok Island",       lat: -5.700621, lon: 106.538661 },
+  { id: "putri",       name: "Pulau Putri",       nameEn: "Putri Island",       lat: -5.593901, lon: 106.560171 },
+  { id: "ayer",        name: "Pulau Ayer",        nameEn: "Ayer Island",        lat: -5.763737, lon: 106.583138 },
+  { id: "rambut",      name: "Pulau Rambut",      nameEn: "Rambut Island",      lat: -5.975101, lon: 106.692101 },
+  { id: "lancang",     name: "Pulau Lancang",     nameEn: "Lancang Island",     lat: -5.929764, lon: 106.586512 },
+  { id: "bokor",       name: "Pulau Bokor",       nameEn: "Bokor Island",       lat: -5.978006, lon: 106.706506 },
+];
+
+/* ── Activity engine (mirrors InfoPanel logic, simplified) ───────── */
+const kmhToMs = (v: number) => v / 3.6;
+
+interface ActivityRec {
+  id: string;
+  labelEn: string;
+  labelId: string;
+  icon: React.ReactNode;
+  status: "safe" | "caution" | "danger";
+  reasonEn: string;
+  reasonId: string;
+}
+
+function buildActivities(
+  waveH: number | null,
+  windMs: number | null,
+  currentMs: number | null,
+  wCode: number,
+  lang: "en" | "id",
+): ActivityRec[] {
+  const isStormy = wCode >= 95;
+  const isRainy  = wCode >= 51;
+  type S = "safe" | "caution" | "danger";
+
+  const snorkel  = (): S => ((waveH??0)>1.0||(windMs??0)>7.9||(currentMs??0)>0.51)? "danger"  :((waveH??0)>0.5||(windMs??0)>3.3||(currentMs??0)>0.26)?"caution":"safe";
+  const scuba    = (): S => (isStormy||(currentMs??0)>0.51||(waveH??0)>1.25)?        "danger"  :((currentMs??0)>0.26||(waveH??0)>0.5)?                   "caution":"safe";
+  const freedive = (): S => ((waveH??0)>0.8||(currentMs??0)>0.51)?                   "danger"  :((waveH??0)>0.5||(currentMs??0)>0.26)?                    "caution":"safe";
+  const jetski   = (): S => (isStormy||(windMs??0)>10.3||(waveH??0)>1.5)?            "danger"  :(isRainy||(windMs??0)>7.9||(waveH??0)>0.8)?               "caution":"safe";
+  const sup      = (): S => ((windMs??0)>6.2||(waveH??0)>1.0||(currentMs??0)>0.51)?  "danger"  :((windMs??0)>4.5||(waveH??0)>0.5||(currentMs??0)>0.26)?   "caution":"safe";
+  const boat     = (): S => ((windMs??0)>10.3||(waveH??0)>1.5)?                       "danger"  :((windMs??0)>7.9||(waveH??0)>1.0)?                         "caution":"safe";
+  const fishing  = (): S => (isStormy||(windMs??0)>10.3||(waveH??0)>1.5)?            "danger"  :(isRainy||(windMs??0)>7.9||(waveH??0)>1.0)?                "caution":"safe";
+  const general  = (): S => isStormy?"danger":isRainy?"caution":"safe";
+
+  const reasons: Record<string, { safe:[string,string]; caution:[string,string]; danger:[string,string] }> = {
+    snorkeling: { safe:["Calm sea, good visibility","Laut tenang, visibilitas baik"], caution:["Moderate — experienced snorkelers only","Kondisi sedang — snorkeler berpengalaman"], danger:["Rough sea or strong current","Laut kasar atau arus kuat"] },
+    scuba:      { safe:["Good visibility, safe current","Visibilitas baik, arus aman"], caution:["Moderate current — plan with slack tide","Arus sedang — rencanakan saat slack tide"], danger:["Current too strong or rough sea","Arus melebihi batas aman"] },
+    freedive:   { safe:["Calm water, safe breath-hold","Air tenang, aman freediving"], caution:["Moderate swell — buddy required","Ombak sedang — wajib buddy"], danger:["High wave or strong current","Ombak tinggi atau arus kuat"] },
+    jetski:     { safe:["Calm sea, good for water sports","Laut tenang, baik olahraga air"], caution:["Choppy — reduce speed","Air bergelombang — kurangi kecepatan"], danger:["Strong wind or high waves","Angin kencang atau ombak tinggi"] },
+    sup:        { safe:["Flat water, ideal paddling","Air tenang, ideal paddling"], caution:["Light chop — experienced only","Sedikit bergelombang — paddler berpengalaman"], danger:["Wind/wave exceeds safe SUP limit","Angin/ombak melampaui batas aman SUP"] },
+    boat:       { safe:["Calm sea, good inter-island travel","Laut tenang, baik antar pulau"], caution:["Moderate sea — check vessel","Laut sedang — periksa kelayakan kapal"], danger:["Exceeds small-craft limits","Melampaui batas kapal kecil"] },
+    fishing:    { safe:["Good conditions for fishing","Kondisi laut baik memancing"], caution:["Moderate wind/wave — stay near shore","Angin/ombak sedang — tetap dekat pantai"], danger:["Dangerous sea state","Kondisi laut berbahaya"] },
+    camping:    { safe:["Clear weather, comfortable beach","Cuaca cerah, pantai nyaman"], caution:["Rain expected — limited access","Kemungkinan hujan — akses terbatas"], danger:["Storm — outdoor activities unsafe","Badai — aktivitas pantai tidak aman"] },
+    uwphoto:    { safe:["Excellent UW visibility","Visibilitas sangat baik foto bawah air"], caution:["Reduced visibility — challenging","Visibilitas berkurang — menantang"], danger:["Poor visibility or strong current","Visibilitas buruk atau arus kuat"] },
+    turtle:     { safe:["Good for conservation activities","Kondisi baik untuk konservasi"], caution:["Rain or tides may affect access","Hujan/pasut ganggu akses"], danger:["Storm — field activity unsafe","Badai — kegiatan lapangan tidak aman"] },
+    general:    { safe:["Clear weather — enjoy exploration","Cuaca cerah — nikmati eksplorasi"], caution:["Light rain — bring rain gear","Kemungkinan hujan — bawa jas hujan"], danger:["Storm — limit outdoor activities","Prakiraan badai — batasi aktivitas luar"] },
+  };
+
+  const rec = (id: string, labelEn: string, labelId: string, icon: React.ReactNode, status: S): ActivityRec => ({
+    id, labelEn, labelId, icon, status,
+    reasonEn: reasons[id][status][0],
+    reasonId: reasons[id][status][1],
+  });
+
+  return [
+    rec("snorkeling", "Snorkeling",        "Snorkeling",         <Waves     size={14} />, snorkel()),
+    rec("scuba",      "Scuba Diving",      "Selam Scuba",        <Anchor    size={14} />, scuba()),
+    rec("freedive",   "Freediving",        "Freediving",         <Navigation size={14}/>, freedive()),
+    rec("jetski",     "Jet Ski / Sports",  "Jet Ski / Olahraga", <Zap       size={14} />, jetski()),
+    rec("sup",        "SUP / Kayaking",    "SUP / Kayak",        <Users     size={14} />, sup()),
+    rec("boat",       "Island Hopping",    "Wisata Pulau",       <Ship      size={14} />, boat()),
+    rec("fishing",    "Fishing",           "Memancing",          <Fish      size={14} />, fishing()),
+    rec("turtle",     "Turtle Conservation","Konservasi Penyu",  <Leaf      size={14} />, general()),
+    rec("camping",    "Beach Camping",     "Camping Pantai",     <Flag      size={14} />, general()),
+    rec("uwphoto",    "UW Photography",    "Foto Bawah Air",     <Camera    size={14} />, freedive()),
+    rec("general",    "General Tourism",   "Wisata Umum",        <Map       size={14} />, general()),
+  ];
+}
+
+const STATUS_CFG = {
+  safe:    { dot: "#22c55e", bg: "#f0fdf4", border: "#bbf7d0", text: "#15803d", icon: <CheckCircle   size={13} />, labelEn: "Safe",    labelId: "Aman"    },
+  caution: { dot: "#f59e0b", bg: "#fffbeb", border: "#fde68a", text: "#b45309", icon: <AlertTriangle size={13} />, labelEn: "Caution", labelId: "Waspada" },
+  danger:  { dot: "#f87171", bg: "#fff1f2", border: "#fecdd3", text: "#be123c", icon: <XCircle       size={13} />, labelEn: "Avoid",   labelId: "Hindari" },
+};
+
+const API_BASE = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:5000";
+
+/* ── Copy ──────────────────────────────────────────────────────────── */
 const COPY = {
   en: {
     eyebrow:  "Blue Economy · Seribu Islands · Jakarta Bay",
     headline: ["Ocean-Informed", "Marine Tourism"],
     subline:  "IHO S-104 tidal intelligence and real-time metocean data for safe, well-planned maritime recreation.",
     cta:      "Open WebGIS Atlas",
-    ctaSecondary: "Read the Guide",
+    islandDropdownPlaceholder: "Choose an island →",
+    islandDropdownHint: "Check activity safety",
     context:  "Research · Institut Teknologi Bandung · Geodesy & Geomatics Engineering · 2025",
     problemEyebrow: "The Problem",
     problemHead:    "Sea conditions determine whether a trip is safe — yet reliable data has been absent.",
@@ -48,6 +142,13 @@ const COPY = {
       { icon: "chart",  title: "Observation vs. Prediction", body: "Real-time water level from Luwes station overlaid on TPXO predictions. Transfer of Level correction (TOL = −2.156 m) applied for MSL alignment." },
       { icon: "nav",    title: "S-104 HDF5 Export",         body: "Download water level data as IHO S-104 compliant HDF5 files — both astronomical prediction and observed datasets — for ECDIS integration." },
     ],
+    activityGuideEyebrow: "Activity Guide",
+    activityGuideHead:    "Real-time safety ratings for your island.",
+    activityGuideSub:     "Live weather & marine conditions fetched for",
+    activityGuideLoading: "Fetching conditions…",
+    activityGuideError:   "Could not load conditions. Try again.",
+    activityGuideRetry:   "Retry",
+    activityGuideOpenFull: "Open Full WebGIS →",
     stdEyebrow: "Technical Foundation",
     stdHead:    "Built to international hydrographic standards.",
     stdBody:    "The system architecture follows IHO S-100 Universal Hydrographic Data Model (Ed. 5.2.0) and IHO S-104 Water Level Information for Surface Navigation (Ed. 2.0.0, adopted December 2024), ensuring long-term interoperability with electronic navigational chart environments.",
@@ -58,7 +159,8 @@ const COPY = {
     headline: ["Informasi Kelautan", "Untuk Wisata Bahari"],
     subline:  "Prediksi pasut berstandar IHO S-104 dan data cuaca laut real-time untuk wisata bahari yang aman dan terencana.",
     cta:      "Buka Atlas WebGIS",
-    ctaSecondary: "Panduan Penggunaan",
+    islandDropdownPlaceholder: "Pilih pulau →",
+    islandDropdownHint: "Cek keamanan aktivitas",
     context:  "Riset · Institut Teknologi Bandung · Teknik Geodesi dan Geomatika · 2025",
     problemEyebrow: "Permasalahan",
     problemHead:    "Kondisi laut menentukan keselamatan perjalanan — namun data yang andal selama ini tidak tersedia.",
@@ -89,6 +191,13 @@ const COPY = {
       { icon: "chart",  title: "Observasi vs. Prediksi",       body: "Muka air real-time dari stasiun Luwes dioverlay di atas prediksi TPXO. Koreksi Transfer of Level (TOL = −2.156 m) diterapkan untuk penyelarasan MSL." },
       { icon: "nav",    title: "Ekspor HDF5 S-104",            body: "Unduh data muka air sebagai file HDF5 berstandar IHO S-104 — data prediksi astronomis maupun observasi — untuk integrasi ECDIS." },
     ],
+    activityGuideEyebrow: "Panduan Aktivitas",
+    activityGuideHead:    "Rating keamanan real-time untuk pulaumu.",
+    activityGuideSub:     "Kondisi cuaca & laut diambil untuk",
+    activityGuideLoading: "Mengambil kondisi terkini…",
+    activityGuideError:   "Gagal memuat kondisi. Coba lagi.",
+    activityGuideRetry:   "Coba lagi",
+    activityGuideOpenFull: "Buka WebGIS Lengkap →",
     stdEyebrow: "Landasan Teknis",
     stdHead:    "Dibangun sesuai standar hidrografi internasional.",
     stdBody:    "Arsitektur sistem mengikuti IHO S-100 Universal Hydrographic Data Model (Ed. 5.2.0) dan IHO S-104 Water Level Information for Surface Navigation (Ed. 2.0.0, diadopsi Desember 2024), memastikan interoperabilitas jangka panjang dengan lingkungan peta navigasi elektronik.",
@@ -96,6 +205,7 @@ const COPY = {
   },
 };
 
+/* ── Utility hooks ─────────────────────────────────────────────────── */
 const useCounter = (target: string, active: boolean) => {
   const [val, setVal] = useState("0");
   useEffect(() => {
@@ -126,13 +236,14 @@ const useInView = (threshold = 0.15) => {
   return { ref, inView };
 };
 
+/* ── Feature icon ──────────────────────────────────────────────────── */
 const FeatureIcon: React.FC<{ type: string }> = ({ type }) => {
   const s = { width: 18, height: 18, color: PRIMARY };
-  if (type === "waves")  return <Waves    {...s} />;
-  if (type === "wind")   return <Wind     {...s} />;
-  if (type === "map")    return <Map      {...s} />;
-  if (type === "shield") return <Shield   {...s} />;
-  if (type === "chart")  return <BarChart2 {...s} />;
+  if (type === "waves")  return <Waves      {...s} />;
+  if (type === "wind")   return <Wind       {...s} />;
+  if (type === "map")    return <Map        {...s} />;
+  if (type === "shield") return <Shield     {...s} />;
+  if (type === "chart")  return <BarChart2  {...s} />;
   if (type === "nav")    return <Navigation {...s} />;
   return null;
 };
@@ -153,15 +264,316 @@ const StatBlock: React.FC<{ n: string; label: string; active: boolean; accent?: 
   );
 };
 
+/* ── Island Dropdown ───────────────────────────────────────────────── */
+const IslandDropdown: React.FC<{
+  placeholder: string;
+  hint: string;
+  language: string;
+  onSelect: (island: typeof ISLANDS[0]) => void;
+}> = ({ placeholder, hint, language, onSelect }) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filtered = query.trim()
+    ? ISLANDS.filter(i => (language === "id" ? i.name : i.nameEn).toLowerCase().includes(query.toLowerCase()))
+    : ISLANDS;
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  useEffect(() => {
+    if (open && inputRef.current) setTimeout(() => inputRef.current?.focus(), 60);
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="hp-island-btn"
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 8,
+          background: "rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.85)",
+          fontFamily: SANS, fontSize: 13, fontWeight: 500,
+          letterSpacing: "0.02em", padding: "12px 20px",
+          border: "1px solid rgba(255,255,255,0.22)", borderRadius: 4, cursor: "pointer",
+          transition: "all 0.2s ease", whiteSpace: "nowrap" as const,
+        }}
+      >
+        <Map size={14} style={{ opacity: 0.75 }} />
+        <span>{hint}</span>
+        <ChevronDown size={13} style={{ opacity: 0.6, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+      </button>
+
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 6px)", left: 0,
+          width: 260, background: "#fff", borderRadius: 10,
+          boxShadow: "0 16px 48px rgba(2,78,120,0.22)", border: "1px solid #e2e8f0",
+          zIndex: 200, overflow: "hidden",
+        }}>
+          <div style={{ padding: "8px 10px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 8, background: "#f8fafc" }}>
+            <Search size={12} style={{ color: "#94a3b8", flexShrink: 0 }} />
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder={language === "id" ? "Cari pulau…" : "Search island…"}
+              style={{ border: "none", outline: "none", background: "transparent", fontSize: 12, fontFamily: SANS, color: "#0f172a", width: "100%" }}
+            />
+          </div>
+          <div style={{ maxHeight: 260, overflowY: "auto" }}>
+            {filtered.map((island, idx) => (
+              <button
+                key={island.id}
+                onClick={() => { onSelect(island); setOpen(false); setQuery(""); }}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: 10,
+                  padding: "9px 14px", background: "none", border: "none", cursor: "pointer",
+                  borderBottom: idx < filtered.length - 1 ? "1px solid #f8fafc" : "none",
+                  textAlign: "left" as const, transition: "background 0.12s",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "#f0f9ff")}
+                onMouseLeave={e => (e.currentTarget.style.background = "none")}
+              >
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: PRIMARY, flexShrink: 0, opacity: 0.6 }} />
+                <span style={{ fontFamily: SANS, fontSize: 13, fontWeight: 500, color: "#0f172a" }}>
+                  {language === "id" ? island.name : island.nameEn}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ── Activity Guide Section ────────────────────────────────────────── */
+interface WeatherFetch { waveH: number | null; windMs: number | null; currentMs: number | null; wCode: number; temp: number | null }
+
+const ActivityGuideSection: React.FC<{
+  island: typeof ISLANDS[0] | null;
+  language: "en" | "id";
+  c: typeof COPY["en"];
+  onNavigate: ((p: string) => void) | undefined;
+  sectionRef: React.RefObject<HTMLDivElement>;
+}> = ({ island, language, c, onNavigate, sectionRef }) => {
+  const [weather, setWeather] = useState<WeatherFetch | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { inView, ref: inViewRef } = useInView(0.1);
+
+  const fetchWeather = useCallback(async (isl: typeof ISLANDS[0]) => {
+    setLoading(true);
+    setError(null);
+    setWeather(null);
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const [wxRes, marRes] = await Promise.all([
+        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${isl.lat}&longitude=${isl.lon}&current=temperature_2m,wind_speed_10m,weather_code&timezone=auto`),
+        fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${isl.lat}&longitude=${isl.lon}&current=wave_height,ocean_current_velocity&timezone=auto`),
+      ]);
+      const wxData = wxRes.ok ? await wxRes.json() : null;
+      const marData = marRes.ok ? await marRes.json() : null;
+      setWeather({
+        waveH: marData?.current?.wave_height ?? null,
+        windMs: wxData?.current?.wind_speed_10m != null ? kmhToMs(wxData.current.wind_speed_10m) : null,
+        currentMs: marData?.current?.ocean_current_velocity ?? null,
+        wCode: wxData?.current?.weather_code ?? 0,
+        temp: wxData?.current?.temperature_2m ?? null,
+      });
+    } catch {
+      setError(c.activityGuideError);
+    } finally {
+      setLoading(false);
+    }
+  }, [c]);
+
+  useEffect(() => {
+    if (island) fetchWeather(island);
+  }, [island, fetchWeather]);
+
+  if (!island) return null;
+
+  const activities = weather
+    ? buildActivities(weather.waveH, weather.windMs, weather.currentMs, weather.wCode, language)
+    : [];
+
+  const safeCount   = activities.filter(a => a.status === "safe").length;
+  const cautionCount= activities.filter(a => a.status === "caution").length;
+  const dangerCount = activities.filter(a => a.status === "danger").length;
+
+  const islandName = language === "id" ? island.name : island.nameEn;
+
+  return (
+    <section
+      ref={sectionRef}
+      style={{ background: "#fff", padding: "96px 64px", scrollMarginTop: 62 }}
+      className="sec-pad"
+    >
+      <div style={{ maxWidth: 1280, margin: "0 auto" }} ref={inViewRef}>
+        <div style={{
+          opacity: inView ? 1 : 0, transform: inView ? "translateY(0)" : "translateY(28px)",
+          transition: "opacity 0.9s cubic-bezier(0.22,1,0.36,1), transform 0.9s cubic-bezier(0.22,1,0.36,1)",
+        }}>
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 36, flexWrap: "wrap", gap: 16 }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 24, height: 1, background: PRIMARY }} />
+                <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" as const, color: PRIMARY }}>{c.activityGuideEyebrow}</span>
+              </div>
+              <h2 style={{ fontFamily: DISPLAY, fontStyle: "italic", fontWeight: 700, fontSize: "clamp(1.8rem,3vw,2.6rem)", lineHeight: 1.12, color: NAVY, margin: "0 0 8px", letterSpacing: "-0.02em" }}>{c.activityGuideHead}</h2>
+              <p style={{ fontFamily: SANS, fontSize: 14, color: "#64748b", margin: 0 }}>
+                {c.activityGuideSub} <strong style={{ color: PRIMARY }}>{islandName}</strong>
+              </p>
+            </div>
+
+            {/* Summary badges */}
+            {!loading && !error && weather && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const }}>
+                {[
+                  { count: safeCount,    ...STATUS_CFG.safe },
+                  { count: cautionCount, ...STATUS_CFG.caution },
+                  { count: dangerCount,  ...STATUS_CFG.danger },
+                ].map((s, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", background: s.bg, border: `1.5px solid ${s.border}`, borderRadius: 99 }}>
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: s.dot, flexShrink: 0 }} />
+                    <span style={{ fontFamily: SANS, fontSize: 12, fontWeight: 700, color: s.text }}>
+                      {s.count} {language === "id" ? (i === 0 ? "aman" : i === 1 ? "waspada" : "hindari") : (i === 0 ? "safe" : i === 1 ? "caution" : "avoid")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Weather strip */}
+          {!loading && !error && weather && (
+            <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" as const }}>
+              {[
+                { label: language === "id" ? "Suhu" : "Temp",     value: weather.temp != null ? `${Math.round(weather.temp)}°C` : "—" },
+                { label: language === "id" ? "Angin" : "Wind",    value: weather.windMs != null ? `${weather.windMs.toFixed(1)} m/s` : "—" },
+                { label: language === "id" ? "Gelombang" : "Wave", value: weather.waveH != null ? `${weather.waveH.toFixed(2)} m` : "—" },
+                { label: language === "id" ? "Arus" : "Current",  value: weather.currentMs != null ? `${weather.currentMs.toFixed(2)} m/s` : "—" },
+              ].map((item, i) => (
+                <div key={i} style={{ padding: "8px 16px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontFamily: SANS, fontSize: 11, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>{item.label}</span>
+                  <span style={{ fontFamily: SANS, fontSize: 13, fontWeight: 700, color: NAVY }}>{item.value}</span>
+                </div>
+              ))}
+              <div style={{ padding: "8px 16px", background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontFamily: SANS, fontSize: 11, color: "#0369a1", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>Source</span>
+                <span style={{ fontFamily: SANS, fontSize: 11, fontWeight: 500, color: "#0369a1" }}>Open-Meteo · Live</span>
+              </div>
+            </div>
+          )}
+
+          {/* Loading */}
+          {loading && (
+            <div style={{ textAlign: "center", padding: "60px 0", color: "#94a3b8", fontFamily: SANS, fontSize: 14 }}>
+              <div style={{ width: 36, height: 36, border: `3px solid ${PRIMARY}`, borderTop: "3px solid transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} />
+              {c.activityGuideLoading}
+            </div>
+          )}
+
+          {/* Error */}
+          {error && !loading && (
+            <div style={{ textAlign: "center", padding: "40px 0" }}>
+              <p style={{ fontFamily: SANS, fontSize: 14, color: "#dc2626", marginBottom: 12 }}>{error}</p>
+              <button onClick={() => island && fetchWeather(island)} style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: PRIMARY, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>{c.activityGuideRetry}</button>
+            </div>
+          )}
+
+          {/* Activity grid */}
+          {!loading && !error && weather && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10, marginBottom: 28 }}>
+                {activities.map((act) => {
+                  const cfg = STATUS_CFG[act.status];
+                  return (
+                    <div
+                      key={act.id}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 12, padding: "13px 16px",
+                        background: cfg.bg, border: `1.5px solid ${cfg.border}`, borderRadius: 10,
+                        transition: "transform 0.18s, box-shadow 0.18s",
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLElement).style.boxShadow = `0 6px 20px ${cfg.border}`; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "none"; (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
+                    >
+                      <div style={{ width: 36, height: 36, borderRadius: 9, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", color: cfg.text, flexShrink: 0, boxShadow: `0 2px 8px ${cfg.border}` }}>
+                        {act.icon}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontFamily: SANS, fontSize: 12, fontWeight: 700, color: NAVY, margin: "0 0 2px", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {language === "id" ? act.labelId : act.labelEn}
+                        </p>
+                        <p style={{ fontFamily: SANS, fontSize: 11, color: "#64748b", margin: 0, lineHeight: 1.4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any }}>
+                          {language === "id" ? act.reasonId : act.reasonEn}
+                        </p>
+                      </div>
+                      <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 4, background: "#fff", border: `1px solid ${cfg.border}`, borderRadius: 99, padding: "3px 8px" }}>
+                        <span style={{ color: cfg.text }}>{cfg.icon}</span>
+                        <span style={{ fontFamily: SANS, fontSize: 10, fontWeight: 700, color: cfg.text }}>
+                          {language === "id" ? cfg.labelId : cfg.labelEn}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={{ textAlign: "center" }}>
+                <button
+                  onClick={() => onNavigate?.("webgis")}
+                  className="hp-cta"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+                >
+                  {c.activityGuideOpenFull} <ArrowRight size={14} />
+                </button>
+                <p style={{ fontFamily: SANS, fontSize: 11, color: "#94a3b8", marginTop: 10 }}>
+                  {language === "id" ? "Data di atas hanya kondisi saat ini. WebGIS menyediakan prakiraan 14 hari, grafik pasut, dan ekspor S-104." : "Above shows current conditions only. WebGIS provides 14-day forecasts, tidal charts, and S-104 export."}
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </section>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   HomePage
+═══════════════════════════════════════════════════════════════════ */
 export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   const { language } = useLanguage();
   const c = COPY[language as "en" | "id"];
+  const lang = language as "en" | "id";
 
   const [phase, setPhase] = useState(0);
   useEffect(() => {
     const timers = [0, 100, 280, 460, 640, 820].map((d, i) => setTimeout(() => setPhase(i + 1), d));
     return () => timers.forEach(clearTimeout);
   }, []);
+
+  const [selectedIsland, setSelectedIsland] = useState<typeof ISLANDS[0] | null>(null);
+  const activityRef = useRef<HTMLDivElement>(null);
+
+  const handleIslandSelect = (island: typeof ISLANDS[0]) => {
+    setSelectedIsland(island);
+    setTimeout(() => {
+      activityRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+  };
 
   const prob = useInView();
   const data = useInView();
@@ -192,15 +604,11 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
           transition: background 0.22s, transform 0.22s, box-shadow 0.28s;
         }
         .hp-cta:hover { background: ${PRIMARY_SOFT}; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(14,165,233,0.30); }
-        .hp-cta-ghost {
-          display: inline-flex; align-items: center; gap: 8px;
-          background: transparent; color: rgba(255,255,255,0.65);
-          font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500;
-          letter-spacing: 0.02em; padding: 12px 24px;
-          border: 1px solid rgba(255,255,255,0.22); border-radius: 4px; cursor: pointer;
-          transition: border-color 0.2s, color 0.2s, background 0.2s;
+        .hp-island-btn:hover {
+          border-color: rgba(255,255,255,0.5) !important;
+          background: rgba(255,255,255,0.16) !important;
+          color: #fff !important;
         }
-        .hp-cta-ghost:hover { border-color: rgba(255,255,255,0.5); color: #fff; background: rgba(255,255,255,0.06); }
         .feat-card {
           background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 28px 24px;
           transition: box-shadow 0.25s, transform 0.25s, border-color 0.25s;
@@ -223,9 +631,10 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
           .hero-pad  { padding: 90px 16px 56px !important; }
           .sec-pad   { padding: 48px 16px !important; }
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
 
-      {/* Hero */}
+      {/* ── Hero ──────────────────────────────────────────────────── */}
       <section style={{ position: "relative", minHeight: "100vh", overflow: "hidden", background: NAVY }}>
         <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
           <img src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=1800&q=80" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 40%", opacity: phase >= 1 ? 1 : 0, filter: "brightness(0.30) saturate(0.8)", transition: "opacity 2.2s ease" }} />
@@ -246,9 +655,18 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             <p style={{ fontFamily: SANS, fontSize: 16, lineHeight: 1.75, color: "rgba(224,242,254,0.60)", maxWidth: 540, margin: "0 0 14px", ...anim(4, 30) }}>{c.subline}</p>
             <div style={{ width: 64, height: 1, background: "rgba(224,242,254,0.15)", margin: "20px 0", ...anim(4, 50) }} />
             <p style={{ fontFamily: SANS, fontSize: 11, fontWeight: 500, letterSpacing: "0.07em", textTransform: "uppercase" as const, color: "rgba(224,242,254,0.28)", margin: "0 0 36px", ...anim(4, 70) }}>{c.context}</p>
+
+            {/* CTA row: primary button + island dropdown */}
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", ...anim(5) }}>
-              <button className="hp-cta" onClick={() => onNavigate?.("webgis")}>{c.cta} <ArrowRight size={14} /></button>
-              <button className="hp-cta-ghost" onClick={() => onNavigate?.("guide")}>{c.ctaSecondary}</button>
+              <button className="hp-cta" onClick={() => onNavigate?.("webgis")}>
+                {c.cta} <ArrowRight size={14} />
+              </button>
+              <IslandDropdown
+                placeholder={c.islandDropdownPlaceholder}
+                hint={c.islandDropdownHint}
+                language={language}
+                onSelect={handleIslandSelect}
+              />
             </div>
           </div>
 
@@ -285,7 +703,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 100, background: "linear-gradient(to bottom,transparent,#f8fafc)", zIndex: 4 }} />
       </section>
 
-      {/* Problem */}
+      {/* ── Problem ───────────────────────────────────────────────── */}
       <section className="sec-pad" style={{ background: "#f8fafc", padding: "96px 64px" }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }} ref={prob.ref}>
           <div className="prob-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "start" }}>
@@ -314,7 +732,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         </div>
       </section>
 
-      {/* Activity Data Matrix */}
+      {/* ── Activity Matrix ───────────────────────────────────────── */}
       <section className="sec-pad" style={{ background: "#fff", padding: "96px 64px" }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }} ref={data.ref}>
           <div className="data-header-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "end", marginBottom: 56 }}>
@@ -364,7 +782,16 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         </div>
       </section>
 
-      {/* Features */}
+      {/* ── Activity Guide (dynamic, island-specific) ─────────────── */}
+      <ActivityGuideSection
+        island={selectedIsland}
+        language={lang}
+        c={c}
+        onNavigate={onNavigate}
+        sectionRef={activityRef}
+      />
+
+      {/* ── Features ──────────────────────────────────────────────── */}
       <section className="sec-pad" style={{ background: "#f8fafc", padding: "96px 64px" }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }} ref={feat.ref}>
           <div style={{ maxWidth: 640, marginBottom: 56, ...secAnim(feat.inView) }}>
@@ -389,7 +816,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         </div>
       </section>
 
-      {/* Standards */}
+      {/* ── Standards ─────────────────────────────────────────────── */}
       <section className="sec-pad" style={{ background: NAVY, padding: "96px 64px", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", inset: 0, backgroundImage: `linear-gradient(rgba(14,165,233,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(14,165,233,0.04) 1px,transparent 1px)`, backgroundSize: "80px 80px", pointerEvents: "none" }} />
         <div style={{ maxWidth: 1280, margin: "0 auto", position: "relative", zIndex: 2 }} ref={std.ref}>
@@ -425,7 +852,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         </div>
       </section>
 
-      {/* Footer */}
+      {/* ── Footer ────────────────────────────────────────────────── */}
       <footer style={{ background: "#012d46", padding: "32px 64px 28px", borderTop: "1px solid rgba(14,165,233,0.10)" }}>
         <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <img src="/logo.svg" alt="Searibu" style={{ height: 30, width: "auto", filter: "brightness(0) invert(1)", opacity: 0.75 }} />
