@@ -18,7 +18,7 @@ interface AuthUser {
 }
 
 const API  = import.meta.env.VITE_API_URL || "http://localhost:5000";
-const SANS = '"Plus Jakarta Sans", "Inter", system-ui, sans-serif';
+const SANS = '"Montserrat", system-ui, sans-serif';
 const NAVY          = "#024e78";
 const PRIMARY       = "#0369a1";
 const PRIMARY_SOFT  = "#0ea5e9";
@@ -84,7 +84,7 @@ const InputField: React.FC<{
           style={{
             width: "100%", padding: "10px 14px", borderRadius: 7,
             border: `1.5px solid ${error ? "#fca5a5" : "#e2e8f0"}`,
-            fontSize: 14, fontFamily: SANS,
+            fontSize: 14, fontFamily: SANS, fontWeight: 400,
             background: error ? "#fef2f2" : "#f8fafc",
             outline: "none", boxSizing: "border-box" as const, color: "#0f172a",
             transition: "border-color 0.2s, box-shadow 0.2s",
@@ -123,7 +123,7 @@ const GoogleButton: React.FC<{ label: string; onClick: () => void; loading?: boo
       width: "100%", display: "flex", alignItems: "center", justifyContent: "center",
       gap: 10, padding: "11px 16px", borderRadius: 7, border: "1.5px solid #e2e8f0",
       background: "#fff", cursor: loading ? "not-allowed" : "pointer",
-      fontFamily: SANS, fontSize: 13, fontWeight: 500, color: "#374151",
+      fontFamily: SANS, fontSize: 13, fontWeight: 600, color: "#374151",
       transition: "all 0.18s", opacity: loading ? 0.7 : 1,
     }}
     onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.borderColor = "#d1d5db"; e.currentTarget.style.background = "#f8fafc"; } }}
@@ -288,13 +288,13 @@ const AuthModal: React.FC<{
             <div style={{ width: 30, height: 30, borderRadius: 8, background: PRIMARY, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Anchor size={14} color="#fff" />
             </div>
-            <h2 style={{ fontFamily: SANS, fontSize: 18, fontWeight: 800, color: "#0f172a", margin: 0, letterSpacing: "-0.02em" }}>
+            <h2 style={{ fontFamily: SANS, fontSize: 18, fontWeight: 700, color: "#0f172a", margin: 0, letterSpacing: "-0.02em" }}>
               {isSignIn
                 ? (language === "id" ? "Masuk ke Searibu" : "Sign In to Searibu")
                 : (language === "id" ? "Buat Akun Baru" : "Create Account")}
             </h2>
           </div>
-          <p style={{ fontFamily: SANS, fontSize: 13, color: "#94a3b8", marginLeft: 40 }}>
+          <p style={{ fontFamily: SANS, fontSize: 13, fontWeight: 400, color: "#94a3b8", marginLeft: 40 }}>
             {isSignIn
               ? (language === "id" ? "Selamat datang kembali" : "Welcome back")
               : (language === "id" ? "Bergabunglah dengan komunitas Searibu" : "Join the Searibu community")}
@@ -309,7 +309,7 @@ const AuthModal: React.FC<{
             <InputField label="Password" type="password" value={siPass} onChange={setSiPass} placeholder="••••••••" autoComplete="current-password" />
             {siErr && (
               <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 7, background: "#fef2f2", border: "1px solid #fca5a5" }}>
-                <p style={{ fontSize: 13, color: "#dc2626", fontFamily: SANS, margin: 0 }}>{siErr}</p>
+                <p style={{ fontSize: 13, color: "#dc2626", fontFamily: SANS, fontWeight: 400, margin: 0 }}>{siErr}</p>
               </div>
             )}
             <button
@@ -322,7 +322,7 @@ const AuthModal: React.FC<{
               {siLoad && <Loader2 size={14} style={{ animation: "spin 0.7s linear infinite" }} />}
               {language === "id" ? "Masuk" : "Sign In"}
             </button>
-            <p style={{ textAlign: "center", marginTop: 16, fontSize: 13, color: "#64748b", fontFamily: SANS }}>
+            <p style={{ textAlign: "center", marginTop: 16, fontSize: 13, fontWeight: 400, color: "#64748b", fontFamily: SANS }}>
               {language === "id" ? "Belum punya akun?" : "Don't have an account?"}{" "}
               <button onClick={() => onSwitch("signup")} style={{ background: "none", border: "none", cursor: "pointer", color: PRIMARY, fontWeight: 600, fontSize: 13, fontFamily: SANS, textDecoration: "underline" }}>
                 {language === "id" ? "Daftar" : "Sign up"}
@@ -338,7 +338,7 @@ const AuthModal: React.FC<{
             <InputField label="Password" type="password" value={suPass} onChange={setSuPass} placeholder="Min. 6 characters" error={suErrs.pass} autoComplete="new-password" />
             {suApi && (
               <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 7, background: "#fef2f2", border: "1px solid #fca5a5" }}>
-                <p style={{ fontSize: 13, color: "#dc2626", fontFamily: SANS, margin: 0 }}>{suApi}</p>
+                <p style={{ fontSize: 13, color: "#dc2626", fontFamily: SANS, fontWeight: 400, margin: 0 }}>{suApi}</p>
               </div>
             )}
             <button
@@ -351,7 +351,7 @@ const AuthModal: React.FC<{
               {suLoad && <Loader2 size={14} style={{ animation: "spin 0.7s linear infinite" }} />}
               {language === "id" ? "Daftar Sekarang" : "Create Account"}
             </button>
-            <p style={{ textAlign: "center", marginTop: 16, fontSize: 13, color: "#64748b", fontFamily: SANS }}>
+            <p style={{ textAlign: "center", marginTop: 16, fontSize: 13, fontWeight: 400, color: "#64748b", fontFamily: SANS }}>
               {language === "id" ? "Sudah punya akun?" : "Already have an account?"}{" "}
               <button onClick={() => onSwitch("signin")} style={{ background: "none", border: "none", cursor: "pointer", color: PRIMARY, fontWeight: 600, fontSize: 13, fontFamily: SANS, textDecoration: "underline" }}>
                 {language === "id" ? "Masuk" : "Sign in"}
@@ -412,7 +412,7 @@ const UserDropdown: React.FC<{ user: AuthUser; onLogout: () => void; language: s
             )}
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: "#0f172a", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.full_name}</p>
-              <p style={{ fontFamily: SANS, fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.email}</p>
+              <p style={{ fontFamily: SANS, fontSize: 11, fontWeight: 400, color: "#94a3b8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.email}</p>
             </div>
           </div>
           <button
@@ -440,7 +440,7 @@ const SuccessToast: React.FC<{ message: string; userName: string; onClose: () =>
         </div>
         <div style={{ flex: 1 }}>
           <p style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: "#0f172a", marginBottom: 2 }}>{message}</p>
-          <p style={{ fontFamily: SANS, fontSize: 12, color: "#94a3b8" }}>
+          <p style={{ fontFamily: SANS, fontSize: 12, fontWeight: 400, color: "#94a3b8" }}>
             {" "}<span style={{ color: PRIMARY, fontWeight: 600 }}>{userName}</span>
           </p>
         </div>
@@ -495,8 +495,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
 
       <style>{`
         .nb-link {
-          font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-          font-size: 13px; font-weight: 500; letter-spacing: 0.01em;
+          font-family: 'Montserrat', system-ui, sans-serif;
+          font-size: 13px; font-weight: 600; letter-spacing: 0.04em;
           border: none; background: none; cursor: pointer;
           padding: 6px 2px; position: relative;
           transition: color 0.18s ease; white-space: nowrap;
@@ -509,8 +509,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
         }
         .nb-link.active::after, .nb-link:hover::after { transform: scaleX(1); }
         .nb-signin {
-          font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-          font-size: 13px; font-weight: 600; letter-spacing: 0.01em;
+          font-family: 'Montserrat', system-ui, sans-serif;
+          font-size: 13px; font-weight: 600; letter-spacing: 0.04em;
           border: 1.5px solid; border-radius: 7px;
           padding: 7px 16px; cursor: pointer;
           display: flex; align-items: center; gap: 6px;
@@ -518,7 +518,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, setActivePage }) => 
         }
         .nb-mobile-link {
           display: block; width: 100%;
-          font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+          font-family: 'Montserrat', system-ui, sans-serif;
           font-size: 13px; font-weight: 500;
           padding: 13px 24px; background: none; border: none;
           cursor: pointer; text-align: left; color: #374151;

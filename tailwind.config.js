@@ -31,9 +31,10 @@ export default {
         danger:  { DEFAULT: "#dc2626", bg: "#fee2e2", border: "#fca5a5" },
       },
       fontFamily: {
-        sans:  ['"Plus Jakarta Sans"', '"Inter"', "system-ui", "sans-serif"],
-        mono:  ['"JetBrains Mono"', "monospace"],
-        serif: ['"Cormorant Garamond"', "Georgia", "serif"],
+        sans:    ['"Montserrat"', "system-ui", "sans-serif"],
+        mono:    ['"Montserrat"', "system-ui", "sans-serif"],
+        serif:   ['"Montserrat"', "system-ui", "sans-serif"],
+        display: ['"Montserrat"', "system-ui", "sans-serif"],
       },
       borderRadius: {
         panel: "20px",
