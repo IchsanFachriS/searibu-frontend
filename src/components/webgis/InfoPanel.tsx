@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
-  X, RefreshCw, AlertCircle, Anchor, Wind, Fish, Camera,
-  Waves, Sun, Moon, Navigation, Leaf, Flag, Users, Ship, Zap, Lock,
+  X, RefreshCw, AlertCircle, Anchor, Wind,
+  Waves, Sun, Moon, Navigation, Lock,
 } from "lucide-react";
 import { useLanguage }  from "../../context/LanguageContext";
-import { useSubContext, FREE_TIDE_DAYS, FREE_WX_DAYS } from "../../context/SubscriptionContext";
+import { useSubContext } from "../../context/SubscriptionContext";
 import { PricingModal }      from "../subscription/PricingModal";
 import { S104ExportSection } from "../subscription/S104ExportSection";
 
@@ -33,8 +33,6 @@ interface OverlayData { date: string; imei: string; lon: number; lat: number; lu
 
 interface HourRow { hour: string; tideH: number | null; temp: number | null; windSpd: number | null; windDir: number | null; waveH: number | null; currentSpd: number | null; wCode: number | null }
 
-interface ActivityRec { id: string; labelEn: string; labelId: string; icon: React.ReactNode; status: "safe" | "caution" | "danger"; reasonEn: string; reasonId: string }
-
 interface InfoPanelProps { coordinates: { lat: number; lon: number }; onClose: () => void }
 
 /* ── Design tokens ─────────────────────────────────────────────────────── */
@@ -46,10 +44,6 @@ const SKY     = "#0ea5e9";
 
 const CHART_TPXO  = "#5b7093";
 const CHART_LUWES = "#e879a0";
-
-const C_SAFE    = { dot: "#22c55e", bg: "#f0fdf4", border: "#bbf7d0", text: "#15803d" };
-const C_CAUTION = { dot: "#f59e0b", bg: "#fffbeb", border: "#fde68a", text: "#b45309" };
-const C_DANGER  = { dot: "#f87171", bg: "#fff1f2", border: "#fecdd3", text: "#be123c" };
 
 const BG_PAGE  = "#f0f6fb";
 const BG_CARD  = "#ffffff";
@@ -71,6 +65,13 @@ const MONO = '"Inter", "DM Sans", system-ui, sans-serif';
 
 const TOL_CORRECTION = -2.156;
 const API_BASE = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:5000";
+
+/* ── Date range constants ──────────────────────────────────────────────── */
+// Free  : 10 days back — 3 days forward
+// Pro   : unlimited back (no min enforced) — 10 days forward
+const FREE_HIST_DAYS = 10;
+const FREE_FWD_DAYS  = 3;
+const PRO_FWD_DAYS   = 10;
 
 /* ── Utility functions ─────────────────────────────────────────────────── */
 
@@ -133,12 +134,6 @@ const fmtHHmm = (iso: string) => {
   return `${d.getHours().toString().padStart(2,"0")}:${d.getMinutes().toString().padStart(2,"0")}`;
 };
 
-const statusStyles: Record<ActivityRec["status"], { dot: string; bg: string; border: string; text: string; label: [string, string] }> = {
-  safe:    { ...C_SAFE,    label: ["Safe",    "Aman"]    },
-  caution: { ...C_CAUTION, label: ["Caution", "Waspada"] },
-  danger:  { ...C_DANGER,  label: ["Avoid",   "Hindari"] },
-};
-
 /* ── Session cache ─────────────────────────────────────────────────────── */
 
 const cacheKey = (lat: number, lon: number, t: "wx" | "marine") =>
@@ -196,82 +191,6 @@ function interpolateTPXOPerMinute(knots: { x: number; y: number }[]): { x: numbe
     result.push({ x: Math.min(x, xMax), y: spline(Math.min(x, xMax)) });
   }
   return result;
-}
-
-/* ── Activity recommendation engine ───────────────────────────────────── */
-
-function buildRecommendations(
-  tideData: TideData | null,
-  weatherData: WeatherData | null,
-  marineData: MarineData | null,
-  dateStr: string,
-  lang: "en" | "id",
-): ActivityRec[] {
-  const mIdxs = marineData?.hourly.time.map((t, i) => t.startsWith(dateStr) ? i : -1).filter((i) => i >= 0) ?? [];
-  const wIdxs = weatherData?.hourly.time.map((t, i) => t.startsWith(dateStr) ? i : -1).filter((i) => i >= 0) ?? [];
-
-  const avg = (arr: number[], idxs: number[]) => idxs.length ? idxs.reduce((s, i) => s + (arr[i] ?? 0), 0) / idxs.length : null;
-
-  const avgWave     = avg(marineData?.hourly.wave_height ?? [], mIdxs);
-  const avgCurrentMs= avg(marineData?.hourly.ocean_current_velocity ?? [], mIdxs);
-  const avgWindMs   = wIdxs.length && weatherData ? wIdxs.reduce((s, i) => s + kmhToMs(weatherData.hourly.wind_speed_10m[i] ?? 0), 0) / wIdxs.length : null;
-
-  const dayPred = tideData?.predictions.filter((p) => parseToWIB(p.time)?.wibDate === dateStr) ?? [];
-  const tideRange = dayPred.length ? Math.max(...dayPred.map((p) => p.height)) - Math.min(...dayPred.map((p) => p.height)) : null;
-
-  const wCode    = weatherData?.current.weather_code ?? 0;
-  const isStormy = wCode >= 95;
-  const isRainy  = wCode >= 51;
-
-  type S = ActivityRec["status"];
-
-  const snorkel  = (): S => ((avgWave??0)>1.0||(avgWindMs??0)>7.9||(avgCurrentMs??0)>0.51)?  "danger"  :((avgWave??0)>0.5||(avgWindMs??0)>3.3||(avgCurrentMs??0)>0.26)?"caution":"safe";
-  const scuba    = (): S => (isStormy||(avgCurrentMs??0)>0.51||(avgWave??0)>1.25)?             "danger"  :((avgCurrentMs??0)>0.26||(avgWave??0)>0.5)?                           "caution":"safe";
-  const freedive = (): S => ((avgWave??0)>0.8||(avgCurrentMs??0)>0.51)?                        "danger"  :((avgWave??0)>0.5||(avgCurrentMs??0)>0.26)?                            "caution":"safe";
-  const jetski   = (): S => (isStormy||(avgWindMs??0)>10.3||(avgWave??0)>1.5)?                "danger"  :(isRainy||(avgWindMs??0)>7.9||(avgWave??0)>0.8)?                        "caution":"safe";
-  const sup      = (): S => ((avgWindMs??0)>6.2||(avgWave??0)>1.0||(avgCurrentMs??0)>0.51)?   "danger"  :((avgWindMs??0)>4.5||(avgWave??0)>0.5||(avgCurrentMs??0)>0.26)?         "caution":"safe";
-  const boat     = (): S => ((avgWindMs??0)>10.3||(avgWave??0)>1.5)?                           "danger"  :((avgWindMs??0)>7.9||(avgWave??0)>1.0)?                                 "caution":"safe";
-  const fishing  = (): S => (isStormy||(avgWindMs??0)>10.3||(avgWave??0)>1.5)?                "danger"  :(isRainy||(avgWindMs??0)>7.9||(avgWave??0)>1.0)?                         "caution":"safe";
-  const turtle   = (): S => isStormy?                                                          "danger"  :(isRainy||(tideRange!==null&&tideRange>1.5))?                            "caution":"safe";
-  const camp     = (): S => isStormy?                                                          "danger"  :(isRainy||(tideRange!==null&&tideRange>1.5))?                            "caution":"safe";
-  const photo    = (): S => (isStormy||(avgWave??0)>1.0||(avgCurrentMs??0)>0.51)?             "danger"  :(isRainy||(avgWave??0)>0.5||(avgCurrentMs??0)>0.26)?                     "caution":"safe";
-  const general  = (): S => isStormy?"danger":isRainy?"caution":"safe";
-
-  const r = (s: S, en: string, id: string): [string, string] => s === snorkel() || s === scuba() ? [en, id] : [en, id];
-
-  const reasons: Record<string, { safe:[string,string]; caution:[string,string]; danger:[string,string] }> = {
-    snorkeling: { safe:["Calm sea, good visibility","Laut tenang, visibilitas baik"], caution:["Moderate conditions — experienced only","Kondisi sedang — snorkeler berpengalaman"], danger:["Rough sea or strong current","Laut kasar atau arus kuat"] },
-    scuba:      { safe:["Good visibility, safe current","Visibilitas baik, arus aman"], caution:["Moderate current — plan with slack tide","Arus sedang — rencanakan saat slack tide"], danger:["Current >1 kt or rough sea","Arus melebihi batas aman"] },
-    freedive:   { safe:["Calm water, safe for breath-hold","Air tenang, aman freediving"], caution:["Moderate swell — buddy required","Ombak sedang — wajib buddy"], danger:["High wave or strong current","Ombak tinggi atau arus kuat"] },
-    jetski:     { safe:["Calm sea, good for water sports","Laut tenang, baik olahraga air"], caution:["Choppy water — reduce speed","Air bergelombang — kurangi kecepatan"], danger:["Strong wind or high waves","Angin kencang atau ombak tinggi"] },
-    sup:        { safe:["Flat water, ideal for paddling","Air tenang, ideal paddling"], caution:["Light chop — experienced only","Sedikit bergelombang — paddler berpengalaman"], danger:["Wind/wave exceeds safe SUP limit","Angin/ombak melampaui batas aman SUP"] },
-    boat:       { safe:["Calm sea, good for inter-island travel","Laut tenang, baik antar pulau"], caution:["Moderate sea — check vessel","Laut sedang — periksa kelayakan kapal"], danger:["Exceeds small-craft limits","Melampaui batas kapal kecil"] },
-    fishing:    { safe:["Good sea conditions for fishing","Kondisi laut baik memancing"], caution:["Moderate wind/wave — stay close to shore","Angin/ombak sedang — tetap dekat pantai"], danger:["Dangerous sea state","Kondisi laut berbahaya"] },
-    turtle:     { safe:["Good conditions for conservation","Kondisi baik untuk konservasi"], caution:["Rain or strong tides may affect access","Hujan/pasut kuat ganggu akses"], danger:["Storm — field activity unsafe","Badai — kegiatan lapangan tidak aman"] },
-    camping:    { safe:["Clear weather, comfortable beach","Cuaca cerah, pantai nyaman"], caution:["Rain or high tide — limited access","Hujan/pasut tinggi — akses terbatas"], danger:["Storm — outdoor activities unsafe","Badai — aktivitas pantai tidak aman"] },
-    uwphoto:    { safe:["Excellent visibility for UW photography","Visibilitas sangat baik foto bawah air"], caution:["Reduced visibility — challenging","Visibilitas berkurang — menantang"], danger:["Poor visibility or strong current","Visibilitas buruk atau arus kuat"] },
-    general:    { safe:["Clear weather — enjoy island exploration","Cuaca cerah — nikmati eksplorasi pulau"], caution:["Light rain expected — bring rain gear","Kemungkinan hujan — bawa jas hujan"], danger:["Storm forecast — limit outdoor activities","Prakiraan badai — batasi aktivitas luar"] },
-  };
-
-  const rec = (id: string, labelEn: string, labelId: string, icon: React.ReactNode, status: S): ActivityRec => ({
-    id, labelEn, labelId, icon, status,
-    reasonEn: reasons[id][status][0],
-    reasonId: reasons[id][status][1],
-  });
-
-  return [
-    rec("snorkeling", "Snorkeling",       "Snorkeling",      <Waves     size={13} />, snorkel()),
-    rec("scuba",      "Scuba Diving",     "Selam Scuba",     <Anchor    size={13} />, scuba()),
-    rec("freedive",   "Freediving",       "Freediving",      <Navigation size={13}/>, freedive()),
-    rec("jetski",     "Jet Ski / Sports", "Jet Ski / Olahraga",<Zap    size={13} />, jetski()),
-    rec("sup",        "SUP / Kayaking",   "SUP / Kayak",     <Users     size={13} />, sup()),
-    rec("boat",       "Island Hopping",   "Wisata Pulau",    <Ship      size={13} />, boat()),
-    rec("fishing",    "Fishing",          "Memancing",       <Fish      size={13} />, fishing()),
-    rec("turtle",     "Turtle Conservation","Konservasi Penyu",<Leaf   size={13} />, turtle()),
-    rec("camping",    "Camping & Beach",  "Camping & Pantai",<Flag     size={13} />, camp()),
-    rec("uwphoto",    "UW Photography",   "Foto Bawah Air",  <Camera    size={13} />, photo()),
-    rec("general",    "General Tourism",  "Wisata Umum",     <Sun       size={13} />, general()),
-  ];
 }
 
 /* ── Shimmer skeleton loaders ──────────────────────────────────────────── */
@@ -478,7 +397,7 @@ const OverlayChart: React.FC<{
 export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) => {
   const { language } = useLanguage();
   const lang = language as "en" | "id";
-  const { isPro, maxTideDays, maxWxDays } = useSubContext();
+  const { isPro } = useSubContext();
   const [showPricing, setShowPricing] = useState(false);
 
   const [tideData,    setTideData]    = useState<TideData | null>(null);
@@ -490,23 +409,23 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
   const [weatherFromCache, setWeatherFromCache] = useState(false);
   const [selDate, setSelDate] = useState<string>(todayISO());
 
-  const todayStr  = todayISO();
-  const FREE_MIN  = "2026-03-25";
-  const FREE_MAX_DAYS = 3;
-  const minDateISO = isPro ? addDays(todayStr, -365) : FREE_MIN;
-  const maxDateISO = isPro ? addDays(todayStr, maxTideDays - 1) : addDays(todayStr, FREE_MAX_DAYS);
+  // ── Date range based on subscription tier ──────────────────────────────
+  const todayStr   = todayISO();
+  const minDateISO = isPro ? "2000-01-01" : addDays(todayStr, -FREE_HIST_DAYS);
+  const maxDateISO = isPro ? addDays(todayStr, PRO_FWD_DAYS) : addDays(todayStr, FREE_FWD_DAYS);
 
   const fetchAll = useCallback(async (dateStr: string, forceRefresh = false) => {
     setLoading(true);
     setError(null);
 
-    if (dateStr > maxDateISO) {
-      setError(lang === "en" ? `Free plan: forecast limited to ${FREE_MAX_DAYS} days ahead.` : `Paket gratis: prediksi terbatas ${FREE_MAX_DAYS} hari ke depan.`);
-      setLoading(false); return;
-    }
-    if (!isPro && dateStr < FREE_MIN) {
-      setError(lang === "en" ? "Free plan: historical data available from 25 March 2026." : "Paket gratis: data historis tersedia mulai 25 Maret 2026.");
-      setLoading(false); return;
+    if (dateStr < minDateISO || dateStr > maxDateISO) {
+      setError(
+        lang === "en"
+          ? `Date out of range. Please choose between ${isPro ? "any past date" : minDateISO} and ${maxDateISO}.`
+          : `Tanggal di luar jangkauan. Pilih antara ${isPro ? "tanggal manapun" : minDateISO} dan ${maxDateISO}.`,
+      );
+      setLoading(false);
+      return;
     }
 
     try {
@@ -523,8 +442,10 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       }
 
       if (!wd || !md) {
-        const wxDaysBack = isPro ? 14 : Math.ceil((new Date(todayStr + "T12:00:00Z").getTime() - new Date(FREE_MIN + "T12:00:00Z").getTime()) / 86_400_000);
-        const wxDaysFwd  = isPro ? 14 : FREE_MAX_DAYS;
+        // Pro: fetch up to 16 days back + 12 days forward for full historical coverage
+        // Free: 12 days back + 5 days forward (with buffer)
+        const wxDaysBack = isPro ? 16 : FREE_HIST_DAYS + 2;
+        const wxDaysFwd  = isPro ? PRO_FWD_DAYS + 2 : FREE_FWD_DAYS + 2;
         const wxStart = new Date(today); wxStart.setDate(wxStart.getDate() - wxDaysBack);
         const wxEnd   = new Date(today); wxEnd.setDate(wxEnd.getDate() + wxDaysFwd + 1);
 
@@ -557,7 +478,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
     } catch (e) {
       setError(e instanceof Error ? e.message : (lang === "en" ? "Unknown error" : "Kesalahan tidak dikenal"));
     } finally { setLoading(false); }
-  }, [coordinates, lang, isPro, maxDateISO, todayStr]);
+  }, [coordinates, lang, isPro, minDateISO, maxDateISO]);
 
   useEffect(() => { const d = todayISO(); setSelDate(d); fetchAll(d); }, [coordinates.lat, coordinates.lon]);
 
@@ -602,7 +523,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
 
   const { sunrise, sunset } = getSunTimes();
   const rows       = buildRows();
-  const activities = buildRecommendations(tideData, weatherData, marineData, selDate, lang);
   const current    = weatherData?.current;
   const currentWindMs      = current ? kmhToMs(current.wind_speed_10m) : null;
   const currentWaveH       = marineData?.current?.wave_height ?? marineData?.hourly.wave_height[0] ?? null;
@@ -617,8 +537,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const chosen = e.target.value;
-    if (chosen > maxDateISO) return;
-    if (!isPro && chosen < todayStr) return;
+    if (chosen < minDateISO || chosen > maxDateISO) return;
     setSelDate(chosen);
     fetchAll(chosen);
   };
@@ -662,16 +581,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
               <div>
                 <p style={{ color: "#be123c", fontSize: 12.5, fontWeight: 600, marginBottom: 3, fontFamily: SANS }}>{lang === "en" ? "Unable to load data" : "Gagal memuat data"}</p>
                 <p style={{ color: "#e11d48", fontSize: 11, marginBottom: 9, fontFamily: SANS }}>{error}</p>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const }}>
-                  <button onClick={() => fetchAll(selDate)} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#be123c", background: "none", border: "none", cursor: "pointer", fontFamily: SANS, fontWeight: 600 }}>
-                    <RefreshCw size={10} />{lang === "en" ? "Try again" : "Coba lagi"}
-                  </button>
-                  {!isPro && (
-                    <button onClick={() => setShowPricing(true)} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: PRIMARY, background: "none", border: "none", cursor: "pointer", fontFamily: SANS, fontWeight: 600 }}>
-                      <Zap size={10} />{lang === "en" ? "Upgrade to Pro" : "Upgrade ke Pro"}
-                    </button>
-                  )}
-                </div>
+                <button onClick={() => fetchAll(selDate)} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#be123c", background: "none", border: "none", cursor: "pointer", fontFamily: SANS, fontWeight: 600 }}>
+                  <RefreshCw size={10} />{lang === "en" ? "Try again" : "Coba lagi"}
+                </button>
               </div>
             </div>
           </div>
@@ -731,14 +643,31 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
             {/* Date picker */}
             <div style={{ padding: "11px 13px 0" }}>
               <SL>{lang === "en" ? "Select Date" : "Pilih Tanggal"}</SL>
-              <input type="date" value={selDate} min={minDateISO} max={maxDateISO} onChange={handleDateChange} style={{ width: "100%", padding: "8px 11px", border: `1.5px solid ${BORDER}`, borderRadius: 9, fontSize: 12.5, fontWeight: 600, fontFamily: SANS, color: TEXT_PRI, background: BG_CARD, cursor: "pointer", outline: "none", boxSizing: "border-box" as const }} onFocus={(e) => { e.currentTarget.style.borderColor = SKY; e.currentTarget.style.boxShadow = "0 0 0 2.5px rgba(14,165,233,0.10)"; }} onBlur={(e) => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.boxShadow = "none"; }} />
-              {!isPro && (
+              <input
+                type="date"
+                value={selDate}
+                min={minDateISO}
+                max={maxDateISO}
+                onChange={handleDateChange}
+                style={{ width: "100%", padding: "8px 11px", border: `1.5px solid ${BORDER}`, borderRadius: 9, fontSize: 12.5, fontWeight: 600, fontFamily: SANS, color: TEXT_PRI, background: BG_CARD, cursor: "pointer", outline: "none", boxSizing: "border-box" as const }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = SKY; e.currentTarget.style.boxShadow = "0 0 0 2.5px rgba(14,165,233,0.10)"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.boxShadow = "none"; }}
+              />
+              {isPro ? (
+                <p style={{ fontFamily: SANS, fontSize: 10, color: TEXT_HINT, marginTop: 5 }}>
+                  {lang === "en"
+                    ? `Pro: any historical date · ${PRO_FWD_DAYS} days ahead`
+                    : `Pro: semua tanggal historis · ${PRO_FWD_DAYS} hari ke depan`}
+                </p>
+              ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 5, padding: "5px 9px", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 7 }}>
                   <Lock size={10} style={{ color: "#b45309", flexShrink: 0 }} />
                   <span style={{ fontFamily: SANS, fontSize: 10, color: "#b45309", lineHeight: 1.4 }}>
-                    {lang === "en" ? `Free: 25 Mar 2026 – ${maxDateISO} (${FREE_MAX_DAYS} days ahead). ` : `Gratis: 25 Mar 2026 – ${maxDateISO} (${FREE_MAX_DAYS} hari ke depan). `}
+                    {lang === "en"
+                      ? `Free: past ${FREE_HIST_DAYS} days – ${FREE_FWD_DAYS} days ahead. `
+                      : `Gratis: ${FREE_HIST_DAYS} hari lalu – ${FREE_FWD_DAYS} hari ke depan. `}
                     <button onClick={() => setShowPricing(true)} style={{ background: "none", border: "none", cursor: "pointer", color: PRIMARY, fontWeight: 700, fontSize: 10, padding: 0, fontFamily: SANS, textDecoration: "underline" }}>
-                      {lang === "en" ? "Upgrade for 14 days →" : "Upgrade 14 hari →"}
+                      {lang === "en" ? "Upgrade for more →" : "Upgrade untuk lebih →"}
                     </button>
                   </span>
                 </div>
@@ -832,33 +761,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
               </div>
             </div>
 
-            {/* Activity guide */}
-            <div style={{ padding: "13px 13px 0" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
-                <SL>{lang==="en"?"Activity Guide":"Panduan Aktivitas"}</SL>
-                <div style={{ display: "flex", gap: 3, marginBottom: 7 }}>
-                  {(["safe","caution","danger"] as const).map((s) => { const count = activities.filter((a) => a.status === s).length; const cfg = statusStyles[s]; return (<div key={s} style={{ display: "flex", alignItems: "center", gap: 3, background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 99, padding: "2px 6px" }}><div style={{ width: 4, height: 4, borderRadius: "50%", background: cfg.dot, flexShrink: 0 }} /><span style={{ fontFamily: SANS, fontSize: 8.5, fontWeight: 700, color: cfg.text }}>{count}</span></div>); })}
-                </div>
-              </div>
-              <div style={{ background: BG_CARD, border: `1px solid ${BORDER}`, borderRadius: 10, overflow: "hidden" }}>
-                {activities.map((act, idx) => {
-                  const st = statusStyles[act.status]; const isLast = idx === activities.length - 1;
-                  return (
-                    <div key={act.id} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 11px", borderBottom: isLast ? "none" : `1px solid ${BORDER_SM}`, background: idx % 2 === 0 ? BG_CARD : BG_MUTED }}>
-                      <div style={{ width: 2.5, flexShrink: 0, alignSelf: "stretch", background: st.dot, borderRadius: 99, minHeight: 22 }} />
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, flex: "0 0 116px", minWidth: 0 }}>
-                        <span style={{ color: st.dot, flexShrink: 0 }}>{act.icon}</span>
-                        <span style={{ fontFamily: SANS, fontSize: 9.5, fontWeight: 600, color: TEXT_PRI, whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>{lang==="en"?act.labelEn:act.labelId}</span>
-                      </div>
-                      <p style={{ fontFamily: SANS, fontSize: 9.5, color: TEXT_SEC, lineHeight: 1.35, flex: 1, margin: 0, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any }}>{lang==="en"?act.reasonEn:act.reasonId}</p>
-                      <div style={{ flexShrink: 0, background: st.bg, border: `1px solid ${st.border}`, borderRadius: 99, padding: "2px 6px", fontFamily: SANS, fontSize: 8.5, fontWeight: 700, color: st.text, whiteSpace: "nowrap" as const }}>{st.label[lang==="en"?0:1]}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* S-104 export — available to all users */}
+            {/* S-104 export */}
             <div style={{ padding: "13px 13px 0" }}>
               <SL>{lang==="en"?"IHO S-100 / S-104 Compliance":"Kepatuhan IHO S-100 / S-104"}</SL>
               <S104ExportSection coordinates={coordinates} selectedDate={selDate} language={lang} />
@@ -871,7 +774,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 ["Datum",                                        tideData?.metadata.datum],
                 ...(tideData ? [[lang==="en"?"Nearest grid":"Grid terdekat", `${tideData.grid.lat.toFixed(3)}°, ${tideData.grid.lon.toFixed(3)}° · ${tideData.grid.distance_km.toFixed(1)} km`]] : []),
                 [lang==="en"?"Weather":"Cuaca",                 "Open-Meteo API"],
-                [lang==="en"?"Coverage":"Cakupan",              isPro ? (lang==="en"?"Today ±14 days":"Hari ini ±14 hari") : (lang==="en"?`Today +${FREE_MAX_DAYS} days`:`Hari ini +${FREE_MAX_DAYS} hari`)],
+                [lang==="en"?"Coverage":"Cakupan",              isPro
+                  ? (lang==="en" ? `Unlimited history · ${PRO_FWD_DAYS} days ahead` : `Historis tak terbatas · ${PRO_FWD_DAYS} hari ke depan`)
+                  : (lang==="en" ? `Past ${FREE_HIST_DAYS} days · ${FREE_FWD_DAYS} days ahead` : `${FREE_HIST_DAYS} hari lalu · ${FREE_FWD_DAYS} hari ke depan`)],
                 [lang==="en"?"Obs. station":"Stasiun obs.",     overlayData?.imei ? `IMEI ${overlayData.imei}` : "—"],
                 ["TOL",                                          "-2.156 m (Luwes → MSL TPXO9)"],
                 ["S-104",                                        "Ed.2.0.0 (Dec 2024)"],
