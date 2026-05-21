@@ -203,10 +203,9 @@ const COPY = {
     webgisSplitEyebrow: "Searibu WebGIS",
     webgisSplitHead:    "Interactive map of tides & weather.",
     webgisSplitBody:    "The WebGIS displays TPXO grids, the Luwes tidal station, and 12 island markers. Click any grid cell to access full hourly tidal and weather data for that location.",
-    webgisBtn:     "Open Webgis",
+    webgisBtn:     "Open WebGIS",
     featEyebrow:   "What Searibu Does",
     featHead:      "One platform.\nEvery condition.",
-    featSub:       "Built on IHO S-100/S-104 and TPXO-9 Atlas.",
     features: [
       { num: "01", title: "TPXO Tidal Prediction",     body: "Hourly astronomical tides from TPXO9 Atlas. 15 harmonic constituents, MSL datum, IHO S-104", icon: "waves" },
       { num: "02", title: "Real-time Marine Forecast",  body: "Wind, wave height, and current velocity updated hourly at ~15 km resolution via Open-Meteo Marine API.", icon: "wind" },
@@ -216,7 +215,6 @@ const COPY = {
       { num: "06", title: "IHO S-104 HDF5 Export",      body: "Download astronomical and observed water level data as IHO S-104 compliant HDF5 files.", icon: "nav" },
     ],
     stdEyebrow: "Technical Standards",
-    stdHead:    "Built to IHO\nhydrographic standards.",
     stdBody:    "Searibu implements IHO S-100 Universal Hydrographic Data Model and S-104 Water Level Information for Surface Navigation — ensuring interoperability with ECDIS environments worldwide.",
     stdCta:     "Open WebGIS",
     footerSub:  "Capstone Design Project · FITB · Institut Teknologi Bandung · 2026",
@@ -676,21 +674,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 </button>
               </div>
             </div>
-
-            {/* ── SIDE PANEL ── (hidden on mobile) */}
-            <div className="hero-side" style={{ borderLeft: "1px solid rgba(255,238,179,0.07)", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "80px 48px 80px 44px", gap: 0, ...fadeUp(5, 200) }}>
-              {[
-                { label: lang === "id" ? "MODEL PASUT"   : "TIDAL MODEL",     value: "TPXO9 Atlas", sub: "Oregon State University" },
-                { label: lang === "id" ? "KONSTITUEN"    : "CONSTITUENTS",    value: "15",              sub: lang === "id" ? "Harmonik aktif" : "Active harmonics" },
-                { label: lang === "id" ? "STANDAR DATA"  : "DATA STANDARD",   value: "IHO S-104",       sub: "Edition 2.0.0 · Dec 2024" },
-              ].map((item, i) => (
-                <div key={i} style={{ borderTop: "1px solid rgba(255,238,179,0.10)", paddingTop: 22, paddingBottom: 22 }}>
-                  <p style={{ fontFamily: STONEB, fontSize: 9, letterSpacing: "0.20em", textTransform: "uppercase", color: "rgba(255,238,179,0.32)", margin: "0 0 7px" }}>{item.label}</p>
-                  <p style={{ fontFamily: STONEB, fontSize: 24, color: "#ffeeb3", margin: "0 0 4px", letterSpacing: "-0.01em" }}>{item.value}</p>
-                  <p style={{ fontFamily: STONE, fontSize: 11, color: "rgba(255,238,179,0.36)", margin: 0 }}>{item.sub}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </section>
 
@@ -769,7 +752,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 </div>
                 <h2 style={{ fontFamily: STONEB, fontSize: "clamp(1.9rem,3.4vw,3rem)", fontWeight: 700, color: INK, lineHeight: 1.05, letterSpacing: "-0.02em", margin: 0, whiteSpace: "pre-line" }}>{c.featHead}</h2>
               </div>
-              <p style={{ fontFamily: STONE, fontStyle: "italic", fontSize: 13, color: "#999", maxWidth: 260, textAlign: "right" }}>{c.featSub}</p>
             </div>
 
             {/* Cards */}
@@ -815,7 +797,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                   <div style={{ width: 36, height: 3, background: AMBER, flexShrink: 0 }} />
                   <span style={{ fontFamily: STONEB, fontSize: 10, letterSpacing: "0.20em", textTransform: "uppercase", color: AMBER }}>{c.stdEyebrow}</span>
                 </div>
-                <h2 style={{ fontFamily: STONEB, fontSize: "clamp(1.9rem,3.4vw,3rem)", fontWeight: 700, color: "#ffeeb3", lineHeight: 1.05, letterSpacing: "-0.02em", margin: "0 0 22px", whiteSpace: "pre-line" }}>{c.stdHead}</h2>
                 <p style={{ fontFamily: STONE, fontSize: 15, lineHeight: 1.78, color: "rgba(255,238,179,0.52)", marginBottom: 36, maxWidth: 420 }}>{c.stdBody}</p>
                 <button
                   onClick={() => onNavigate?.("webgis")}
@@ -825,28 +806,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 >
                   {c.stdCta} <ArrowRight size={13} />
                 </button>
-              </div>
-
-              {/* Right — standard cards */}
-              <div style={{ display: "flex", flexDirection: "column", ...revealUp(std.inView, 160) }}>
-                {[
-                  { code: "IHO S-100",   sub: "Universal Hydrographic Data Model · Ed.5.2.0", desc: lang === "id" ? "Kerangka induk seluruh produk data maritim digital. Diadopsi penuh Desember 2024." : "The overarching framework for all digital maritime data products. Fully adopted December 2024.", accent: AMBER },
-                  { code: "IHO S-104",   sub: "Water Level for Surface Navigation · Ed.2.0.0", desc: lang === "id" ? "Spesifikasi produk untuk data muka air dalam format HDF5, kompatibel ECDIS." : "Product specification for water level data in HDF5 format, ECDIS-compatible.", accent: AMBER },
-                  { code: "TPXO-9 Atlas", sub: "Oregon State University · 1/30° resolution",    desc: lang === "id" ? "Model pasut global, 15 konstituen harmonik. Analisis harmonik mengikuti Schureman (1958)." : "Global tidal model, 15 harmonic constituents. Harmonic analysis follows Schureman (1958).", accent: CURRENT },
-                ].map((s, i) => (
-                  <div key={i} style={{ borderTop: "1px solid rgba(255,238,179,0.08)", padding: "24px 0", display: "flex", gap: 20 }}>
-                    <div style={{ width: 3, flexShrink: 0, background: s.accent, alignSelf: "stretch", minHeight: 44 }} />
-                    <div>
-                      <p style={{ fontFamily: STONEB, fontSize: 17, color: "#ffeeb3", margin: "0 0 4px", letterSpacing: "-0.01em" }}>{s.code}</p>
-                      <p style={{ fontFamily: STONE, fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,238,179,0.28)", margin: "0 0 9px" }}>{s.sub}</p>
-                      <p style={{ fontFamily: STONE, fontSize: 13, color: "rgba(255,238,179,0.48)", lineHeight: 1.62, margin: 0 }}>{s.desc}</p>
-                    </div>
-                  </div>
-                ))}
-                {/* TPXO grid placeholder */}
-                <div style={{ marginTop: 4 }}>
-                  <img src="/img/foto-6.jpg" alt="TPXO9 Grid Kepulauan Seribu" style={{ width:"100%", aspectRatio:"16/7", objectFit:"cover", display:"block" }} />
-                </div>
               </div>
             </div>
           </div>

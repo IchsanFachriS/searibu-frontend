@@ -9,8 +9,8 @@ const PRIMARY = "#0369a1";
 const C = {
   en: {
     hero:    "About Searibu",
-    heroSub: "Ocean Weather-Informed Marine Tourism System — Kepulauan Seribu",
-    heroDesc:"A capstone design project by ITB Geodesy and Geomatics Engineering students, building a unified marine information platform that integrates tidal prediction, real-time telemetry, and weather forecasting for safer and smarter island tourism.",
+    heroSub: "Ocean Weather-Informed Marine Tourism System in Kepulauan Seribu",
+    heroDesc:"A capstone design project by ITB Geodesy and Geomatics Engineering students, building a unified marine information platform that integrates tidal prediction, and weather forecasting for safer and smarter island tourism.",
     stdTitle: "Standards & Compliance",
     stdSub:   "This system implements IHO S-100 and S-104 international standards for hydrographic data interoperability.",
     s100Title:"IHO S-100 — Universal Hydrographic Data Model",
