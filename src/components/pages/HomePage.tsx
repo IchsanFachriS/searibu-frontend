@@ -452,7 +452,7 @@ const SafetySection: React.FC<{ language: "en"|"id"; onNavigate?: (p: string) =>
 
               {/* Condition metrics */}
               {conditions && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 1, marginBottom: 14, background: RULE }}>
+                <div className="condition-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 1, marginBottom: 14, background: RULE }}>
                   {[
                     { label: c.wind,    value: conditions.avgWindMs    != null ? conditions.avgWindMs.toFixed(1)    + " m/s" : "—" },
                     { label: c.wave,    value: conditions.avgWave      != null ? conditions.avgWave.toFixed(2)      + " m"   : "—" },
@@ -468,7 +468,7 @@ const SafetySection: React.FC<{ language: "en"|"id"; onNavigate?: (p: string) =>
               )}
 
               {/* Activity grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: RULE }}>
+              <div className="activity-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: RULE }}>
                 {activities.map(act => {
                   const cfg = SC[act.status];
                   const Ico = act.status === "safe" ? CheckCircle : act.status === "caution" ? AlertTriangle : XCircle;
@@ -551,54 +551,77 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
       {/* ── Global typography + layout styles ─── */}
       <style>{`
         @font-face {
-          font-family: 'ITC Stone Sans Std';
-          src: local('ITC Stone Sans Std'), local('Stone Sans Std'), local('StoneSerifStd');
-          font-weight: 400; font-style: normal;
+        font-family: 'ITC Stone Sans Std';
+        src: local('ITC Stone Sans Std'), local('Stone Sans Std'), local('StoneSerifStd');
+        font-weight: 400; font-style: normal;
         }
         @font-face {
-          font-family: 'ITC Stone Sans Std Semibold';
-          src: local('ITC Stone Sans Std Semibold'), local('Stone Sans Std Semibold'), local('StoneSerifStd-Semibold');
-          font-weight: 600; font-style: normal;
+        font-family: 'ITC Stone Sans Std Semibold';
+        src: local('ITC Stone Sans Std Semibold'), local('Stone Sans Std Semibold'), local('StoneSerifStd-Semibold');
+        font-weight: 600; font-style: normal;
         }
         .hp-root { font-family: ${STONE}; background: ${SAND}; }
         .hp-root * { box-sizing: border-box; }
-
-        .hp-section { padding: 96px 64px; }
-        @media (max-width: 768px) { .hp-section { padding: 64px 24px; } }
-        @media (max-width: 480px) { .hp-section { padding: 48px 16px; } }
-
-        /* Hero layout */
+        .hp-section { padding: 80px 48px; }
+        @media (max-width: 1024px) { .hp-section { padding: 72px 32px; } }
+        @media (max-width: 768px)  { .hp-section { padding: 56px 20px; } }
+        @media (max-width: 480px)  { .hp-section { padding: 40px 16px; } }
+        /* Hero */
         .hero-inner { display: grid; grid-template-columns: 1fr 36%; min-height: 100vh; }
-        @media (max-width: 900px) { .hero-inner { grid-template-columns: 1fr; } .hero-side { display: none !important; } }
-
+        @media (max-width: 900px) {
+        .hero-inner { grid-template-columns: 1fr; }
+        .hero-side  { display: none !important; }
+        }
         /* Safety section */
-        .safety-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; }
-        @media (max-width: 900px) { .safety-layout { grid-template-columns: 1fr; gap: 40px; } }
-
+        .safety-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; }
+        @media (max-width: 1024px) { .safety-layout { gap: 40px; } }
+        @media (max-width: 860px)  { .safety-layout { grid-template-columns: 1fr; gap: 32px; } }
         /* WebGIS split */
         .split-grid { display: grid; grid-template-columns: 1fr 1fr; }
         @media (max-width: 768px) { .split-grid { grid-template-columns: 1fr; } }
-
         /* Feature list */
         .feat-list { display: grid; grid-template-columns: repeat(3,1fr); }
-        @media (max-width: 900px) { .feat-list { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 960px) { .feat-list { grid-template-columns: 1fr 1fr; } }
         @media (max-width: 560px) { .feat-list { grid-template-columns: 1fr; } }
-
+        /* Feature card padding */
+        .feat-card { padding: 32px 28px; }
+        @media (max-width: 768px) { .feat-card { padding: 24px 20px; } }
+        @media (max-width: 480px) { .feat-card { padding: 20px 16px; } }
         /* Standards */
         .std-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: start; }
         @media (max-width: 900px) { .std-layout { grid-template-columns: 1fr; gap: 40px; } }
-
         /* Photo strip */
         .photo-strip { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 3px; }
         @media (max-width: 768px) { .photo-strip { grid-template-columns: 1fr 1fr; } }
         @media (max-width: 480px) { .photo-strip { grid-template-columns: 1fr; } }
-
-        /* Footer responsive */
-        .footer-inner { max-width: 1200px; margin: 0 auto; padding: 36px 64px 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
-        @media (max-width: 768px) { .footer-inner { padding: 36px 24px 32px; } }
-
-        @keyframes hp-spin { to { transform: rotate(360deg); } }
-      `}</style>
+        /* Stats bar */
+        .stats-bar { max-width: 1200px; margin: 0 auto; padding: 16px 48px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; border-top: 1px solid rgba(184,240,192,0.25); }
+        @media (max-width: 768px) { .stats-bar { padding: 12px 20px; justify-content: center; gap: 0; } }
+        @media (max-width: 480px) { .stats-bar { padding: 10px 16px; } }
+        /* Footer */
+        .footer-inner { max-width: 1200px; margin: 0 auto; padding: 28px 48px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        @media (max-width: 768px) { .footer-inner { padding: 24px 20px; flex-direction: column; align-items: flex-start; gap: 8px; } }
+        @media (max-width: 480px) { .footer-inner { padding: 20px 16px; } }
+        /* Hero CTA buttons — stack on very small */
+        .hero-ctas { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+        @media (max-width: 360px) {
+        .hero-ctas { flex-direction: column; align-items: stretch; gap: 10px; }
+        .hero-ctas button { width: 100%; justify-content: center; }
+        }
+        /* Safety form — full width buttons on mobile */
+        @media (max-width: 480px) {
+        .safety-analyse-btn { width: 100%; }
+        .safety-detail-btn  { width: 100%; justify-content: center !important; }
+        }
+        /* Condition metrics — 2×2 on mobile */
+        .condition-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; margin-bottom: 14px; background: ${RULE}; }
+        @media (max-width: 480px) { .condition-grid { grid-template-columns: repeat(2,1fr); } }
+        /* Activity grid */
+        .activity-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: ${RULE}; }
+        @media (max-width: 360px) { .activity-grid { grid-template-columns: 1fr; } }
+        /* WebGIS split text padding */
+        .split-text-pad { padding: clamp(28px,5vw,72px); }
+        @keyframes hp-spin { to { transform: rotate(360deg); } }      `}</style>
 
       <div className="hp-root">
 
@@ -655,7 +678,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               <div style={{ width: 56, height: 1, background: "rgba(255,238,179,0.15)", marginBottom: 32, ...fadeUp(4, 115) }} />
 
               {/* CTAs */}
-              <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", ...fadeUp(5, 140) }}>
+              <div className="hero-ctas" style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", ...fadeUp(5, 140) }}>
                 <button
                   onClick={() => onNavigate?.("webgis")}
                   style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "15px 30px", background: AMBER, color: INK, border: "none", fontFamily: STONEB, fontSize: 12, letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", transition: "all 0.2s" }}
@@ -688,7 +711,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
           </div>
 
           {/* Stats bar */}
-          <div style={{ maxWidth: 1200, margin: "0 auto", padding: "16px 64px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, borderTop: `1px solid rgba(184,240,192,0.25)` }}>
+          <div className="stats-bar" style={{ maxWidth: 1200, margin: "0 auto", padding: "16px 64px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, borderTop: `1px solid rgba(184,240,192,0.25)` }}>
             {[
               { n: "110+",  label: lang === "id" ? "Pulau"            : "Islands" },
               { n: "~75km", label: lang === "id" ? "Dari Jakarta"     : "From Jakarta" },
@@ -717,7 +740,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         <section style={{ background: SAND, overflow: "hidden" }}>
           <div className="split-grid">
             <img src="/img/foto-5.jpg" alt="WebGIS Kepulauan Seribu" style={{ width:"100%", minHeight:340, objectFit:"cover", display:"block", aspectRatio:"4/3" }} />
-            <div style={{ padding: "clamp(40px,6vw,80px)", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <div className="split-text-pad" style={{ padding: "clamp(40px,6vw,80px)", display: "flex", flexDirection: "column", justifyContent: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24 }}>
                 <div style={{ width: 32, height: 3, background: AMBER, flexShrink: 0 }} />
                 <span style={{ fontFamily: STONEB, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: AMBER }}>{c.webgisSplitEyebrow}</span>
@@ -758,7 +781,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             <div className="feat-list" style={{ ...revealUp(feat.inView, 120) }}>
               {c.features.map((f, i) => (
                 <div
-                  key={i}
+                  key={i} className="feat-card"
                   style={{
                     padding: "38px 32px",
                     borderRight: `1px solid ${RULE}`,

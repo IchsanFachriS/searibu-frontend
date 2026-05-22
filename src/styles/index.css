@@ -8,7 +8,6 @@
 
 /* ── Design tokens ────────────────────────────────────────────────────── */
 :root {
-  /* Palette — from screenshot */
   --dark-1:     #3a3a3a;
   --dark-2:     #2b2b2b;
   --off-white:  #f5f0e8;
@@ -21,11 +20,10 @@
   --orange:     #e8401c;
   --peach:      #f4bfad;
 
-  --blue-1:     #1a3bbf;   /* primary */
-  --blue-2:     #4fd4e8;   /* accent cyan */
-  --blue-3:     #ddf0fb;   /* lightest tint */
+  --blue-1:     #1a3bbf;
+  --blue-2:     #4fd4e8;
+  --blue-3:     #ddf0fb;
 
-  /* Semantic aliases */
   --bg:         #f7f4ef;
   --bg-dark:    #1a1e2e;
   --surface:    #ffffff;
@@ -42,11 +40,9 @@
   --primary:    var(--blue-1);
   --primary-lt: var(--blue-3);
 
-  /* Typography */
   --font: 'Inter', system-ui, sans-serif;
 
-  /* Sizing */
-  --navbar-h: 64px;
+  --navbar-h: 62px;
   --radius:   12px;
   --radius-sm:8px;
 }
@@ -61,6 +57,9 @@ html {
   overscroll-behavior: none;
   height: 100%;
   font-size: 16px;
+  /* Prevent font scaling on orientation change */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -69,6 +68,8 @@ body {
   color: var(--text-primary);
   overscroll-behavior: none;
   height: 100%;
+  /* Prevent horizontal scroll globally */
+  overflow-x: hidden;
 }
 
 #root {
@@ -77,6 +78,17 @@ body {
   overflow-x: hidden;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
+}
+
+/* ── Global responsive image fix ─────────────────────────────────────── */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── Prevent tap highlight on mobile ─────────────────────────────────── */
+button, a {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ── Scrollbar ────────────────────────────────────────────────────────── */
@@ -117,6 +129,8 @@ body {
   background: var(--surface) !important;
   border-top: 3px solid var(--blue-1) !important;
   overflow: hidden !important;
+  /* Prevent popup overflow on mobile */
+  max-width: min(280px, calc(100vw - 32px)) !important;
 }
 .leaflet-popup-content { font-family:var(--font) !important; font-size:13px; margin:0 !important; line-height:1 !important; }
 .leaflet-popup-tip     { background:var(--surface) !important; }
@@ -172,9 +186,78 @@ body {
 }
 .grid-tooltip::before { display:none !important; }
 
+/* ── Leaflet mobile adjustments ───────────────────────────────────────── */
 @media (max-width: 768px) {
-  .leaflet-bottom.leaflet-right { bottom:72px !important; }
-  .leaflet-bottom.leaflet-left  { bottom:72px !important; }
+  .leaflet-bottom.leaflet-right { bottom: 72px !important; }
+  .leaflet-bottom.leaflet-left  { bottom: 72px !important; }
+  /* Hide zoom on small screens - use pinch instead */
+  .leaflet-control-zoom { display: none !important; }
+  /* Scale attribution smaller */
+  .leaflet-control-attribution { font-size: 9px !important; max-width: 180px; }
+  /* Popup max width on mobile */
+  .leaflet-popup-content-wrapper { max-width: calc(100vw - 40px) !important; }
+  /* Island popups */
+  .island-popup .leaflet-popup-content-wrapper {
+    max-width: min(260px, calc(100vw - 32px)) !important;
+  }
+}
+
+/* ── About & Guide page responsive ───────────────────────────────────── */
+.about-hero-pad { padding: 52px 48px 44px; }
+@media (max-width: 768px) { .about-hero-pad { padding: 40px 20px 36px; } }
+@media (max-width: 480px) { .about-hero-pad { padding: 32px 16px 28px; } }
+
+.about-content-pad { max-width: 900px; margin: 0 auto; padding: 28px 24px 56px; }
+@media (max-width: 768px) { .about-content-pad { padding: 20px 16px 48px; } }
+@media (max-width: 480px) { .about-content-pad { padding: 16px 12px 40px; } }
+
+.about-team-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+@media (max-width: 560px) { .about-team-grid { grid-template-columns: 1fr; gap: 8px; } }
+
+/* S-104 table responsive */
+.s104-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 320px; }
+@media (max-width: 480px) { .s104-table { font-size: 11px; } }
+
+/* Pricing modal responsive */
+@media (max-width: 480px) {
+  .pricing-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ── InfoPanel responsive ─────────────────────────────────────────────── */
+
+/* Hero card metrics — 2 columns on very narrow */
+@media (max-width: 360px) {
+  .info-metrics-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .info-metrics-grid > div:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* High/Low cards — stack on very narrow */
+@media (max-width: 320px) {
+  .info-highlow-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Utility classes ─────────────────────────────────────────────────── */
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  border: 0;
 }
 
 /* ── Tailwind ─────────────────────────────────────────────────────────── */
