@@ -25,6 +25,7 @@ interface MapContainerProps {
   basemap:            BasemapType;
   onGridClick?:       (coords: { lat: number; lon: number }) => void;
   onCoordinateSearch?:(coords: { lat: number; lon: number }) => void;
+  panelOpen?:         boolean; // Ditambahkan props pendeteksi panel aktif dari halaman luar
 }
 
 const ISLANDS: Island[] = [
@@ -193,7 +194,7 @@ const LegendPanel: React.FC<{ language: string; defaultCollapsed?: boolean }> = 
       label: language === "id" ? "Pelabuhan" : "Port",
     },
     {
-      icon: <svg width="10" height="12" viewBox="0 0 24 30"><polygon points="12,2 22,9 22,21 12,28 2,21 2,9" fill="#ef4444" stroke="#fff" strokeWidth="1.5" /><text x="12" y="17" textAnchor="middle" fill="#fff" fontFamily="sans-serif" fontSize="8" fontWeight="700">T</text></svg>,
+      icon: <svg width="10" height="12" viewBox="0 0 24 30"><polygon points="12,2 22,9 22,21 12,28 2,21 2,9" fill="#ef4444" stroke="#fff" stroke-width="1.5" /><text x="12" y="17" text-anchor="middle" fill="#fff" fontFamily="sans-serif" fontSize="8" fontWeight="700">T</text></svg>,
       label: language === "id" ? "Sta. Pasut" : "Tide Station",
     },
     {
@@ -228,7 +229,7 @@ const LegendPanel: React.FC<{ language: string; defaultCollapsed?: boolean }> = 
   );
 };
 
-export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick, onCoordinateSearch }) => {
+export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick, onCoordinateSearch, panelOpen = false }) => {
   const { language } = useLanguage();
   const mapRef          = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -391,8 +392,18 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
 
       <div ref={mapContainerRef} style={{ position: "absolute", inset: 0 }} onWheel={(e) => e.stopPropagation()} />
 
+      {/* Kontainer Legenda otomatis disembunyikan jika layar mobile dan panel info sedang terbuka */}
       <div
-        style={{ position: "absolute", bottom: LEGEND_BOTTOM, left: 12, zIndex: 1001, overscrollBehavior: "contain", touchAction: "none" }}
+        className="webgis-legend-holder"
+        style={{ 
+          position: "absolute", 
+          bottom: isMobile ? 80 : 20, 
+          left: 12, 
+          zIndex: 1001, 
+          overscrollBehavior: "contain", 
+          touchAction: "none",
+          display: isMobile && panelOpen ? "none" : "block" // Logika kondisional UX
+        }}
         onWheel={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
       >
@@ -400,7 +411,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({ basemap, onGridClick
       </div>
 
       <div
-        style={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", zIndex: 1000, width: "calc(100% - 240px)", maxWidth: 400, minWidth: 200, boxSizing: "border-box" as const, overscrollBehavior: "contain", touchAction: "manipulation" }}
+        style={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", zIndex: 1000, width: "calc(100% - 32px)", maxWidth: 400, boxSizing: "border-box" as const, overscrollBehavior: "contain", touchAction: "manipulation" }}
         onWheel={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
       >

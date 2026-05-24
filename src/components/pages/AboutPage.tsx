@@ -1,239 +1,297 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLanguage } from "../../context/LanguageContext";
-import { Anchor, ExternalLink, ChevronDown, ChevronUp, CheckCircle } from "lucide-react";
+import { Anchor, ExternalLink, ChevronDown, ChevronUp, CheckCircle, Download } from "lucide-react";
 
-const SANS    = '"Inter", "DM Sans", system-ui, sans-serif';
 const NAVY    = "#024e78";
 const PRIMARY = "#0369a1";
+const SKY     = "#0ea5e9";
+const DARK    = "#0a1628";
+const WHITE   = "#ffffff";
+const OFFWHITE= "#f0f6fb";
+const TEXT1   = "#0f172a";
+const TEXT2   = "#1e3a5f";
+const TEXT3   = "#334155";
+const MUTED   = "#64748b";
+const SERIF   = '"Georgia", "Times New Roman", serif';
+const SANS    = '"Montserrat", system-ui, sans-serif';
+const MONO    = '"Courier New", monospace';
 
-const C = {
-  en: {
-    hero:    "About Searibu",
-    heroSub: "Ocean Weather-Informed Marine Tourism System in Kepulauan Seribu",
-    heroDesc:"A capstone design project by ITB Geodesy and Geomatics Engineering students, building a unified marine information platform that integrates tidal prediction, and weather forecasting for safer and smarter island tourism.",
-    stdTitle: "Standards & Compliance",
-    stdSub:   "This system implements IHO S-100 and S-104 international standards for hydrographic data interoperability.",
-    s100Title:"IHO S-100 — Universal Hydrographic Data Model",
-    s100Body: "S-100 is the overarching framework issued by the International Hydrographic Organization (IHO) that defines how all maritime digital data products should be structured, encoded, and shared. It replaces the older S-57 standard and is designed to be compatible with modern geospatial standards (ISO/TC 211). S-100 was officially adopted by IHO member states in December 2024.",
-    s104Title:"IHO S-104 — Water Level Information for Surface Navigation",
-    s104Body: "S-104 is one of the product specifications within the S-100 framework, specifically designed for encapsulating tidal and water level data for use in ECDIS or any dynamic tide application. The Searibu system implements S-104 Edition 2.0.0 for both astronomical prediction data (from TPXO9) and observed data (from Luwes telemetry stations).",
-    tableTitle:  "S-104 Implementation Details",
-    tableHeaders:["Attribute", "Value", "Description"],
-    tableRows: [
-      ["productSpecification", "INT.IHO.S-104.2.0", "S-104 Edition 2.0.0"],
-      ["horizontalCRS",        "4326",              "WGS 84 (EPSG:4326)"],
-      ["verticalCoordinateBase","2",                "verticalDatum (S-104 Ed.2 mandatory)"],
-      ["verticalDatum",        "12",                "Mean Sea Level (MSL)"],
-      ["dataDynamicity (TPXO)","1",                 "astronomicalPrediction"],
-      ["dataDynamicity (Luwes)","3",                "observed"],
-      ["dataCodingFormat",     "1",                 "Time series at fixed stations"],
-      ["timeRecordInterval",   "3600 s",            "1-hour interval (TPXO)"],
-      ["TOL Correction",       "−2.156 m",          "Transfer of Level: Luwes → MSL TPXO9"],
-      ["encoding",             "HDF5",              "Hierarchical Data Format version 5"],
-    ],
-    methodTitle: "Methodology",
-    methodBody:  "Tidal predictions are computed using harmonic analysis based on the TPXO9-atlas-v5 model (Oregon State University), implementing 15 tidal constituents with astronomical arguments following Schureman (1958) and nodal factors following Foreman (1977). Real-time water level observations are collected every 60 seconds from the Luwes telemetry station operated by Pushidrosal, with a Transfer of Level correction (TOL = −2.156 m) applied to align the station datum to MSL.",
-    teamTitle:   "Project Team",
-    teamSub:     "Geodesy & Geomatics Engineering — Institut Teknologi Bandung — 2026",
-    teamMembers: [
-      { name: "Revalia Aura Cahaya Prasetyo",   nim: "15122003" },
-      { name: "Muhammad Syahrul Tasyrifan",     nim: "15122009" },
-      { name: "Evin Petra Pebrina Debataraja",  nim: "15122035" },
-      { name: "Ichsan Fachri Siroj",            nim: "15122092" },
-    ],
-    supervisor: "Supervisor: Prof. Dr.rer.nat. Poerbandono, S.T., M.M.",
-    refTitle: "References",
-    refs: [
-      { id: "[1]", text: "IHO. (2024). S-100 Universal Hydrographic Data Model, Edition 5.2.0.", url: "https://iho.int/uploads/user/pubs/standards/s-100/S-100_5.2.0_Final_Clean.pdf" },
-      { id: "[2]", text: "IHO. (2024). S-104 Water Level Information for Surface Navigation, Edition 2.0.0.", url: "https://iho.int/en/s-100-based-product-specifications" },
-      { id: "[3]", text: "IMO. (2024). Resolution MSC.530(106): Performance Standards for ECDIS.", url: "https://iho.int" },
-      { id: "[4]", text: "Amanda, A. et al. (2023). Process Design of Bathymetric, Water Level, and Surface Current Data Conversion According to IHO S-100 Standard. ITB Capstone Design Project.", url: "" },
-      { id: "[5]", text: "NOAA OCS. (2024). s100py: Python utilities for IHO S-100 HDF5 format.", url: "https://s100py.readthedocs.io" },
-      { id: "[6]", text: "Egbert, G.D. & Erofeeva, S.Y. (2002). Efficient Inverse Modeling of Barotropic Ocean Tides. TPXO9-atlas-v5.", url: "https://www.tpxo.net" },
-      { id: "[7]", text: "Schureman, P. (1958). Manual of Harmonic Analysis and Prediction of Tides. NOAA Special Pub. No. 98.", url: "" },
-      { id: "[8]", text: "Foreman, M.G.G. (1977). Manual for Tidal Heights Analysis and Prediction. IOS Report 77-10.", url: "" },
-    ],
-  },
-  id: {
-    hero:    "Tentang Searibu",
-    heroSub: "Sistem Informasi Kelautan untuk Wisata Bahari — Kepulauan Seribu",
-    heroDesc:"Proyek capstone mahasiswa Teknik Geodesi dan Geomatika ITB yang membangun platform informasi kelautan terpadu — mengintegrasikan prediksi pasang surut, telemetri real-time, dan prakiraan cuaca untuk wisata bahari yang lebih aman.",
-    stdTitle: "Standar & Kepatuhan",
-    stdSub:   "Sistem ini mengimplementasikan standar internasional IHO S-100 dan S-104 untuk interoperabilitas data hidrografi.",
-    s100Title:"IHO S-100 — Universal Hydrographic Data Model",
-    s100Body: "S-100 adalah kerangka induk yang dikeluarkan IHO untuk mendefinisikan cara semua produk data digital maritim disusun, dikodekan, dan dibagikan. Standar ini menggantikan S-57 dan dirancang kompatibel dengan standar geospasial modern (ISO/TC 211). S-100 diadopsi resmi oleh anggota IHO pada Desember 2024.",
-    s104Title:"IHO S-104 — Water Level Information for Surface Navigation",
-    s104Body: "S-104 adalah product specification dalam kerangka S-100 yang dirancang khusus untuk enkapsulasi dan transfer data pasut serta muka air untuk digunakan di ECDIS. Sistem Searibu mengimplementasikan S-104 Edition 2.0.0 untuk data prediksi astronomis (TPXO9) maupun data observasi (stasiun telemetri Luwes).",
-    tableTitle:  "Detail Implementasi S-104",
-    tableHeaders:["Atribut", "Nilai", "Keterangan"],
-    tableRows: [
-      ["productSpecification",  "INT.IHO.S-104.2.0", "S-104 Edition 2.0.0"],
-      ["horizontalCRS",         "4326",              "WGS 84 (EPSG:4326)"],
-      ["verticalCoordinateBase","2",                 "verticalDatum (wajib S-104 Ed.2)"],
-      ["verticalDatum",         "12",                "Mean Sea Level (MSL)"],
-      ["dataDynamicity (TPXO)", "1",                 "astronomicalPrediction"],
-      ["dataDynamicity (Luwes)","3",                 "observed"],
-      ["dataCodingFormat",      "1",                 "Time series di stasiun tetap"],
-      ["timeRecordInterval",    "3600 s",            "Interval 1 jam (TPXO)"],
-      ["Koreksi TOL",           "−2.156 m",          "Transfer of Level: Luwes → MSL TPXO9"],
-      ["encoding",              "HDF5",              "Hierarchical Data Format version 5"],
-    ],
-    methodTitle: "Metodologi",
-    methodBody:  "Prediksi pasut dihitung menggunakan analisis harmonik model TPXO9-atlas-v5 (Oregon State University) dengan 15 konstituen pasut. Argumen astronomis mengikuti Schureman (1958) dan faktor nodal mengikuti Foreman (1977). Observasi muka air real-time dikumpulkan setiap 60 detik dari stasiun telemetri Luwes (Pushidrosal), dengan koreksi Transfer of Level (TOL = −2.156 m) untuk menyelaraskan datum stasiun ke MSL.",
-    teamTitle:   "Tim Proyek",
-    teamSub:     "Teknik Geodesi dan Geomatika — Institut Teknologi Bandung — 2026",
-    teamMembers: [
-      { name: "Revalia Aura Cahaya Prasetyo",   nim: "15122003" },
-      { name: "Muhammad Syahrul Tasyrifan",     nim: "15122009" },
-      { name: "Evin Petra Pebrina Debataraja",  nim: "15122035" },
-      { name: "Ichsan Fachri Siroj",            nim: "15122092" },
-    ],
-    supervisor: "Pembimbing: Prof. Dr.rer.nat. Poerbandono, S.T., M.M.",
-    refTitle: "Referensi",
-    refs: [
-      { id: "[1]", text: "IHO. (2024). S-100 Universal Hydrographic Data Model, Edition 5.2.0.", url: "https://iho.int/uploads/user/pubs/standards/s-100/S-100_5.2.0_Final_Clean.pdf" },
-      { id: "[2]", text: "IHO. (2024). S-104 Water Level Information for Surface Navigation, Edition 2.0.0.", url: "https://iho.int/en/s-100-based-product-specifications" },
-      { id: "[3]", text: "IMO. (2024). Resolution MSC.530(106): Performance Standards for ECDIS.", url: "https://iho.int" },
-      { id: "[4]", text: "Amanda, A. et al. (2023). Process Design of Bathymetric, Water Level, and Surface Current Data Conversion According to IHO S-100 Standard. ITB Capstone Design Project.", url: "" },
-      { id: "[5]", text: "NOAA OCS. (2024). s100py: Python utilities for IHO S-100 HDF5 format.", url: "https://s100py.readthedocs.io" },
-      { id: "[6]", text: "Egbert, G.D. & Erofeeva, S.Y. (2002). Efficient Inverse Modeling of Barotropic Ocean Tides. TPXO9-atlas-v5.", url: "https://www.tpxo.net" },
-      { id: "[7]", text: "Schureman, P. (1958). Manual of Harmonic Analysis and Prediction of Tides. NOAA Special Pub. No. 98.", url: "" },
-      { id: "[8]", text: "Foreman, M.G.G. (1977). Manual for Tidal Heights Analysis and Prediction. IOS Report 77-10.", url: "" },
-    ],
-  },
+/* ── Photo Placeholder ───────────────────────────────────────────────────── */
+const PhotoPlaceholder: React.FC<{
+  src?: string; alt: string; size?: number;
+  shape?: "circle" | "square"; initials?: string;
+}> = ({ src, alt, size = 160, shape = "circle", initials }) => {
+  const [error, setError] = useState(false);
+  const radius = shape === "circle" ? "50%" : "12px";
+  if (src && !error) {
+    return (
+      <img src={src} alt={alt} onError={() => setError(true)}
+        style={{ width: size, height: size, borderRadius: radius, objectFit: "cover",
+          display: "block", border: "3px solid rgba(3,105,161,0.18)",
+          boxShadow: "0 8px 32px rgba(2,78,120,0.18)" }} />
+    );
+  }
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: radius,
+      background: `linear-gradient(135deg,${NAVY} 0%,${PRIMARY} 60%,${SKY} 100%)`,
+      display: "flex", flexDirection: "column", alignItems: "center",
+      justifyContent: "center", gap: 5,
+      border: "3px solid rgba(3,105,161,0.25)",
+      boxShadow: "0 8px 32px rgba(2,78,120,0.18)",
+      position: "relative", overflow: "hidden",
+    }}>
+      <div style={{ position: "absolute", inset: 0,
+        backgroundImage: "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.12) 0%, transparent 60%)",
+        pointerEvents: "none" }} />
+      {initials
+        ? <span style={{ fontFamily: SANS, fontSize: size * 0.22, fontWeight: 700,
+            color: "rgba(255,255,255,0.92)", letterSpacing: "-0.02em", zIndex: 1 }}>{initials}</span>
+        : <svg width={size * 0.32} height={size * 0.32} viewBox="0 0 24 24" fill="none" style={{ zIndex: 1 }}>
+            <circle cx="12" cy="8" r="4" fill="rgba(255,255,255,0.5)" />
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+          </svg>}
+      <span style={{ fontFamily: SANS, fontSize: Math.max(9, size * 0.09), fontWeight: 600,
+        color: "rgba(255,255,255,0.50)", letterSpacing: "0.06em",
+        textTransform: "uppercase", zIndex: 1 }}>foto</span>
+    </div>
+  );
 };
 
+/* ── IntersectionObserver hook ───────────────────────────────────────────── */
+const useInView = (threshold = 0.1) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setInView(true); }, { threshold });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+  return { ref, inView };
+};
+
+/* ── Collapsible section ─────────────────────────────────────────────────── */
 const Section: React.FC<{ title: string; children: React.ReactNode; defaultOpen?: boolean }> = ({
   title, children, defaultOpen = true,
 }) => {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-      <button
-        onClick={() => setOpen((p) => !p)}
-        style={{
-          width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: "14px 20px", background: "#f8fafc", border: "none", cursor: "pointer",
-          fontFamily: SANS, fontSize: 14, fontWeight: 600, color: NAVY,
-          textAlign: "left" as const, gap: 8,
-        }}
-      >
+    <div style={{ border: "1px solid #dbeafe", borderRadius: 14, overflow: "hidden", marginBottom: 16 }}>
+      <button onClick={() => setOpen(p => !p)} style={{
+        width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
+        padding: "14px 20px", background: OFFWHITE, border: "none", cursor: "pointer",
+        fontFamily: SANS, fontSize: 14, fontWeight: 700, color: NAVY, textAlign: "left", gap: 8,
+      }}>
         <span style={{ flex: 1 }}>{title}</span>
-        {open
-          ? <ChevronUp   size={16} style={{ color: "#94a3b8", flexShrink: 0 }} />
-          : <ChevronDown size={16} style={{ color: "#94a3b8", flexShrink: 0 }} />}
+        {open ? <ChevronUp size={16} style={{ color: MUTED, flexShrink: 0 }} />
+               : <ChevronDown size={16} style={{ color: MUTED, flexShrink: 0 }} />}
       </button>
-      {open && <div style={{ padding: "16px 20px", background: "#fff" }}>{children}</div>}
+      {open && <div style={{ padding: "18px 20px", background: WHITE }}>{children}</div>}
     </div>
   );
 };
 
+/* ── Content copy ────────────────────────────────────────────────────────── */
+const C = {
+  en: {
+    hero: "About Searibu", heroSub: "Ocean Weather-Informed Marine Tourism System in Kepulauan Seribu",
+    heroDesc: "A capstone design project by ITB Geodesy and Geomatics Engineering students, building a unified marine information platform integrating tidal prediction, real-time observations, and weather forecasting for safer and smarter island tourism.",
+    downloadBtn: "Download Manual",
+    missionTitle: "Our Mission",
+    missionBody: "To provide accurate, science-backed marine information that empowers tourists, researchers, and maritime professionals operating in the Kepulauan Seribu archipelago — making every voyage safer and every decision better-informed.",
+    team: [
+      { name: "Revalia Aura Cahaya Prasetyo",  nim: "15122003", role: "Frontend Developer", photo: "" },
+      { name: "Muhammad Syahrul Tasyrifan",    nim: "15122009", role: "Backend Developer",  photo: "" },
+      { name: "Evin Petra Pebrina Debataraja", nim: "15122035", role: "GIS & Data",          photo: "" },
+      { name: "Ichsan Fachri Siroj",           nim: "15122092", role: "Full-stack & Lead",   photo: "" },
+    ],
+    supTitle: "Supervisors",
+    supervisors: [
+      { name: "Prof. Dr.rer.nat. Poerbandono, S.T., M.M.",    title: "Supervisor 1", photo: "" },
+      { name: "Gabriella Alodia, S.T., M.Sc., Ph.D.",         title: "Supervisor 2", photo: "" },
+      { name: "Dr.techn. Dudy Darmawan Wijaya, S.T., M.Sc.",  title: "Supervisor 3", photo: "" },
+    ],
+    refTitle: "References",
+    refs: [
+      { id: "[1]", text: "IHO. (2024). S-100 Universal Hydrographic Data Model, Edition 5.2.0.", url: "https://iho.int/uploads/user/pubs/standards/s-100/S-100_5.2.0_Final_Clean.pdf" },
+      { id: "[2]", text: "IHO. (2024). S-104 Water Level Information for Surface Navigation, Edition 2.0.0.", url: "https://iho.int/en/s-100-based-product-specifications" },
+      { id: "[3]", text: "Egbert, G.D. & Erofeeva, S.Y. (2002). Efficient Inverse Modeling of Barotropic Ocean Tides.", url: "https://www.tpxo.net" },
+      { id: "[4]", text: "Schureman, P. (1958). Manual of Harmonic Analysis and Prediction of Tides. NOAA Special Pub. No. 98.", url: "" },
+      { id: "[5]", text: "Foreman, M.G.G. (1977). Manual for Tidal Heights Analysis and Prediction. IOS Report 77-10.", url: "" },
+      { id: "[6]", text: "NOAA OCS. (2024). s100py: Python utilities for IHO S-100 HDF5 format.", url: "https://s100py.readthedocs.io" },
+    ],
+  },
+  id: {
+    hero: "Tentang Searibu", heroSub: "Sistem Informasi Kelautan untuk Wisata Bahari di Kepulauan Seribu",
+    heroDesc: "Proyek capstone mahasiswa Teknik Geodesi dan Geomatika ITB yang membangun platform informasi kelautan terpadu — mengintegrasikan prediksi pasang surut, telemetri real-time, dan prakiraan cuaca untuk wisata bahari yang lebih aman.",
+    downloadBtn: "Unduh Manual",
+    missionTitle: "Misi Kami",
+    missionBody: "Menyediakan informasi kelautan yang akurat dan berbasis ilmiah untuk memberdayakan wisatawan, peneliti, dan profesional maritim yang beroperasi di Kepulauan Seribu — menjadikan setiap perjalanan lebih aman dan setiap keputusan lebih terinformasi.",
+    teamTitle: "Tim Pengembang", teamSub: "Teknik Geodesi dan Geomatika · Institut Teknologi Bandung · 2026",
+    team: [
+      { name: "Revalia Aura Cahaya Prasetyo",  nim: "15122003", role: "Frontend Developer", photo: "" },
+      { name: "Muhammad Syahrul Tasyrifan",    nim: "15122009", role: "Backend Developer",  photo: "" },
+      { name: "Evin Petra Pebrina Debataraja", nim: "15122035", role: "GIS & Data",          photo: "" },
+      { name: "Ichsan Fachri Siroj",           nim: "15122092", role: "Full-stack & Lead",   photo: "" },
+    ],
+    supTitle: "Dosen Pembimbing", supSub: "Fakultas Ilmu dan Teknologi Kebumian · Institut Teknologi Bandung",
+    supervisors: [
+      { name: "Prof. Dr.rer.nat. Poerbandono, S.T., M.M.",    title: "Pembimbing 1", photo: "" },
+      { name: "Gabriella Alodia, S.T., M.Sc., Ph.D.",         title: "Pembimbing 2", photo: "" },
+      { name: "Dr.techn. Dudy Darmawan Wijaya, S.T., M.Sc.",  title: "Pembimbing 3", photo: "" },
+    ],
+  },
+};
+
+/* ── Stat card ───────────────────────────────────────────────────────────── */
+const StatCard: React.FC<{ value: string; label: string; delay: number; inView: boolean }> = ({ value, label, delay, inView }) => (
+  <div style={{ textAlign: "center", padding: "24px 16px",
+    opacity: inView ? 1 : 0, transform: inView ? "translateY(0)" : "translateY(20px)",
+    transition: `opacity 0.7s ease ${delay}ms, transform 0.7s ease ${delay}ms` }}>
+    <p style={{ fontFamily: SANS, fontSize: "clamp(26px,3.5vw,40px)", fontWeight: 800, color: WHITE, margin: 0, letterSpacing: "-0.03em" }}>{value}</p>
+    <p style={{ fontFamily: SANS, fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.55)", margin: "4px 0 0", letterSpacing: "0.06em", textTransform: "uppercase" }}>{label}</p>
+  </div>
+);
+
+/* ── Team card ───────────────────────────────────────────────────────────── */
+const TeamCard: React.FC<{ name: string; nim: string; role: string; photo: string; delay: number; inView: boolean }> = ({ name, nim, role, photo, delay, inView }) => {
+  const initials = name.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase();
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", alignItems: "center", gap: 14,
+      padding: "28px 18px 24px", background: WHITE, border: "1px solid #dbeafe",
+      borderRadius: 16, boxShadow: "0 4px 20px rgba(2,78,120,0.08)",
+      opacity: inView ? 1 : 0, transform: inView ? "translateY(0)" : "translateY(24px)",
+      transition: `opacity 0.7s ease ${delay}ms, transform 0.7s ease ${delay}ms, box-shadow 0.2s`,
+    }}
+    onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 12px 36px rgba(2,78,120,0.16)")}
+    onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 4px 20px rgba(2,78,120,0.08)")}>
+      <PhotoPlaceholder src={photo} alt={name} size={120} shape="circle" initials={initials} />
+      <div style={{ textAlign: "center" }}>
+        <p style={{ fontFamily: SANS, fontSize: 13, fontWeight: 700, color: TEXT1, margin: "0 0 4px", lineHeight: 1.35 }}>{name}</p>
+        <p style={{ fontFamily: MONO, fontSize: 11, color: PRIMARY, margin: "0 0 8px", fontWeight: 600 }}>{nim}</p>
+        <span style={{ display: "inline-block", padding: "3px 12px", borderRadius: 99, background: "#eff8ff", border: "1px solid #bfdbfe", fontFamily: SANS, fontSize: 11, fontWeight: 600, color: PRIMARY }}>{role}</span>
+      </div>
+    </div>
+  );
+};
+
+/* ── Supervisor card ─────────────────────────────────────────────────────── */
+const SupervisorCard: React.FC<{ name: string; title: string; photo: string; delay: number; inView: boolean }> = ({ name, title, photo, delay, inView }) => {
+  const initials = name.split(" ").filter(w => w.length > 2 && !w.endsWith(".")).slice(0, 2).map(w => w[0]).join("").toUpperCase() || name.slice(0, 2).toUpperCase();
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", alignItems: "center", gap: 16,
+      padding: "36px 24px 28px", background: WHITE, border: "1px solid #dbeafe",
+      borderRadius: 18, boxShadow: "0 4px 24px rgba(2,78,120,0.09)", position: "relative", overflow: "hidden",
+      opacity: inView ? 1 : 0, transform: inView ? "translateY(0)" : "translateY(28px)",
+      transition: `opacity 0.8s ease ${delay}ms, transform 0.8s ease ${delay}ms, box-shadow 0.2s`,
+    }}
+    onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 16px 48px rgba(2,78,120,0.16)")}
+    onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 4px 24px rgba(2,78,120,0.09)")}>
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg,${NAVY},${SKY})` }} />
+      <PhotoPlaceholder src={photo} alt={name} size={140} shape="circle" initials={initials} />
+      <div style={{ textAlign: "center" }}>
+        <p style={{ fontFamily: SANS, fontSize: 14, fontWeight: 700, color: TEXT1, margin: "0 0 8px", lineHeight: 1.35 }}>{name}</p>
+        <span style={{ display: "inline-block", padding: "4px 14px", borderRadius: 99, background: `linear-gradient(135deg,${NAVY},${PRIMARY})`, fontFamily: SANS, fontSize: 11, fontWeight: 700, color: WHITE, letterSpacing: "0.04em" }}>{title}</span>
+      </div>
+    </div>
+  );
+};
+
+/* ── AboutPage ───────────────────────────────────────────────────────────── */
 export const AboutPage: React.FC = () => {
   const { language } = useLanguage();
   const c = C[language as "en" | "id"];
+  const statsSection   = useInView(0.15);
+  const missionSection = useInView(0.15);
+  const teamSection    = useInView(0.1);
+  const supSection     = useInView(0.1);
 
   return (
-    <div style={{ background: "#f8fafc", minHeight: "100vh", paddingTop: 62 }}>
+    <div style={{ background: OFFWHITE, minHeight: "100vh", paddingTop: 62 }}>
       <style>{`
-        .about-team-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-        @media (max-width: 480px) { .about-team-grid { grid-template-columns: 1fr; gap: 8px; } }
-        .about-hero-pad   { padding: 56px 48px 48px; }
-        @media (max-width: 600px) { .about-hero-pad { padding: 40px 20px 36px; } }
-        .about-content-pad { max-width: 900px; margin: 0 auto; padding: 32px 24px 64px; }
-        @media (max-width: 480px) { .about-content-pad { padding: 24px 16px 56px; } }
+        .ab-hero-grid { display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:center; }
+        @media(max-width:900px){ .ab-hero-grid { grid-template-columns:1fr; gap:28px; } }
+        .ab-stats { display:grid; grid-template-columns:repeat(4,1fr); }
+        @media(max-width:680px){ .ab-stats { grid-template-columns:repeat(2,1fr); } }
+        .ab-team  { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; }
+        @media(max-width:960px){ .ab-team  { grid-template-columns:repeat(2,1fr); } }
+        @media(max-width:480px){ .ab-team  { grid-template-columns:1fr; } }
+        .ab-sup   { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; }
+        @media(max-width:860px){ .ab-sup   { grid-template-columns:repeat(2,1fr); } }
+        @media(max-width:520px){ .ab-sup   { grid-template-columns:1fr; } }
+        .ab-pad   { padding:72px 48px; }
+        @media(max-width:768px){ .ab-pad   { padding:52px 20px; } }
+        @media(max-width:480px){ .ab-pad   { padding:40px 16px; } }
+        .ab-content { max-width:960px; margin:0 auto; padding:48px 24px 80px; }
+        @media(max-width:600px){ .ab-content { padding:32px 16px 64px; } }
       `}</style>
 
-      <div className="about-hero-pad" style={{ background: `linear-gradient(135deg,${NAVY} 0%,${PRIMARY} 100%)`, textAlign: "center" }}>
-        <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-          <Anchor size={26} color="#fff" />
-        </div>
-        <h1 style={{ fontFamily: SANS, fontSize: "clamp(22px,5vw,32px)", fontWeight: 800, color: "#fff", marginBottom: 8, letterSpacing: "-0.02em" }}>{c.hero}</h1>
-        <p style={{ fontFamily: SANS, fontSize: 14, color: "rgba(255,255,255,0.7)", marginBottom: 12 }}>{c.heroSub}</p>
-        <p style={{ fontFamily: SANS, fontSize: 15, color: "rgba(255,255,255,0.55)", maxWidth: 620, margin: "0 auto", lineHeight: 1.7 }}>{c.heroDesc}</p>
-      </div>
-
-      <div className="about-content-pad">
-        <div style={{ marginBottom: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-            <CheckCircle size={18} style={{ color: PRIMARY, flexShrink: 0 }} />
-            <h2 style={{ fontFamily: SANS, fontSize: 20, fontWeight: 700, color: NAVY, margin: 0 }}>{c.stdTitle}</h2>
-          </div>
-          <p style={{ fontFamily: SANS, fontSize: 14, color: "#475569", marginBottom: 20, lineHeight: 1.7 }}>{c.stdSub}</p>
-        </div>
-
-        <Section title={c.s100Title}>
-          <p style={{ fontFamily: SANS, fontSize: 14, color: "#475569", lineHeight: 1.8, margin: 0 }}>{c.s100Body}</p>
-        </Section>
-
-        <Section title={c.s104Title}>
-          <p style={{ fontFamily: SANS, fontSize: 14, color: "#475569", lineHeight: 1.8, marginBottom: 16 }}>{c.s104Body}</p>
-          <p style={{ fontFamily: SANS, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" as const, color: "#94a3b8", marginBottom: 8 }}>{c.tableTitle}</p>
-          <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: SANS, fontSize: 12, minWidth: 320 }}>
-              <thead>
-                <tr style={{ background: PRIMARY }}>
-                  {c.tableHeaders.map((h, i) => (
-                    <th key={i} style={{ padding: "8px 12px", color: "#fff", textAlign: "left", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {c.tableRows.map((row, i) => (
-                  <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
-                    <td style={{ padding: "7px 12px", color: NAVY, fontFamily: '"Courier New",monospace', fontSize: 11, borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>{row[0]}</td>
-                    <td style={{ padding: "7px 12px", color: PRIMARY, fontFamily: '"Courier New",monospace', fontSize: 11, borderBottom: "1px solid #f1f5f9", fontWeight: 600, whiteSpace: "nowrap" }}>{row[1]}</td>
-                    <td style={{ padding: "7px 12px", color: "#64748b", borderBottom: "1px solid #f1f5f9" }}>{row[2]}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Section>
-
-        <Section title={c.methodTitle}>
-          <p style={{ fontFamily: SANS, fontSize: 14, color: "#475569", lineHeight: 1.8, margin: 0 }}>{c.methodBody}</p>
-        </Section>
-
-        <Section title={c.teamTitle}>
-          <p style={{ fontFamily: SANS, fontSize: 12, color: "#94a3b8", marginBottom: 14 }}>{c.teamSub}</p>
-          <div className="about-team-grid">
-            {c.teamMembers.map((m, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0", minWidth: 0 }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: PRIMARY, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontFamily: SANS, fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
-                  {m.name.split(" ").slice(0, 2).map((w) => w[0]).join("")}
-                </div>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <p style={{ fontFamily: SANS, fontSize: 12, fontWeight: 700, color: NAVY, margin: "0 0 2px", lineHeight: 1.35, wordBreak: "break-word", overflowWrap: "break-word" }}>{m.name}</p>
-                  <p style={{ fontFamily: SANS, fontSize: 11, color: "#94a3b8", margin: 0 }}>{m.nim}</p>
-                </div>
+      {/* ── HERO ── */}
+      <section style={{ background:`linear-gradient(135deg,${DARK} 0%,${NAVY} 50%,${PRIMARY} 100%)`, position:"relative", overflow:"hidden" }}>
+        <div style={{ position:"absolute", inset:0, backgroundImage:"radial-gradient(circle, rgba(14,165,233,0.07) 1px, transparent 1px)", backgroundSize:"32px 32px", pointerEvents:"none" }} />
+        <div style={{ position:"absolute", bottom:0, left:0, right:0, height:80, background:`linear-gradient(to top,${OFFWHITE},transparent)`, pointerEvents:"none" }} />
+        <div className="ab-pad" style={{ position:"relative", zIndex:2, maxWidth:1200, margin:"0 auto" }}>
+          <div className="ab-hero-grid">
+            <div>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20 }}>
+                <img src="public/logo.svg" alt="Logo Searibu" />
               </div>
-            ))}
+              <h1 style={{ fontFamily:SANS, fontSize:"clamp(26px,5vw,46px)", fontWeight:800, color:WHITE, margin:"0 0 14px", letterSpacing:"-0.03em", lineHeight:1.05 }}>{c.hero}</h1>
+              <p style={{ fontFamily:SANS, fontSize:12, fontWeight:700, color:"rgba(14,165,233,0.85)", margin:"0 0 14px", letterSpacing:"0.05em" }}>{c.heroSub}</p>
+              <p style={{ fontFamily:SERIF, fontStyle:"italic", fontSize:"clamp(14px,1.6vw,16px)", lineHeight:1.78, color:"rgba(255,255,255,0.70)", margin:"0 0 28px", maxWidth:480 }}>{c.heroDesc}</p>
+              <a href="/searibu_manual.pdf" target="_blank" rel="noopener noreferrer"
+                style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"11px 22px", borderRadius:9, background:"rgba(255,255,255,0.12)", border:"1.5px solid rgba(255,255,255,0.28)", color:WHITE, fontFamily:SANS, fontSize:13, fontWeight:600, textDecoration:"none", transition:"all 0.2s" }}
+                onMouseEnter={e=>(e.currentTarget.style.background="rgba(255,255,255,0.22)")}
+                onMouseLeave={e=>(e.currentTarget.style.background="rgba(255,255,255,0.12)")}>
+                <Download size={14} /> {c.downloadBtn}
+              </a>
+            </div>
           </div>
+        </div>
+      </section>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "rgba(3,105,161,0.05)", borderRadius: 8, border: "1px solid rgba(3,105,161,0.15)", marginTop: 4 }}>
-            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(3,105,161,0.12)", display: "flex", alignItems: "center", justifyContent: "center", color: PRIMARY, fontFamily: SANS, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>SV</div>
-            <p style={{ fontFamily: SANS, fontSize: 13, color: "#475569", margin: 0, lineHeight: 1.4 }}>{c.supervisor}</p>
-          </div>
-        </Section>
+      {/* ── MISSION ── */}
+      <section className="ab-pad" ref={missionSection.ref} style={{ background:WHITE, borderBottom:"1px solid #dbeafe" }}>
+        <div style={{ maxWidth:780, margin:"0 auto", textAlign:"center" }}>
+          <h2 style={{ fontFamily:SANS, fontSize:"clamp(20px,3.5vw,30px)", fontWeight:800, color:TEXT1, margin:"0 0 18px", letterSpacing:"-0.02em",
+            opacity:missionSection.inView?1:0, transform:missionSection.inView?"translateY(0)":"translateY(16px)",
+            transition:"opacity 0.7s ease, transform 0.7s ease" }}>{c.missionTitle}</h2>
+          <p style={{ fontFamily:SERIF, fontStyle:"italic", fontSize:"clamp(15px,2vw,17px)", lineHeight:1.8, color:TEXT2, maxWidth:660, margin:"0 auto",
+            opacity:missionSection.inView?1:0, transform:missionSection.inView?"translateY(0)":"translateY(16px)",
+            transition:"opacity 0.7s ease 120ms, transform 0.7s ease 120ms" }}>
+            "{c.missionBody}"
+          </p>
+        </div>
+      </section>
 
-        <Section title={c.refTitle} defaultOpen={false}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {c.refs.map((r, i) => (
-              <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                <span style={{ fontFamily: SANS, fontSize: 12, fontWeight: 700, color: PRIMARY, flexShrink: 0, marginTop: 1 }}>{r.id}</span>
-                <span style={{ fontFamily: SANS, fontSize: 12, color: "#475569", lineHeight: 1.6, flex: 1 }}>
-                  {r.text}
-                  {r.url && (
-                    <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 6, color: PRIMARY, display: "inline-flex", alignItems: "center", gap: 2 }}>
-                      <ExternalLink size={10} />
-                    </a>
-                  )}
-                </span>
-              </div>
-            ))}
+      {/* ── TEAM ── */}
+      <section className="ab-pad" ref={teamSection.ref}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <div style={{ textAlign:"center", marginBottom:40 }}>
+            <div style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"5px 16px", borderRadius:99, background:"#eff8ff", border:"1px solid #bfdbfe", marginBottom:14 }}>
+              <span style={{ fontFamily:SANS, fontSize:11, fontWeight:700, color:PRIMARY, letterSpacing:"0.06em", textTransform:"uppercase" }}>
+                {language==="id"?"Tim Kami":"Our Team"}
+              </span>
+            </div>
           </div>
-        </Section>
-      </div>
+          <div className="ab-team">
+            {c.team.map((m,i) => <TeamCard key={i} {...m} delay={i*80} inView={teamSection.inView} />)}
+          </div>
+        </div>
+      </section>
+
+      {/* ── SUPERVISORS ── */}
+      <section className="ab-pad" ref={supSection.ref} style={{ background:WHITE }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <div style={{ textAlign:"center", marginBottom:40 }}>
+          </div>
+          <div className="ab-sup">
+            {c.supervisors.map((s,i) => <SupervisorCard key={i} {...s} delay={i*100} inView={supSection.inView} />)}
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

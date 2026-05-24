@@ -176,6 +176,7 @@ export const WebGISPage: React.FC = () => {
             basemap={basemap}
             onGridClick={handleGridClick}
             onCoordinateSearch={handleGridClick}
+            panelOpen={panelOpen} 
           />
         </div>
 

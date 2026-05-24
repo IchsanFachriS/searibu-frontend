@@ -76,15 +76,12 @@ const LOW_BG    = "#fffbf0";
 const LOW_BDR   = "#fde68a";
 const LOW_TEXT  = "#b45309";
 
-const SANS = '"Inter", "DM Sans", system-ui, sans-serif';
+const SANS = '"Plus Jakarta Sans", "Inter", "DM Sans", system-ui, sans-serif';
 const MONO = '"Inter", "DM Sans", system-ui, sans-serif';
 
 const TOL_CORRECTION = -2.156;
 const API_BASE = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:5000";
 
-/* ── Date range constants ──────────────────────────────────────────────── */
-// Free  : 10 days back — 3 days forward
-// Pro   : unlimited back (no min enforced) — 10 days forward
 const FREE_HIST_DAYS = 10;
 const FREE_FWD_DAYS  = 3;
 const PRO_FWD_DAYS   = 10;
@@ -334,8 +331,8 @@ const OverlayChart: React.FC<{
           interaction: { mode: "index", intersect: false, axis: "x" },
           plugins: { legend: { display: false }, tooltip: { enabled: false } },
           scales: {
-            x: { type: "linear", min: 0, max: 24, grid: { color: (c: any) => c.tick.value % 3 === 0 ? "rgba(59,130,246,0.08)" : "rgba(59,130,246,0.03)" }, border: { display: false }, ticks: { color: TEXT_HINT, font: { family: MONO, size: 9 }, maxRotation: 0, stepSize: 1, autoSkip: false, includeBounds: true, callback: (v: any) => { const n = Number(v); if (n === 0) return "00:00"; if (n === 24) return "24:00"; return n % 3 === 0 ? `${n.toString().padStart(2,"0")}:00` : ""; } } },
-            y: { grid: { color: "rgba(59,130,246,0.05)" }, border: { display: false }, ticks: { color: TEXT_HINT, font: { family: MONO, size: 9 }, callback: (v: any) => `${Number(v).toFixed(2)} m` }, title: { display: true, text: "Water Level (m)", color: TEXT_HINT, font: { size: 9, family: MONO } } },
+            x: { type: "linear", min: 0, max: 24, padding: { left: 5, right: 5 }, grid: { color: (c: any) => c.tick.value % 3 === 0 ? "rgba(59,130,246,0.08)" : "rgba(59,130,246,0.03)" }, border: { display: false }, ticks: { color: TEXT_HINT, font: { family: MONO, size: 9.5 }, maxRotation: 0, stepSize: 1, autoSkip: false, includeBounds: true, callback: (v: any) => { const n = Number(v); if (n === 0) return "00:00"; if (n === 24) return "24:00"; return n % 3 === 0 ? `${n.toString().padStart(2,"0")}:00` : ""; } } },
+            y: { grid: { color: "rgba(59,130,246,0.05)" }, border: { display: false }, ticks: { color: TEXT_HINT, font: { family: MONO, size: 9.5 }, callback: (v: any) => `${Number(v).toFixed(2)} m` }, title: { display: true, text: "Water Level (m)", color: TEXT_HINT, font: { size: 9.5, family: MONO } } },
           },
           onHover: (event: any, _elements: any[], chart: any) => {
             if (!event?.native) { hideTooltip(); return; }
@@ -384,8 +381,8 @@ const OverlayChart: React.FC<{
             if (x < ca.left || x > ca.right) return;
             c.save();
             c.beginPath(); c.moveTo(x, ca.top); c.lineTo(x, ca.bottom);
-            c.strokeStyle = "rgba(251,113,133,0.65)"; c.lineWidth = 1.5; c.setLineDash([4, 4]); c.stroke();
-            c.fillStyle = "rgba(251,113,133,0.9)"; c.font = `bold 8.5px ${MONO}`; c.textAlign = "center"; c.fillText("NOW", x, ca.top + 9);
+            c.strokeStyle = "rgba(251,113,133,0.75)"; c.lineWidth = 1.5; c.setLineDash([4, 4]); c.stroke();
+            c.fillStyle = "rgba(251,113,133,0.95)"; c.font = `bold 9px ${MONO}`; c.textAlign = "center"; c.fillText("NOW", x, ca.top + 10);
             c.restore();
           },
         }],
@@ -425,7 +422,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
   const [weatherFromCache, setWeatherFromCache] = useState(false);
   const [selDate, setSelDate] = useState<string>(todayISO());
 
-  // ── Date range based on subscription tier ──────────────────────────────
   const todayStr   = todayISO();
   const minDateISO = isPro ? "2000-01-01" : addDays(todayStr, -FREE_HIST_DAYS);
   const maxDateISO = isPro ? addDays(todayStr, PRO_FWD_DAYS) : addDays(todayStr, FREE_FWD_DAYS);
@@ -458,8 +454,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
       }
 
       if (!wd || !md) {
-        // Pro: fetch up to 16 days back + 12 days forward for full historical coverage
-        // Free: 12 days back + 5 days forward (with buffer)
         const wxDaysBack = isPro ? 16 : FREE_HIST_DAYS + 2;
         const wxDaysFwd  = isPro ? PRO_FWD_DAYS + 2 : FREE_FWD_DAYS + 2;
         const wxStart = new Date(today); wxStart.setDate(wxStart.getDate() - wxDaysBack);
@@ -522,8 +516,8 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
         windSpd: null,
         windDir: null,
         wCode: null,
-        ...wx,       // spread wx dulu
-        ...marine,   // lalu marine — tidak ada duplikat sebelum spread
+        ...wx,       
+        ...marine,   
       } as HourRow;
     });
   };
@@ -568,22 +562,22 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
   };
 
   const SL: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" as const, color: TEXT_HINT, marginBottom: 7, fontFamily: SANS }}>{children}</p>
+    <p style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" as const, color: TEXT_HINT, marginBottom: 7, fontFamily: SANS }}>{children}</p>
   );
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", borderLeft: `1px solid ${BORDER}`, fontFamily: SANS, background: BG_PAGE, overscrollBehavior: "contain", minWidth: 0 }}>
 
       {/* Top bar */}
-      <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 13px", background: BG_CARD, borderBottom: `1px solid ${BORDER}`, gap: 7, minWidth: 0 }}>
+      <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: BG_CARD, borderBottom: `1px solid ${BORDER}`, gap: 7, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
-          <h2 style={{ fontSize: 12.5, fontWeight: 700, color: TEXT_PRI, letterSpacing: "-0.01em", fontFamily: SANS, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <h2 style={{ fontSize: 14, fontWeight: 700, color: TEXT_PRI, letterSpacing: "-0.01em", fontFamily: SANS, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {lang === "en" ? "Marine Information" : "Informasi Kelautan"}
           </h2>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
-          <button onClick={() => { clearCache(coordinates.lat, coordinates.lon); fetchAll(selDate, true); }} title={lang === "en" ? "Refresh weather data" : "Perbarui data cuaca"} style={{ padding: 5, borderRadius: 6, border: "none", background: "transparent", cursor: "pointer", color: TEXT_HINT, display: "flex" }} onMouseEnter={(e) => (e.currentTarget.style.background = BG_MUTED)} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}><RefreshCw size={11} /></button>
-          <button onClick={onClose} style={{ padding: 5, borderRadius: 6, border: "none", background: "transparent", cursor: "pointer", color: TEXT_HINT, display: "flex" }} onMouseEnter={(e) => (e.currentTarget.style.background = BG_MUTED)} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}><X size={13} /></button>
+          <button onClick={() => { clearCache(coordinates.lat, coordinates.lon); fetchAll(selDate, true); }} title={lang === "en" ? "Refresh weather data" : "Perbarui data cuaca"} style={{ padding: 6, borderRadius: 6, border: "none", background: "transparent", cursor: "pointer", color: TEXT_HINT, display: "flex" }} onMouseEnter={(e) => (e.currentTarget.style.background = BG_MUTED)} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}><RefreshCw size={13} /></button>
+          <button onClick={onClose} style={{ padding: 6, borderRadius: 6, border: "none", background: "transparent", cursor: "pointer", color: TEXT_HINT, display: "flex" }} onMouseEnter={(e) => (e.currentTarget.style.background = BG_MUTED)} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}><X size={15} /></button>
         </div>
       </div>
 
@@ -595,12 +589,12 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
         {error && !loading && (
           <div style={{ margin: 14, padding: 14, borderRadius: 12, background: "#fff1f2", border: "1px solid #fecdd3" }}>
             <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-              <AlertCircle size={14} style={{ color: "#f87171", flexShrink: 0, marginTop: 1 }} />
+              <AlertCircle size={15} style={{ color: "#f87171", flexShrink: 0, marginTop: 1 }} />
               <div>
-                <p style={{ color: "#be123c", fontSize: 12.5, fontWeight: 600, marginBottom: 3, fontFamily: SANS }}>{lang === "en" ? "Unable to load data" : "Gagal memuat data"}</p>
-                <p style={{ color: "#e11d48", fontSize: 11, marginBottom: 9, fontFamily: SANS }}>{error}</p>
-                <button onClick={() => fetchAll(selDate)} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#be123c", background: "none", border: "none", cursor: "pointer", fontFamily: SANS, fontWeight: 600 }}>
-                  <RefreshCw size={10} />{lang === "en" ? "Try again" : "Coba lagi"}
+                <p style={{ color: "#be123c", fontSize: 13, fontWeight: 600, marginBottom: 3, fontFamily: SANS }}>{lang === "en" ? "Unable to load data" : "Gagal memuat data"}</p>
+                <p style={{ color: "#e11d48", fontSize: 11.5, marginBottom: 9, fontFamily: SANS }}>{error}</p>
+                <button onClick={() => fetchAll(selDate)} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, color: "#be123c", background: "none", border: "none", cursor: "pointer", fontFamily: SANS, fontWeight: 600 }}>
+                  <RefreshCw size={11} />{lang === "en" ? "Try again" : "Coba lagi"}
                 </button>
               </div>
             </div>
@@ -610,56 +604,56 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
         {!loading && !error && (
           <>
             {/* Hero card */}
-            <div style={{ margin: "13px 13px 0", borderRadius: 13, overflow: "hidden", background: `linear-gradient(135deg,${NAVY} 0%,${OCEAN} 55%,${PRIMARY} 100%)` }}>
-              <div style={{ padding: "7px 14px 6px", borderBottom: "1px solid rgba(255,255,255,0.09)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <p style={{ fontFamily: MONO, color: "rgba(186,230,253,0.50)", fontSize: 9.5, letterSpacing: "0.03em", margin: 0 }}>
+            <div style={{ margin: "14px 14px 0", borderRadius: 14, overflow: "hidden", background: `linear-gradient(135deg,${NAVY} 0%,${OCEAN} 55%,${PRIMARY} 100%)`, boxShadow: "0 4px 14px rgba(7,89,133,0.12)" }}>
+              <div style={{ padding: "8px 14px", borderBottom: "1px solid rgba(255,255,255,0.09)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <p style={{ fontFamily: MONO, color: "rgba(186,230,253,0.60)", fontSize: 10, letterSpacing: "0.03em", margin: 0 }}>
                   {Math.abs(coordinates.lat).toFixed(4)}°{coordinates.lat >= 0 ? "N" : "S"}&ensp;{Math.abs(coordinates.lon).toFixed(4)}°{coordinates.lon >= 0 ? "E" : "W"}
                 </p>
-                {isToday && <span style={{ fontFamily: SANS, fontSize: 8.5, fontWeight: 700, color: "rgba(186,230,253,0.38)", letterSpacing: "0.05em", textTransform: "uppercase" as const }}>{lang === "en" ? "Today" : "Hari ini"}</span>}
+                {isToday && <span style={{ fontFamily: SANS, fontSize: 9, fontWeight: 700, color: "rgba(186,230,253,0.50)", letterSpacing: "0.05em", textTransform: "uppercase" as const }}>{lang === "en" ? "Today" : "Hari ini"}</span>}
               </div>
-              <div style={{ padding: "13px 14px 9px", display: "flex", alignItems: "center", gap: 11 }}>
+              <div style={{ padding: "16px 14px 12px", display: "flex", alignItems: "center", gap: 14 }}>
                 {current && (
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 5 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
                     <div>
-                      <p style={{ color: "#e0f2fe", fontSize: 42, fontWeight: 800, lineHeight: 1, letterSpacing: "-0.04em", fontFamily: SANS, margin: 0 }}>{Math.round(current.temperature_2m)}°</p>
-                      <p style={{ color: "rgba(186,230,253,0.55)", fontSize: 10.5, fontFamily: SANS, margin: "2px 0 0", whiteSpace: "nowrap" }}>{wmoLabel(current.weather_code, lang)}</p>
+                      <p style={{ color: "#e0f2fe", fontSize: 44, fontWeight: 800, lineHeight: 1, letterSpacing: "-0.04em", fontFamily: SANS, margin: 0 }}>{Math.round(current.temperature_2m)}°</p>
+                      <p style={{ color: "rgba(186,230,253,0.65)", fontSize: 11, fontWeight: 500, fontFamily: SANS, margin: "4px 0 0", whiteSpace: "nowrap" }}>{wmoLabel(current.weather_code, lang)}</p>
                     </div>
-                    <div style={{ marginTop: 3 }}><WeatherSymbol code={current.weather_code} size={20} /></div>
+                    <div style={{ marginTop: 4 }}><WeatherSymbol code={current.weather_code} size={22} /></div>
                   </div>
                 )}
-                <div style={{ width: 1, height: 48, background: "rgba(186,230,253,0.12)", flexShrink: 0 }} />
+                <div style={{ width: 1, height: 52, background: "rgba(186,230,253,0.15)", flexShrink: 0 }} />
                 <div style={{ display: "flex", flexDirection: "column", gap: 5, flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <Sun size={10} color="#fde68a" style={{ flexShrink: 0 }} />
-                    <span style={{ color: "rgba(186,230,253,0.40)", fontSize: 9, fontWeight: 600, fontFamily: SANS, textTransform: "uppercase" as const, letterSpacing: "0.04em" }}>{lang === "en" ? "Rise" : "Terbit"}</span>
-                    <span style={{ fontFamily: MONO, color: "#e0f2fe", fontSize: 12.5, fontWeight: 700, marginLeft: "auto" }}>{sunrise}</span>
-                    <span style={{ color: "rgba(186,230,253,0.30)", fontSize: 8.5, fontFamily: SANS }}>WIB</span>
+                    <Sun size={11} color="#fde68a" style={{ flexShrink: 0 }} />
+                    <span style={{ color: "rgba(186,230,253,0.45)", fontSize: 9.5, fontWeight: 600, fontFamily: SANS, textTransform: "uppercase" as const, letterSpacing: "0.04em" }}>{lang === "en" ? "Rise" : "Terbit"}</span>
+                    <span style={{ fontFamily: MONO, color: "#e0f2fe", fontSize: 13, fontWeight: 700, marginLeft: "auto" }}>{sunrise}</span>
+                    <span style={{ color: "rgba(186,230,253,0.35)", fontSize: 9, fontFamily: SANS }}>WIB</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <Moon size={10} color="#fda4af" style={{ flexShrink: 0 }} />
-                    <span style={{ color: "rgba(186,230,253,0.40)", fontSize: 9, fontWeight: 600, fontFamily: SANS, textTransform: "uppercase" as const, letterSpacing: "0.04em" }}>{lang === "en" ? "Set" : "Terbenam"}</span>
-                    <span style={{ fontFamily: MONO, color: "#e0f2fe", fontSize: 12.5, fontWeight: 700, marginLeft: "auto" }}>{sunset}</span>
-                    <span style={{ color: "rgba(186,230,253,0.30)", fontSize: 8.5, fontFamily: SANS }}>WIB</span>
+                    <Moon size={11} color="#fda4af" style={{ flexShrink: 0 }} />
+                    <span style={{ color: "rgba(186,230,253,0.45)", fontSize: 9.5, fontWeight: 600, fontFamily: SANS, textTransform: "uppercase" as const, letterSpacing: "0.04em" }}>{lang === "en" ? "Set" : "Terbenam"}</span>
+                    <span style={{ fontFamily: MONO, color: "#e0f2fe", fontSize: 13, fontWeight: 700, marginLeft: "auto" }}>{sunset}</span>
+                    <span style={{ color: "rgba(186,230,253,0.35)", fontSize: 9, fontFamily: SANS }}>WIB</span>
                   </div>
                 </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderTop: "1px solid rgba(186,230,253,0.08)" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderTop: "1px solid rgba(186,230,253,0.1)" }}>
                 {[
-                  { icon: <Wind      size={10} color="rgba(186,230,253,0.40)" />, label: lang==="en"?"Wind":"Angin",     value: currentWindMs != null ? currentWindMs.toFixed(1) : "—",     unit: "m/s", sub: currentWindMs != null ? `${windDirLabel(current!.wind_direction_10m)} ${current!.wind_direction_10m.toFixed(0)}°` : "", accent: "#93c5fd" },
-                  { icon: <Waves     size={10} color="rgba(186,230,253,0.40)" />, label: lang==="en"?"Wave":"Gelombang", value: currentWaveH != null ? currentWaveH.toFixed(2) : "—",         unit: "m",   sub: currentWaveH != null ? (currentWaveH<0.5?(lang==="en"?"Calm":"Tenang"):currentWaveH<1.25?(lang==="en"?"Slight":"Kecil"):currentWaveH<2.5?(lang==="en"?"Moderate":"Sedang"):(lang==="en"?"Rough":"Kasar")) : "", accent: "#7dd3fc" },
-                  { icon: <Navigation size={10} color="rgba(186,230,253,0.40)" />, label: lang==="en"?"Current":"Arus", value: currentCurrentSpd != null ? currentCurrentSpd.toFixed(2) : "—", unit: "m/s", sub: currentCurrentSpd != null ? (currentCurrentSpd<0.25?(lang==="en"?"Weak":"Lemah"):currentCurrentSpd<0.75?(lang==="en"?"Moderate":"Sedang"):(lang==="en"?"Strong":"Kuat")) : "", accent: "#a5f3fc" },
+                  { icon: <Wind      size={11} color="rgba(186,230,253,0.45)" />, label: lang==="en"?"Wind":"Angin",     value: currentWindMs != null ? currentWindMs.toFixed(1) : "—",     unit: "m/s", sub: currentWindMs != null ? `${windDirLabel(current!.wind_direction_10m)} ${current!.wind_direction_10m.toFixed(0)}°` : "", accent: "#93c5fd" },
+                  { icon: <Waves     size={11} color="rgba(186,230,253,0.45)" />, label: lang==="en"?"Wave":"Gelombang", value: currentWaveH != null ? currentWaveH.toFixed(2) : "—",         unit: "m",   sub: currentWaveH != null ? (currentWaveH<0.5?(lang==="en"?"Calm":"Tenang"):currentWaveH<1.25?(lang==="en"?"Slight":"Kecil"):currentWaveH<2.5?(lang==="en"?"Moderate":"Sedang"):(lang==="en"?"Rough":"Kasar")) : "", accent: "#7dd3fc" },
+                  { icon: <Navigation size={11} color="rgba(186,230,253,0.45)" />, label: lang==="en"?"Current":"Arus", value: currentCurrentSpd != null ? currentCurrentSpd.toFixed(2) : "—", unit: "m/s", sub: currentCurrentSpd != null ? (currentCurrentSpd<0.25?(lang==="en"?"Weak":"Lemah"):currentCurrentSpd<0.75?(lang==="en"?"Moderate":"Sedang"):(lang==="en"?"Strong":"Kuat")) : "", accent: "#a5f3fc" },
                 ].map((item, i) => (
-                  <div key={i} style={{ padding: "9px 11px 11px", borderRight: i < 2 ? "1px solid rgba(186,230,253,0.07)" : "none" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 5 }}>{item.icon}<span style={{ color: "rgba(186,230,253,0.38)", fontSize: 8.5, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" as const, fontFamily: SANS }}>{item.label}</span></div>
-                    <p style={{ fontFamily: MONO, color: "#e0f2fe", fontSize: 16, fontWeight: 700, lineHeight: 1, margin: 0 }}>{item.value}<span style={{ fontSize: 9, color: item.accent, fontWeight: 400, marginLeft: 2, opacity: 0.7 }}>{item.unit}</span></p>
-                    {item.sub && <p style={{ color: "rgba(186,230,253,0.28)", fontSize: 8.5, marginTop: 2, fontFamily: SANS, whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>{item.sub}</p>}
+                  <div key={i} style={{ padding: "10px 12px 12px", borderRight: i < 2 ? "1px solid rgba(186,230,253,0.08)" : "none" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 5 }}>{item.icon}<span style={{ color: "rgba(186,230,253,0.45)", fontSize: 9, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" as const, fontFamily: SANS }}>{item.label}</span></div>
+                    <p style={{ fontFamily: MONO, color: "#e0f2fe", fontSize: 17, fontWeight: 700, lineHeight: 1, margin: 0 }}>{item.value}<span style={{ fontSize: 9.5, color: item.accent, fontWeight: 400, marginLeft: 2, opacity: 0.8 }}>{item.unit}</span></p>
+                    {item.sub && <p style={{ color: "rgba(186,230,253,0.35)", fontSize: 9, marginTop: 3, fontFamily: SANS, whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" }}>{item.sub}</p>}
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Date picker */}
-            <div style={{ padding: "11px 13px 0" }}>
+            <div style={{ padding: "14px 14px 0" }}>
               <SL>{lang === "en" ? "Select Date" : "Pilih Tanggal"}</SL>
               <input
                 type="date"
@@ -667,24 +661,24 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 min={minDateISO}
                 max={maxDateISO}
                 onChange={handleDateChange}
-                style={{ width: "100%", padding: "8px 11px", border: `1.5px solid ${BORDER}`, borderRadius: 9, fontSize: 12.5, fontWeight: 600, fontFamily: SANS, color: TEXT_PRI, background: BG_CARD, cursor: "pointer", outline: "none", boxSizing: "border-box" as const }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = SKY; e.currentTarget.style.boxShadow = "0 0 0 2.5px rgba(14,165,233,0.10)"; }}
+                style={{ width: "100%", padding: "9px 12px", border: `1.5px solid ${BORDER}`, borderRadius: 9, fontSize: 13, fontWeight: 600, fontFamily: SANS, color: TEXT_PRI, background: BG_CARD, cursor: "pointer", outline: "none", boxSizing: "border-box" as const, boxShadow: "0 1px 2px rgba(0,0,0,0.02)" }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = SKY; e.currentTarget.style.boxShadow = "0 0 0 2.5px rgba(14,165,233,0.12)"; }}
                 onBlur={(e) => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.boxShadow = "none"; }}
               />
               {isPro ? (
-                <p style={{ fontFamily: SANS, fontSize: 10, color: TEXT_HINT, marginTop: 5 }}>
+                <p style={{ fontFamily: SANS, fontSize: 10.5, color: TEXT_HINT, marginTop: 5 }}>
                   {lang === "en"
                     ? `Pro: any historical date · ${PRO_FWD_DAYS} days ahead`
                     : `Pro: semua tanggal historis · ${PRO_FWD_DAYS} hari ke depan`}
                 </p>
               ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 5, padding: "5px 9px", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 7 }}>
-                  <Lock size={10} style={{ color: "#b45309", flexShrink: 0 }} />
-                  <span style={{ fontFamily: SANS, fontSize: 10, color: "#b45309", lineHeight: 1.4 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, padding: "7px 11px", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8 }}>
+                  <Lock size={11} style={{ color: "#b45309", flexShrink: 0 }} />
+                  <span style={{ fontFamily: SANS, fontSize: 10.5, color: "#b45309", lineHeight: 1.4, flex: 1 }}>
                     {lang === "en"
                       ? `Free: past ${FREE_HIST_DAYS} days – ${FREE_FWD_DAYS} days ahead. `
                       : `Gratis: ${FREE_HIST_DAYS} hari lalu – ${FREE_FWD_DAYS} hari ke depan. `}
-                    <button onClick={() => setShowPricing(true)} style={{ background: "none", border: "none", cursor: "pointer", color: PRIMARY, fontWeight: 700, fontSize: 10, padding: 0, fontFamily: SANS, textDecoration: "underline" }}>
+                    <button onClick={() => setShowPricing(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "#d97706", fontWeight: 700, fontSize: 10.5, padding: "0 2px", fontFamily: SANS, textDecoration: "underline", inlineSize: "max-content" }}>
                       {lang === "en" ? "Upgrade for more →" : "Upgrade untuk lebih →"}
                     </button>
                   </span>
@@ -693,203 +687,205 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
             </div>
 
             {/* Overlay chart */}
-            <div style={{ padding: "11px 13px 0" }}>
+            <div style={{ padding: "14px 14px 0" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 4, flexWrap: "wrap" as const }}>
                 <SL>{hasLuwesObs ? (lang==="en"?"Observation vs TPXO":"Observasi vs TPXO") : (lang==="en"?"TPXO Tide Levels":"Tinggi Pasut TPXO")}</SL>
                 <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 7 }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, color: HIGH_TEXT, fontWeight: 700, background: HIGH_BG, border: `1px solid ${HIGH_BDR}`, padding: "2px 7px", borderRadius: 99, fontFamily: SANS }}><span style={{ display: "inline-block", width: 12, height: 2, background: CHART_TPXO, borderRadius: 1 }} />TPXO</span>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, color: hasLuwesObs?"#be185d":"#8faabb", fontWeight: 700, background: hasLuwesObs?"#fdf2f8":"#f0f6fb", border: `1px solid ${hasLuwesObs?"#fbcfe8":"#dbeafe"}`, padding: "2px 7px", borderRadius: 99, fontFamily: SANS }}><span style={{ display: "inline-block", width: 6, height: 6, background: hasLuwesObs?CHART_LUWES:"#b0c8d8", borderRadius: "50%" }} />Luwes</span>
-                  {isToday && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, color: "#e11d48", fontWeight: 700, background: "#fff1f2", border: "1px solid #fecdd3", padding: "2px 7px", borderRadius: 99, fontFamily: SANS }}><span style={{ display: "inline-block", width: 8, height: 1.5, background: "#fb7185", borderRadius: 1 }} />Now</span>}
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9.5, color: HIGH_TEXT, fontWeight: 700, background: HIGH_BG, border: `1px solid ${HIGH_BDR}`, padding: "2px 8px", borderRadius: 99, fontFamily: SANS }}><span style={{ display: "inline-block", width: 12, height: 2, background: CHART_TPXO, borderRadius: 1 }} />TPXO</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9.5, color: hasLuwesObs?"#be185d":"#8faabb", fontWeight: 700, background: hasLuwesObs?"#fdf2f8":"#f0f6fb", border: `1px solid ${hasLuwesObs?"#fbcfe8":"#dbeafe"}`, padding: "2px 8px", borderRadius: 99, fontFamily: SANS }}><span style={{ display: "inline-block", width: 6, height: 6, background: hasLuwesObs?CHART_LUWES:"#b0c8d8", borderRadius: "50%" }} />Luwes</span>
+                  {isToday && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9.5, color: "#e11d48", fontWeight: 700, background: "#fff1f2", border: "1px solid #fecdd3", padding: "2px 8px", borderRadius: 99, fontFamily: SANS }}><span style={{ display: "inline-block", width: 8, height: 1.5, background: "#fb7185", borderRadius: 1 }} />Now</span>}
                 </div>
               </div>
-              <div style={{ borderRadius: 12, overflow: "hidden", background: BG_CARD, border: `1px solid ${BORDER}` }}>
-                <div style={{ padding: "7px 12px 3px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <p style={{ fontSize: 10, fontWeight: 500, color: TEXT_SEC, fontFamily: SANS, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, flex: 1, paddingRight: 7 }}>{selDateFmt}</p>
-                  {overlayData && <span style={{ fontSize: 9.5, fontWeight: 700, fontFamily: MONO, color: hasLuwesObs?"#be185d":TEXT_HINT, background: hasLuwesObs?"#fdf2f8":BG_MUTED, padding: "1px 7px", borderRadius: 99 }}>{overlayData.luwes_stats.count} obs</span>}
+              <div style={{ borderRadius: 12, overflow: "hidden", background: BG_CARD, border: `1px solid ${BORDER}`, boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+                <div style={{ padding: "8px 12px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: TEXT_SEC, fontFamily: SANS, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, flex: 1, paddingRight: 7 }}>{selDateFmt}</p>
+                  {overlayData && <span style={{ fontSize: 10, fontWeight: 700, fontFamily: MONO, color: hasLuwesObs?"#be185d":TEXT_HINT, background: hasLuwesObs?"#fdf2f8":BG_MUTED, padding: "2px 8px", borderRadius: 99 }}>{overlayData.luwes_stats.count} obs</span>}
                 </div>
-                <div style={{ height: 272, padding: "3px 7px 9px", position: "relative" }}>
+                <div style={{ height: 280, padding: "4px 8px 12px", position: "relative" }}>
                   <OverlayChart tpxoPredictions={tideData?.predictions ?? []} luwesObs={luwesForChart} dateStr={selDate} />
                 </div>
               </div>
             </div>
 
             {/* High / Low */}
-            <div style={{ padding: "9px 13px 0" }}>
+            <div style={{ padding: "10px 14px 0" }}>
               {tpxoHighLow && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
-                  <div style={{ borderRadius: 10, padding: "9px 13px", background: HIGH_BG, border: `1.5px solid ${HIGH_BDR}` }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: CHART_TPXO, flexShrink: 0 }} /><p style={{ fontSize: 8.5, fontWeight: 700, color: HIGH_TEXT, opacity: 0.75, textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: SANS, margin: 0 }}>TPXO · {lang==="en"?"High":"Tertinggi"}</p></div>
-                    <p style={{ fontFamily: MONO, color: HIGH_TEXT, fontSize: 19, fontWeight: 800, lineHeight: 1, margin: 0 }}>{tpxoHighLow.max > 0 ? "+" : ""}{tpxoHighLow.max.toFixed(3)} m</p>
-                    <p style={{ fontFamily: SANS, fontSize: 9.5, color: HIGH_TEXT, marginTop: 2, opacity: 0.55 }}>~{tpxoHighLow.maxTime} WIB</p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div style={{ borderRadius: 11, padding: "10px 14px", background: HIGH_BG, border: `1.5px solid ${HIGH_BDR}`, boxShadow: "0 1px 2px rgba(59,130,246,0.04)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: CHART_TPXO, flexShrink: 0 }} /><p style={{ fontSize: 9, fontWeight: 700, color: HIGH_TEXT, opacity: 0.8, textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: SANS, margin: 0 }}>TPXO · {lang==="en"?"High":"Tertinggi"}</p></div>
+                    <p style={{ fontFamily: MONO, color: HIGH_TEXT, fontSize: 20, fontWeight: 800, lineHeight: 1, margin: 0 }}>{tpxoHighLow.max > 0 ? "+" : ""}{tpxoHighLow.max.toFixed(3)} m</p>
+                    <p style={{ fontFamily: SANS, fontSize: 10, color: HIGH_TEXT, marginTop: 3, opacity: 0.6 }}>~{tpxoHighLow.maxTime} WIB</p>
                   </div>
-                  <div style={{ borderRadius: 10, padding: "9px 13px", background: LOW_BG, border: `1.5px solid ${LOW_BDR}` }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: "#f59e0b", flexShrink: 0 }} /><p style={{ fontSize: 8.5, fontWeight: 700, color: LOW_TEXT, opacity: 0.75, textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: SANS, margin: 0 }}>TPXO · {lang==="en"?"Low":"Terendah"}</p></div>
-                    <p style={{ fontFamily: MONO, color: LOW_TEXT, fontSize: 19, fontWeight: 800, lineHeight: 1, margin: 0 }}>{tpxoHighLow.min > 0 ? "+" : ""}{tpxoHighLow.min.toFixed(3)} m</p>
-                    <p style={{ fontFamily: SANS, fontSize: 9.5, color: LOW_TEXT, marginTop: 2, opacity: 0.55 }}>~{tpxoHighLow.minTime} WIB</p>
+                  <div style={{ borderRadius: 11, padding: "10px 14px", background: LOW_BG, border: `1.5px solid ${LOW_BDR}`, boxShadow: "0 1px 2px rgba(245,158,11,0.04)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: "#f59e0b", flexShrink: 0 }} /><p style={{ fontSize: 9, fontWeight: 700, color: LOW_TEXT, opacity: 0.8, textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: SANS, margin: 0 }}>TPXO · {lang==="en"?"Low":"Terendah"}</p></div>
+                    <p style={{ fontFamily: MONO, color: LOW_TEXT, fontSize: 20, fontWeight: 800, lineHeight: 1, margin: 0 }}>{tpxoHighLow.min > 0 ? "+" : ""}{tpxoHighLow.min.toFixed(3)} m</p>
+                    <p style={{ fontFamily: SANS, fontSize: 10, color: LOW_TEXT, marginTop: 3, opacity: 0.6 }}>~{tpxoHighLow.minTime} WIB</p>
                   </div>
                 </div>
               )}
               {hasLuwesObs && luwesStatsCorrected?.max_m != null && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginTop: 7 }}>
-                  <div style={{ borderRadius: 10, padding: "9px 13px", background: "#fdf2f8", border: "1.5px solid #fbcfe8" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: CHART_LUWES, flexShrink: 0 }} /><p style={{ fontSize: 8.5, fontWeight: 700, color: "#be185d", opacity: 0.75, textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: SANS, margin: 0 }}>Luwes · {lang==="en"?"Max (TOL)":"Maks (TOL)"}</p></div>
-                    <p style={{ fontFamily: MONO, color: "#9d174d", fontSize: 19, fontWeight: 800, lineHeight: 1, margin: 0 }}>{luwesStatsCorrected.max_m!.toFixed(3)} m</p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
+                  <div style={{ borderRadius: 11, padding: "10px 14px", background: "#fdf2f8", border: "1.5px solid #fbcfe8" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: CHART_LUWES, flexShrink: 0 }} /><p style={{ fontSize: 9, fontWeight: 700, color: "#be185d", opacity: 0.8, textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: SANS, margin: 0 }}>Luwes · {lang==="en"?"Max (TOL)":"Maks (TOL)"}</p></div>
+                    <p style={{ fontFamily: MONO, color: "#9d174d", fontSize: 20, fontWeight: 800, lineHeight: 1, margin: 0 }}>{luwesStatsCorrected.max_m!.toFixed(3)} m</p>
                   </div>
-                  <div style={{ borderRadius: 10, padding: "9px 13px", background: "#fef9f0", border: "1.5px solid #fde8c8" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: "#ec8e2c", flexShrink: 0 }} /><p style={{ fontSize: 8.5, fontWeight: 700, color: "#92400e", opacity: 0.75, textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: SANS, margin: 0 }}>Luwes · {lang==="en"?"Min (TOL)":"Min (TOL)"}</p></div>
-                    <p style={{ fontFamily: MONO, color: "#92400e", fontSize: 19, fontWeight: 800, lineHeight: 1, margin: 0 }}>{luwesStatsCorrected.min_m!.toFixed(3)} m</p>
+                  <div style={{ borderRadius: 11, padding: "10px 14px", background: "#fef9f0", border: "1.5px solid #fde8c8" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: "#ec8e2c", flexShrink: 0 }} /><p style={{ fontSize: 9, fontWeight: 700, color: "#92400e", opacity: 0.8, textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: SANS, margin: 0 }}>Luwes · {lang==="en"?"Min (TOL)":"Min (TOL)"}</p></div>
+                    <p style={{ fontFamily: MONO, color: "#92400e", fontSize: 20, fontWeight: 800, lineHeight: 1, margin: 0 }}>{luwesStatsCorrected.min_m!.toFixed(3)} m</p>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Hourly table */}
-            <div style={{ padding: "11px 0 0" }}>
-              <div style={{ padding: "0 13px", marginBottom: 7 }}>
+            <div style={{ padding: "14px 0 0" }}>
+              <div style={{ padding: "0 14px", marginBottom: 7 }}>
                 <SL>{lang==="en"?"Hourly Data (00:00–23:00 WIB)":"Data Per Jam (00:00–23:00 WIB)"}</SL>
               </div>
-              <div style={{ background: BG_CARD, borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
-                {/* Header baris */}
-                <div style={{
-                  display: "grid",
-                  gridTemplateColumns: "40px 16px 52px 30px 48px 44px 44px",
-                  padding: "4px 8px",
-                  background: BG_MUTED,
-                  borderBottom: `1px solid ${BORDER_SM}`,
-                  fontSize: 7.5,
-                  fontWeight: 700,
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase" as const,
-                  color: TEXT_HINT,
-                  fontFamily: SANS,
-                  position: "sticky" as const,
-                  top: 0,
-                  zIndex: 1,
-                }}>
-                  <span>{lang==="en"?"TIME":"JAM"}</span>
-                  <span style={{ textAlign: "center" as const }}>WX</span>
-                  <span style={{ textAlign: "right" as const }}>TIDE</span>
-                  <span style={{ textAlign: "right" as const }}>°C</span>
-                  <span style={{ textAlign: "right" as const }}>WIND</span>
-                  <span style={{ textAlign: "right" as const }}>WAVE</span>
-                  <span style={{ textAlign: "right" as const }}>CURR.</span>
-                </div>
-                <div style={{ height: 340, overflowY: "auto", scrollbarWidth: "thin", scrollbarColor: `${BORDER} transparent` }}>
-                  {rows.map((row, idx) => {
-                    const hl = isToday && row.hour.startsWith(nowHour + ":00");
-                    const isMax = idx === maxHourIdx;
-                    const isMin = idx === minHourIdx;
-                    const waveC = row.waveH == null ? TEXT_HINT : row.waveH < 0.5 ? "#16a34a" : row.waveH < 1.25 ? "#d97706" : "#e11d48";
-                    const currC = row.currentSpd == null ? TEXT_HINT : row.currentSpd < 0.25 ? "#16a34a" : row.currentSpd < 0.75 ? "#d97706" : "#e11d48";
-                    const isLast = idx === rows.length - 1;
-                    const arrowStyle = (deg: number | null): React.CSSProperties => ({
-                      display: "inline-block",
-                      transform: deg !== null ? `rotate(${deg}deg)` : "none",
-                      fontSize: 8,
-                      lineHeight: 1,
-                      color: TEXT_HINT,
-                      flexShrink: 0,
-                    });
-                    return (
-                      <div
-                        key={idx}
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "40px 16px 52px 30px 48px 44px 44px",
-                          padding: "4px 8px",
-                          alignItems: "center",
-                          borderBottom: isLast ? "none" : `1px solid ${BORDER_SM}`,
-                          background: hl
-                            ? `linear-gradient(90deg,${HIGH_BG},#f5fbff)`
-                            : idx % 2 === 0 ? BG_CARD : BG_MUTED,
-                          minHeight: 32,
-                        }}
-                      >
-                        {/* TIME */}
-                        <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: hl ? 700 : 400, color: hl ? PRIMARY : TEXT_SEC }}>
-                          {row.hour}
-                        </span>
-
-                        {/* WX */}
-                        <div style={{ display: "flex", justifyContent: "center" as const }}>
-                          {row.wCode !== null && <WeatherSymbol code={row.wCode} size={10} />}
-                        </div>
-
-                        {/* TIDE */}
-                        <div style={{ textAlign: "right" as const }}>
-                          <span style={{
-                            fontFamily: MONO, fontSize: 9,
-                            fontWeight: isMax || isMin ? 700 : 400,
-                            color: isMax ? HIGH_TEXT : isMin ? LOW_TEXT : TEXT_PRI,
-                          }}>
-                            {row.tideH !== null ? (row.tideH >= 0 ? "+" : "") + row.tideH.toFixed(3) : "—"}
+              <div style={{ background: BG_CARD, borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                <div style={{ minWidth: 360 }}>
+                  {/* Header baris */}
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "44px 18px 56px 32px 52px 48px 48px",
+                    padding: "6px 12px",
+                    background: BG_MUTED,
+                    borderBottom: `1px solid ${BORDER_SM}`,
+                    fontSize: 8,
+                    fontWeight: 700,
+                    letterSpacing: "0.05em",
+                    textTransform: "uppercase" as const,
+                    color: TEXT_HINT,
+                    fontFamily: SANS,
+                    position: "sticky" as const,
+                    top: 0,
+                    zIndex: 1,
+                  }}>
+                    <span>{lang==="en"?"TIME":"JAM"}</span>
+                    <span style={{ textAlign: "center" as const }}>WX</span>
+                    <span style={{ textAlign: "right" as const }}>TIDE</span>
+                    <span style={{ textAlign: "right" as const }}>°C</span>
+                    <span style={{ textAlign: "right" as const }}>WIND</span>
+                    <span style={{ textAlign: "right" as const }}>WAVE</span>
+                    <span style={{ textAlign: "right" as const }}>CURR.</span>
+                  </div>
+                  <div style={{ height: 350, overflowY: "auto", scrollbarWidth: "thin", scrollbarColor: `${BORDER} transparent` }}>
+                    {rows.map((row, idx) => {
+                      const hl = isToday && row.hour.startsWith(nowHour + ":00");
+                      const isMax = idx === maxHourIdx;
+                      const isMin = idx === minHourIdx;
+                      const waveC = row.waveH == null ? TEXT_HINT : row.waveH < 0.5 ? "#16a34a" : row.waveH < 1.25 ? "#d97706" : "#e11d48";
+                      const currC = row.currentSpd == null ? TEXT_HINT : row.currentSpd < 0.25 ? "#16a34a" : row.currentSpd < 0.75 ? "#d97706" : "#e11d48";
+                      const isLast = idx === rows.length - 1;
+                      const arrowStyle = (deg: number | null): React.CSSProperties => ({
+                        display: "inline-block",
+                        transform: deg !== null ? `rotate(${deg}deg)` : "none",
+                        fontSize: 8,
+                        lineHeight: 1,
+                        color: TEXT_HINT,
+                        flexShrink: 0,
+                      });
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "44px 18px 56px 32px 52px 48px 48px",
+                            padding: "6px 12px",
+                            alignItems: "center",
+                            borderBottom: isLast ? "none" : `1px solid ${BORDER_SM}`,
+                            background: hl
+                              ? `linear-gradient(90deg,${HIGH_BG},#f5fbff)`
+                              : idx % 2 === 0 ? BG_CARD : BG_MUTED,
+                            minHeight: 34,
+                          }}
+                        >
+                          {/* TIME */}
+                          <span style={{ fontFamily: MONO, fontSize: 9.5, fontWeight: hl ? 700 : 400, color: hl ? PRIMARY : TEXT_SEC }}>
+                            {row.hour}
                           </span>
-                        </div>
 
-                        {/* TEMP */}
-                        <div style={{ textAlign: "right" as const }}>
-                          <span style={{ fontFamily: MONO, fontSize: 9, color: TEXT_SEC }}>
-                            {row.temp !== null ? `${Math.round(row.temp)}°` : "—"}
-                          </span>
-                        </div>
+                          {/* WX */}
+                          <div style={{ display: "flex", justifyContent: "center" as const }}>
+                            {row.wCode !== null && <WeatherSymbol code={row.wCode} size={11} />}
+                          </div>
 
-                        {/* WIND */}
-                        <div style={{ display: "flex", flexDirection: "column" as const, alignItems: "flex-end", gap: 1 }}>
-                          {row.windSpd !== null ? (
-                            <>
-                              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                                {row.windDir !== null && <span style={arrowStyle(row.windDir)}>↑</span>}
-                                <span style={{ fontFamily: MONO, fontSize: 9, color: TEXT_SEC }}>{row.windSpd.toFixed(1)}</span>
-                              </div>
-                              {row.windDir !== null && (
-                                <span style={{ fontSize: 7.5, color: TEXT_HINT, fontFamily: SANS, lineHeight: 1 }}>{windDirLabel(row.windDir)}</span>
-                              )}
-                            </>
-                          ) : <span style={{ fontFamily: MONO, fontSize: 9, color: TEXT_HINT }}>—</span>}
-                        </div>
+                          {/* TIDE */}
+                          <div style={{ textAlign: "right" as const }}>
+                            <span style={{
+                              fontFamily: MONO, fontSize: 9.5,
+                              fontWeight: isMax || isMin ? 700 : 400,
+                              color: isMax ? HIGH_TEXT : isMin ? LOW_TEXT : TEXT_PRI,
+                            }}>
+                              {row.tideH !== null ? (row.tideH >= 0 ? "+" : "") + row.tideH.toFixed(3) : "—"}
+                            </span>
+                          </div>
 
-                        {/* WAVE */}
-                        <div style={{ display: "flex", flexDirection: "column" as const, alignItems: "flex-end", gap: 1 }}>
-                          {row.waveH !== null ? (
-                            <>
-                              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                                {row.waveDir !== null && <span style={arrowStyle(row.waveDir)}>↑</span>}
-                                <span style={{ fontFamily: MONO, fontSize: 9, color: waveC, fontWeight: row.waveH >= 1.25 ? 600 : 400 }}>{row.waveH.toFixed(2)}</span>
-                              </div>
-                              {row.waveDir !== null && (
-                                <span style={{ fontSize: 7.5, color: TEXT_HINT, fontFamily: SANS, lineHeight: 1 }}>{windDirLabel(row.waveDir)}</span>
-                              )}
-                            </>
-                          ) : <span style={{ fontFamily: MONO, fontSize: 9, color: TEXT_HINT }}>—</span>}
-                        </div>
+                          {/* TEMP */}
+                          <div style={{ textAlign: "right" as const }}>
+                            <span style={{ fontFamily: MONO, fontSize: 9.5, color: TEXT_SEC }}>
+                              {row.temp !== null ? `${Math.round(row.temp)}°` : "—"}
+                            </span>
+                          </div>
 
-                        {/* CURRENT */}
-                        <div style={{ display: "flex", flexDirection: "column" as const, alignItems: "flex-end", gap: 1 }}>
-                          {row.currentSpd !== null ? (
-                            <>
-                              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                                {row.currentDir !== null && <span style={arrowStyle(row.currentDir)}>↑</span>}
-                                <span style={{ fontFamily: MONO, fontSize: 9, color: currC, fontWeight: row.currentSpd >= 0.75 ? 600 : 400 }}>{row.currentSpd.toFixed(2)}</span>
-                              </div>
-                              {row.currentDir !== null && (
-                                <span style={{ fontSize: 7.5, color: TEXT_HINT, fontFamily: SANS, lineHeight: 1 }}>{windDirLabel(row.currentDir)}</span>
-                              )}
-                            </>
-                          ) : <span style={{ fontFamily: MONO, fontSize: 9, color: TEXT_HINT }}>—</span>}
+                          {/* WIND - displayName Telah Dihapus */}
+                          <div style={{ display: "flex", flexDirection: "column" as const, alignItems: "flex-end", gap: 1 }}>
+                            {row.windSpd !== null ? (
+                              <>
+                                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                  {row.windDir !== null && <span style={arrowStyle(row.windDir)}>↑</span>}
+                                  <span style={{ fontFamily: MONO, fontSize: 9.5, color: TEXT_SEC }}>{row.windSpd.toFixed(1)}</span>
+                                </div>
+                                {row.windDir !== null && (
+                                  <span style={{ fontSize: 8, color: TEXT_HINT, fontFamily: SANS, lineHeight: 1 }}>{windDirLabel(row.windDir)}</span>
+                                )}
+                              </>
+                            ) : <span style={{ fontFamily: MONO, fontSize: 9.5, color: TEXT_HINT }}>—</span>}
+                          </div>
+
+                          {/* WAVE - displayName & kata 'end' Telah Dihapus */}
+                          <div style={{ display: "flex", flexDirection: "column" as const, alignItems: "flex-end", gap: 1 }}>
+                            {row.waveH !== null ? (
+                              <>
+                                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                  {row.waveDir !== null && <span style={arrowStyle(row.waveDir)}>↑</span>}
+                                  <span style={{ fontFamily: MONO, fontSize: 9.5, color: waveC, fontWeight: row.waveH >= 1.25 ? 600 : 400 }}>{row.waveH.toFixed(2)}</span>
+                                </div>
+                                {row.waveDir !== null && (
+                                  <span style={{ fontSize: 8, color: TEXT_HINT, fontFamily: SANS, lineHeight: 1 }}>{windDirLabel(row.waveDir)}</span>
+                                )}
+                              </>
+                            ) : <span style={{ fontFamily: MONO, fontSize: 9.5, color: TEXT_HINT }}>—</span>}
+                          </div>
+
+                          {/* CURRENT - displayName Telah Dihapus */}
+                          <div style={{ display: "flex", flexDirection: "column" as const, alignItems: "flex-end", gap: 1 }}>
+                            {row.currentSpd !== null ? (
+                              <>
+                                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                  {row.currentDir !== null && <span style={arrowStyle(row.currentDir)}>↑</span>}
+                                  <span style={{ fontFamily: MONO, fontSize: 9.5, color: currC, fontWeight: row.currentSpd >= 0.75 ? 600 : 400 }}>{row.currentSpd.toFixed(2)}</span>
+                                </div>
+                                {row.currentDir !== null && (
+                                  <span style={{ fontSize: 8, color: TEXT_HINT, fontFamily: SANS, lineHeight: 1 }}>{windDirLabel(row.currentDir)}</span>
+                                )}
+                              </>
+                            ) : <span style={{ fontFamily: MONO, fontSize: 9.5, color: TEXT_HINT }}>—</span>}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
                 {/* Legend footer */}
                 <div style={{
-                  padding: "5px 8px",
+                  padding: "6px 12px",
                   borderTop: `1px solid ${BORDER_SM}`,
                   background: BG_MUTED,
                   display: "flex",
                   alignItems: "center",
                   flexWrap: "wrap" as const,
                   gap: 8,
+                  minWidth: 360,
                 }}>
                   {[
                     { color: "#16a34a", label: lang==="en"?"Low":"Rendah" },
@@ -898,10 +894,10 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                   ].map(({ color, label }) => (
                     <div key={color} style={{ display: "flex", alignItems: "center", gap: 3 }}>
                       <div style={{ width: 5, height: 5, borderRadius: "50%", background: color, flexShrink: 0 }} />
-                      <span style={{ fontSize: 8.5, color: TEXT_HINT, fontFamily: SANS }}>{label}</span>
+                      <span style={{ fontSize: 9, color: TEXT_HINT, fontFamily: SANS }}>{label}</span>
                     </div>
                   ))}
-                  <span style={{ fontSize: 8, color: TEXT_HINT, fontFamily: SANS, marginLeft: "auto" }}>
+                  <span style={{ fontSize: 8.5, color: TEXT_HINT, fontFamily: SANS, marginLeft: "auto" }}>
                     ↑ {lang==="en"?"dir · m/s":"arah · m/s"}
                   </span>
                 </div>
@@ -909,13 +905,13 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
             </div>
 
             {/* S-104 export */}
-            <div style={{ padding: "13px 13px 0" }}>
+            <div style={{ padding: "14px 14px 0" }}>
               <SL>{lang==="en"?"IHO S-100 / S-104 Compliance":"Kepatuhan IHO S-100 / S-104"}</SL>
               <S104ExportSection coordinates={coordinates} selectedDate={selDate} language={lang} />
             </div>
 
             {/* Metadata footer */}
-            <div style={{ margin: "13px 13px 20px", borderRadius: 10, padding: "9px 13px", background: BG_CARD, border: `1px solid ${BORDER}` }}>
+            <div style={{ margin: "14px 14px 24px", borderRadius: 11, padding: "10px 14px", background: BG_CARD, border: `1px solid ${BORDER}`, boxShadow: "0 1px 2px rgba(0,0,0,0.01)" }}>
               {([
                 [lang==="en"?"Tide model":"Model pasut",       tideData?.metadata.model],
                 ["Datum",                                        tideData?.metadata.datum],
@@ -929,7 +925,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                 ["S-104",                                        "Ed.2.0.0 (Dec 2024)"],
                 [lang==="en"?"Plan":"Paket",                    isPro ? "Pro ✓" : (lang==="en"?"Free":"Gratis")],
               ] as [string, string | undefined][]).map(([k, v]) => (
-                <div key={k} style={{ display: "flex", justifyContent: "space-between", marginBottom: 2, gap: 7 }}>
+                <div key={k} style={{ display: "flex", justifyContent: "space-between", marginBottom: 3, gap: 7 }}>
                   <span style={{ fontFamily: MONO, fontSize: 9.5, color: TEXT_HINT, fontWeight: 500, flexShrink: 0 }}>{k}</span>
                   <span style={{ fontFamily: MONO, fontSize: 9.5, color: TEXT_SEC, textAlign: "right" as const, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{v ?? "—"}</span>
                 </div>
