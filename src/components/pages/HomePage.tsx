@@ -381,7 +381,7 @@ const SafetySection: React.FC<{ language: "en"|"id"; onNavigate?: (p: string) =>
 
               {/* Condition metrics */}
               {conditions && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 12 }}>
+                <div className="condition-metrics" style={{ marginBottom: 12 }}>
                   {[
                     { label: c.wind,    value: conditions.avgWindMs    != null ? conditions.avgWindMs.toFixed(1)    + " m/s" : "—" },
                     { label: c.wave,    value: conditions.avgWave      != null ? conditions.avgWave.toFixed(2)      + " m"   : "—" },
@@ -397,19 +397,19 @@ const SafetySection: React.FC<{ language: "en"|"id"; onNavigate?: (p: string) =>
               )}
 
               {/* Activity grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+              <div className="activity-grid">
                 {activities.map(act => {
                   const cfg = SC[act.status];
                   const Ico = act.status === "safe" ? CheckCircle : act.status === "caution" ? AlertTriangle : XCircle;
                   return (
                     <div key={act.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 11px", background: "#fff", borderRadius: 8, border: `1px solid ${BORDER}` }}>
                       <span style={{ color: cfg.dot, flexShrink: 0 }}>{act.icon}</span>
-                      <span style={{ fontFamily: FONT, fontSize: 12, color: TEXT2, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+                      <span style={{ fontFamily: FONT, fontSize: 12, color: TEXT2, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
                         {language === "id" ? act.labelId : act.labelEn}
                       </span>
                       <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0, background: cfg.pill, padding: "2px 7px", borderRadius: 99 }}>
                         <Ico size={9} style={{ color: cfg.dot }} />
-                        <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" as const, color: cfg.text }}>
+                        <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" as const, color: cfg.text, whiteSpace: "nowrap" as const }}>
                           {language === "id" ? (act.status === "safe" ? "Aman" : act.status === "caution" ? "Waspada" : "Hindari") : (act.status === "safe" ? "Safe" : act.status === "caution" ? "Caution" : "Avoid")}
                         </span>
                       </div>
@@ -475,19 +475,19 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   return (
     <>
       <style>{`
-        .hp-root { font-family: ${FONT}; background: ${BG}; color: ${TEXT1}; }
+        .hp-root { font-family: ${FONT}; background: ${BG}; color: ${TEXT1}; width: 100%; overflow-x: hidden; }
         .hp-root * { box-sizing: border-box; }
-        .hp-section { padding: 80px 48px; }
+        .hp-section { padding: 80px 48px; width: 100%; }
         @media (max-width:1024px){ .hp-section { padding: 64px 32px; } }
-        @media (max-width:768px) { .hp-section { padding: 52px 20px; } }
-        @media (max-width:480px) { .hp-section { padding: 40px 16px; } }
+        @media (max-width:768px) { .hp-section { padding: 40px 20px; } }
+        @media (max-width:480px) { .hp-section { padding: 32px 16px; } }
 
         /* Hero */
         .hero-inner { display: grid; grid-template-columns: 1fr 36%; min-height: 100vh; }
         @media (max-width:900px) { .hero-inner { grid-template-columns: 1fr; } .hero-side { display: none !important; } }
 
-        /* Safety */
-        .safety-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; }
+        /* Safety Layout - Pastikan kontainer utama aman di mobile */
+        .safety-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; width: 100%; }
         @media (max-width:1024px){ .safety-layout { gap: 40px; } }
         @media (max-width:860px) { .safety-layout { grid-template-columns: 1fr; gap: 32px; } }
 
@@ -504,39 +504,22 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         .std-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: start; }
         @media (max-width:900px){ .std-layout { grid-template-columns: 1fr; gap: 40px; } }
 
-        /* Photo strip — left big spans full height (row 1+2), right 2x2 grid */
+        /* Photo strip */
         .photo-strip {
           display: grid;
           grid-template-columns: 2fr 1fr 1fr;
           grid-template-rows: 210px 210px;
           gap: 3px;
         }
-        .photo-strip-main {
-          grid-column: 1;
-          grid-row: 1 / 3;
-          min-height: 0;
-        }
-        .photo-strip img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          display: block;
-        }
-        @media (max-width: 1100px) {
-          .photo-strip { grid-template-rows: 180px 180px; }
-        }
+        .photo-strip-main { grid-column: 1; grid-row: 1 / 3; min-height: 0; }
+        .photo-strip img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        @media (max-width: 1100px) { .photo-strip { grid-template-rows: 180px 180px; } }
         @media (max-width: 768px) {
-          .photo-strip {
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 200px 160px 160px;
-          }
+          .photo-strip { grid-template-columns: 1fr 1fr; grid-template-rows: 200px 160px 160px; }
           .photo-strip-main { grid-column: 1 / 3; grid-row: 1; }
         }
         @media (max-width: 480px) {
-          .photo-strip {
-            grid-template-columns: 1fr;
-            grid-template-rows: repeat(5, 180px);
-          }
+          .photo-strip { grid-template-columns: 1fr; grid-template-rows: repeat(5, 180px); }
           .photo-strip-main { grid-column: 1; grid-row: auto; }
         }
 
@@ -551,6 +534,15 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         /* Hero CTAs */
         .hero-ctas { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
         @media (max-width:360px){ .hero-ctas { flex-direction:column; align-items:stretch; gap:10px; } .hero-ctas button { width:100%; justify-content:center; } }
+
+        /* Condition metrics — Dioptimalkan agar tidak pecah di layar kecil */
+        .condition-metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; width: 100%; }
+        @media (max-width:580px){ .condition-metrics { grid-template-columns:repeat(2,1fr); } }
+        @media (max-width:360px){ .condition-metrics { grid-template-columns:1fr; } }
+
+        /* Activity grid — Berubah menjadi 1 kolom penuh di mobile (< 520px) agar teks dan pill aman */
+        .activity-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; width: 100%; }
+        @media (max-width:520px){ .activity-grid { grid-template-columns:1fr; } }
 
         @keyframes hp-spin { to { transform:rotate(360deg); } }
       `}</style>

@@ -126,23 +126,41 @@ const C = {
   },
 };
 
-/* ── TeamCard ────────────────────────────────────────────────────────── */
-const TeamCard: React.FC<{ name: string; nim: string; role: string; photo: string; delay: number; inView: boolean }> = ({ name, nim, photo, delay, inView }) => {
+/* ── TeamCard — rectangular portrait photo ───────────────────────────── */
+const TeamCard: React.FC<{ name: string; nim: string; role: string; photo: string; delay: number; inView: boolean }> = ({ name, nim, role, photo, delay, inView }) => {
+  const [imgError, setImgError] = useState(false);
   const initials = name.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase();
   return (
     <div
       style={{
-        display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
-        padding: "24px 16px 20px", background: SURFACE, border: `1px solid ${BORDER}`,
-        borderRadius: 14, boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+        display: "flex", flexDirection: "column",
+        background: SURFACE, border: `1px solid ${BORDER}`,
+        borderRadius: 14, overflow: "hidden",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
         opacity: inView ? 1 : 0, transform: inView ? "translateY(0)" : "translateY(20px)",
         transition: `opacity 0.7s ease ${delay}ms, transform 0.7s ease ${delay}ms, box-shadow 0.18s`,
       }}
-      onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 8px 28px rgba(0,0,0,0.10)")}
+      onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.12)")}
       onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.05)")}
     >
-      <PhotoPlaceholder src={photo} alt={name} size={100} shape="circle" initials={initials} />
-      <div style={{ textAlign: "center" }}>
+      {/* Rectangular photo — 3:4 portrait */}
+      <div style={{ width: "100%", aspectRatio: "3/4", position: "relative", overflow: "hidden", background: `linear-gradient(135deg,${DARK1} 0%,${DARK2} 100%)`, flexShrink: 0 }}>
+        {photo && !imgError
+          ? <img src={photo} alt={name} onError={() => setImgError(true)}
+              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center", display: "block" }} />
+          : <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, position: "relative" }}>
+              <div style={{ position: "absolute", inset: 0, backgroundImage: `radial-gradient(circle at 35% 30%, rgba(245,193,24,0.08) 0%, transparent 60%)` }} />
+              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" style={{ zIndex: 1 }}>
+                <circle cx="12" cy="8" r="5" fill="rgba(245,193,24,0.35)" />
+                <path d="M3 21c0-5 4-9 9-9s9 4 9 9" stroke="rgba(245,193,24,0.35)" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+              </svg>
+              <span style={{ fontFamily: FONT, fontSize: 26, fontWeight: 800, color: AMBER, letterSpacing: "-0.02em", zIndex: 1 }}>{initials}</span>
+              <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: "rgba(245,240,232,0.25)", letterSpacing: "0.10em", textTransform: "uppercase" as const, zIndex: 1 }}>foto</span>
+            </div>
+        }
+      </div>
+      {/* Info below photo */}
+      <div style={{ padding: "16px 14px 18px", textAlign: "center" }}>
         <p style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: TEXT1, margin: "0 0 4px", lineHeight: 1.3 }}>{name}</p>
         <p style={{ fontFamily: FONT, fontSize: 11, color: BLUE_D, margin: "0 0 8px", fontWeight: 600, letterSpacing: "0.04em" }}>{nim}</p>
       </div>
@@ -150,25 +168,45 @@ const TeamCard: React.FC<{ name: string; nim: string; role: string; photo: strin
   );
 };
 
-/* ── SupervisorCard ──────────────────────────────────────────────────── */
+/* ── SupervisorCard — rectangular portrait photo, larger ─────────────── */
 const SupervisorCard: React.FC<{ name: string; title: string; photo: string; delay: number; inView: boolean }> = ({ name, title, photo, delay, inView }) => {
+  const [imgError, setImgError] = useState(false);
   const initials = name.split(" ").filter(w => w.length > 2 && !w.endsWith(".")).slice(0, 2).map(w => w[0]).join("").toUpperCase() || name.slice(0, 2).toUpperCase();
   return (
     <div
       style={{
-        display: "flex", flexDirection: "column", alignItems: "center", gap: 14,
-        padding: "32px 22px 26px", background: SURFACE, border: `1px solid ${BORDER}`,
-        borderRadius: 16, boxShadow: "0 2px 10px rgba(0,0,0,0.05)", position: "relative", overflow: "hidden",
+        display: "flex", flexDirection: "column",
+        background: SURFACE, border: `1px solid ${BORDER}`,
+        borderRadius: 16, overflow: "hidden",
+        boxShadow: "0 2px 10px rgba(0,0,0,0.05)", position: "relative",
         opacity: inView ? 1 : 0, transform: inView ? "translateY(0)" : "translateY(24px)",
         transition: `opacity 0.8s ease ${delay}ms, transform 0.8s ease ${delay}ms, box-shadow 0.18s`,
       }}
-      onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 12px 36px rgba(0,0,0,0.10)")}
+      onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 16px 44px rgba(0,0,0,0.13)")}
       onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.05)")}
     >
-      <PhotoPlaceholder src={photo} alt={name} size={120} shape="circle" initials={initials} />
-      <div style={{ textAlign: "center" }}>
-        <p style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: TEXT1, margin: "0 0 8px", lineHeight: 1.35 }}>{name}</p>
-        <span style={{ display: "inline-block", padding: "4px 14px", borderRadius: 99, background: DARK1, fontFamily: FONT, fontSize: 11, fontWeight: 700, color: AMBER, letterSpacing: "0.04em" }}>{title}</span>
+      {/* Amber top accent line */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: AMBER, zIndex: 2 }} />
+      {/* Rectangular photo — 2:3 portrait */}
+      <div style={{ width: "100%", aspectRatio: "2/3", position: "relative", overflow: "hidden", background: `linear-gradient(135deg,${DARK1} 0%,${DARK2} 100%)`, flexShrink: 0 }}>
+        {photo && !imgError
+          ? <img src={photo} alt={name} onError={() => setImgError(true)}
+              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center", display: "block" }} />
+          : <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, position: "relative" }}>
+              <div style={{ position: "absolute", inset: 0, backgroundImage: `radial-gradient(circle at 35% 28%, rgba(245,193,24,0.10) 0%, transparent 55%)` }} />
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" style={{ zIndex: 1 }}>
+                <circle cx="12" cy="8" r="5" fill="rgba(245,193,24,0.40)" />
+                <path d="M3 21c0-5 4-9 9-9s9 4 9 9" stroke="rgba(245,193,24,0.40)" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+              </svg>
+              <span style={{ fontFamily: FONT, fontSize: 32, fontWeight: 800, color: AMBER, letterSpacing: "-0.02em", zIndex: 1 }}>{initials}</span>
+              <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: "rgba(245,240,232,0.25)", letterSpacing: "0.10em", textTransform: "uppercase" as const, zIndex: 1 }}>foto</span>
+            </div>
+        }
+      </div>
+      {/* Info below photo */}
+      <div style={{ padding: "20px 18px 24px", textAlign: "center" }}>
+        <p style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: TEXT1, margin: "0 0 10px", lineHeight: 1.35 }}>{name}</p>
+        <span style={{ display: "inline-block", padding: "5px 16px", borderRadius: 99, background: DARK1, fontFamily: FONT, fontSize: 11, fontWeight: 700, color: AMBER, letterSpacing: "0.05em" }}>{title}</span>
       </div>
     </div>
   );
@@ -273,11 +311,11 @@ export const AboutPage: React.FC = () => {
         @media (max-width: 480px) { .ab-pad { padding: 40px 16px; } }
 
         /* ── Team / Supervisor grids ── */
-        .ab-team { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; }
+        .ab-team { display: grid; grid-template-columns: repeat(4,1fr); gap: 24px; }
         @media (max-width: 960px) { .ab-team { grid-template-columns: repeat(2,1fr); } }
         @media (max-width: 480px) { .ab-team { grid-template-columns: 1fr; } }
 
-        .ab-sup { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
+        .ab-sup { display: grid; grid-template-columns: repeat(3,1fr); gap: 28px; }
         @media (max-width: 860px) { .ab-sup { grid-template-columns: repeat(2,1fr); } }
         @media (max-width: 520px) { .ab-sup { grid-template-columns: 1fr; } }
 
@@ -413,11 +451,11 @@ export const AboutPage: React.FC = () => {
       {/* ═══ TEAM ══════════════════════════════════════════════════════ */}
       <section className="ab-pad" ref={teamSection.ref} style={{ background: BG }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 36 }}>
-            <div style={{ width: 3, height: 22, background: AMBER, borderRadius: 2 }} />
-            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" as const, color: TEXT3 }}>
-              {language === "id" ? "Tim Pengembang" : "Development Team"}
-            </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 40 }}>
+            <div style={{ width: 4, height: 36, background: AMBER, borderRadius: 2, flexShrink: 0 }} />
+            <h2 style={{ fontFamily: FONT, fontSize: "clamp(28px,5vw,48px)", fontWeight: 800, color: TEXT1, margin: 0, letterSpacing: "-0.03em", lineHeight: 1.05 }}>
+              {language === "id" ? "Tim Pengembang" : "Our Development Team"}
+            </h2>
           </div>
           <div className="ab-team">
             {c.team.map((m, i) => (
@@ -430,11 +468,11 @@ export const AboutPage: React.FC = () => {
       {/* ═══ SUPERVISORS ═══════════════════════════════════════════════ */}
       <section className="ab-pad" ref={supSection.ref} style={{ background: SURFACE, borderTop: `1px solid ${BORDER}` }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 36 }}>
-            <div style={{ width: 3, height: 22, background: AMBER, borderRadius: 2 }} />
-            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" as const, color: TEXT3 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 40 }}>
+            <div style={{ width: 4, height: 36, background: AMBER, borderRadius: 2, flexShrink: 0 }} />
+            <h2 style={{ fontFamily: FONT, fontSize: "clamp(28px,5vw,48px)", fontWeight: 800, color: TEXT1, margin: 0, letterSpacing: "-0.03em", lineHeight: 1.05 }}>
               {c.supTitle}
-            </span>
+            </h2>
           </div>
           <div className="ab-sup">
             {c.supervisors.map((s, i) => (
