@@ -7,8 +7,8 @@ import type { BasemapType } from "../../types";
 interface Coords { lat: number; lon: number }
 
 export const WebGISPage: React.FC = () => {
-  const [basemap,     setBasemap]     = useState<BasemapType>("satellite");
-  const [panelOpen,   setPanelOpen]   = useState(false);
+  const [basemap,        setBasemap]        = useState<BasemapType>("satellite");
+  const [panelOpen,      setPanelOpen]      = useState(false);
   const [selectedCoords, setSelectedCoords] = useState<Coords | null>(null);
 
   const handleGridClick = (coords: Coords) => {
@@ -24,7 +24,7 @@ export const WebGISPage: React.FC = () => {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap');
 
         html, body, #root {
           overscroll-behavior: none !important;
@@ -35,12 +35,12 @@ export const WebGISPage: React.FC = () => {
 
         .webgis-wrapper {
           display: flex;
-          height: calc(100vh - 62px);
+          height: calc(100vh - 70px);
           width: 100%;
           overflow: hidden;
-          margin-top: 62px;
+          margin-top: 70px;
           position: relative;
-          background: #0a1628;
+          background: #1a1e2e;
           overscroll-behavior: none;
           touch-action: none;
         }
@@ -53,7 +53,7 @@ export const WebGISPage: React.FC = () => {
           overscroll-behavior: none;
         }
 
-        /* ── Desktop panel ── */
+        /* Desktop panel */
         @media (min-width: 769px) {
           .webgis-panel-desktop {
             width: 480px;
@@ -64,7 +64,7 @@ export const WebGISPage: React.FC = () => {
                         max-width .35s cubic-bezier(.4,0,.2,1);
             overflow: hidden;
             flex-shrink: 0;
-            background: #f8fafc;
+            background: #f7f4ef;
             height: 100%;
             overscroll-behavior: contain;
           }
@@ -85,7 +85,7 @@ export const WebGISPage: React.FC = () => {
           }
         }
 
-        /* ── Mobile panel ── */
+        /* Mobile panel */
         @media (max-width: 768px) {
           .webgis-panel-desktop { display: none !important; }
 
@@ -99,10 +99,10 @@ export const WebGISPage: React.FC = () => {
             max-height: 78vh;
             transform: translateY(100%);
             transition: transform .35s cubic-bezier(.4,0,.2,1);
-            border-radius: 18px 18px 0 0;
+            border-radius: 16px 16px 0 0;
             overflow: hidden;
-            box-shadow: 0 -8px 40px rgba(0,0,0,0.22);
-            background: #f8fafc;
+            box-shadow: 0 -8px 40px rgba(0,0,0,0.18);
+            background: #f7f4ef;
             overscroll-behavior: contain;
           }
           .webgis-panel-mobile.open {
@@ -114,9 +114,9 @@ export const WebGISPage: React.FC = () => {
             top: 8px;
             left: 50%;
             transform: translateX(-50%);
-            width: 40px;
+            width: 36px;
             height: 4px;
-            background: rgba(0,0,0,0.15);
+            background: rgba(0,0,0,0.12);
             border-radius: 2px;
             z-index: 10;
             cursor: grab;
@@ -126,7 +126,7 @@ export const WebGISPage: React.FC = () => {
             position: fixed;
             inset: 0;
             z-index: 499;
-            background: rgba(0,0,0,0.3);
+            background: rgba(0,0,0,0.28);
             opacity: 0;
             pointer-events: none;
             transition: opacity .3s;
@@ -144,15 +144,13 @@ export const WebGISPage: React.FC = () => {
           }
         }
 
-        /* Landscape mobile */
         @media (max-width: 768px) and (orientation: landscape) {
           .webgis-panel-mobile {
             height: 90vh;
             max-height: 90vh;
-            border-radius: 0 18px 18px 0;
             left: auto;
             right: 0;
-            top: 62px;
+            top: 70px;
             bottom: 0;
             width: 340px;
             max-width: 340px;
@@ -176,7 +174,7 @@ export const WebGISPage: React.FC = () => {
             basemap={basemap}
             onGridClick={handleGridClick}
             onCoordinateSearch={handleGridClick}
-            panelOpen={panelOpen} 
+            panelOpen={panelOpen}
           />
         </div>
 

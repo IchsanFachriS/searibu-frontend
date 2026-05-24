@@ -14,10 +14,10 @@ const GOOGLE_CLIENT_ID =
 type Page = "home" | "webgis" | "about" | "guide";
 
 const PAGE_BG: Record<Page, string> = {
-  home:   "#0f1e2e",
-  webgis: "#0a1628",
-  about:  "#f8fafc",
-  guide:  "#f8fafc",
+  home:   "#f7f4ef",
+  webgis: "#1a1e2e",
+  about:  "#f7f4ef",
+  guide:  "#f7f4ef",
 };
 
 const App: React.FC = () => {
@@ -41,11 +41,11 @@ const App: React.FC = () => {
       <LanguageProvider>
         <SubscriptionProvider>
           <style>{`
-            @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900&display=swap');
             *, *::before, *::after { box-sizing: border-box; }
             html, body { margin: 0; padding: 0; overscroll-behavior: none !important; }
             html { height: 100%; }
-            body { height: 100%; overflow: hidden; }
+            body { height: 100%; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; }
             #root { height: 100%; overflow: hidden; }
           `}</style>
 
@@ -54,7 +54,7 @@ const App: React.FC = () => {
               position: "fixed",
               inset: 0,
               background: PAGE_BG[activePage],
-              fontFamily: "'Montserrat', system-ui, sans-serif",
+              fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
               overflowY: isWebGIS ? "hidden" : "auto",
               overflowX: "hidden",
               overscrollBehavior: "none",

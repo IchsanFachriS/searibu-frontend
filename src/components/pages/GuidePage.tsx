@@ -2,14 +2,23 @@ import React, { useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import { BookOpen, Map, BarChart2, Download, ChevronDown, ChevronUp, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 
-const SANS    = '"Inter", "DM Sans", system-ui, sans-serif';
-const NAVY    = "#024e78";
-const PRIMARY = "#0369a1";
+const FONT  = "'Inter', system-ui, -apple-system, sans-serif";
+const DARK1 = "#2b2b2b";
+const AMBER = "#f5c518";
+const BLUE_D= "#1a3bbf";
+const BLUE_L= "#ddf0fb";
+const BG    = "#f7f4ef";
+const SURF  = "#ffffff";
+const BORDER= "#e4ddd4";
+const TEXT1 = "#1a1a1a";
+const TEXT2 = "#3d3d3d";
+const TEXT3 = "#6b6b6b";
+const MUTED = "#9a9a9a";
 
 const C = {
   en: {
     title: "User Guide",
-    sub:   "How to use the Searibu marine information system",
+    sub: "How to use the Searibu marine information system",
     sections: [
       {
         icon: "map",
@@ -19,7 +28,7 @@ const C = {
           "The map shows Kepulauan Seribu with blue TPXO grid cells and island markers.",
           "Click any blue grid cell to open the Marine Information panel on the right.",
           "Use the satellite / map toggle (bottom-left) to switch basemap.",
-          "Use the island search bar (top-left) to fly to a specific island.",
+          "Use the island search bar (bottom-centre) to fly to a specific island.",
         ],
       },
       {
@@ -75,7 +84,7 @@ const C = {
   },
   id: {
     title: "Panduan Penggunaan",
-    sub:   "Cara menggunakan sistem informasi kelautan Searibu",
+    sub: "Cara menggunakan sistem informasi kelautan Searibu",
     sections: [
       {
         icon: "map",
@@ -85,7 +94,7 @@ const C = {
           "Peta menampilkan Kepulauan Seribu dengan grid TPXO biru dan penanda pulau.",
           "Klik sel grid biru mana saja untuk membuka panel Informasi Kelautan di kanan.",
           "Gunakan toggle satelit/peta (kiri bawah) untuk mengganti basemap.",
-          "Gunakan kotak pencarian pulau (kiri atas) untuk terbang ke pulau tertentu.",
+          "Gunakan kotak pencarian pulau (tengah bawah) untuk terbang ke pulau tertentu.",
         ],
       },
       {
@@ -103,7 +112,7 @@ const C = {
         icon: "chart",
         title: "Indikator Keamanan Aktivitas",
         steps: [
-          "Setiap aktivitas (snorkeling, selam, perahu, dll.) mendapat status keamanan berdasarkan tinggi gelombang, kecepatan angin, dan arus.",
+          "Setiap aktivitas mendapat status keamanan berdasarkan tinggi gelombang, kecepatan angin, dan arus.",
           "Hijau = Aman untuk aktivitas tersebut.",
           "Kuning = Waspada — lanjutkan dengan hati-hati, kondisi sedang.",
           "Merah = Hindari — kondisi melampaui batas aman operasional.",
@@ -119,7 +128,7 @@ const C = {
           "Klik 'Ekspor S-104 (TPXO)' untuk mengunduh prediksi pasut sebagai file HDF5.",
           "Klik 'Ekspor S-104 (Luwes)' untuk mengunduh observasi nyata sebagai file HDF5.",
           "File sesuai IHO S-104 Edition 2.0.0 dan dapat dibuka di ECDIS, HDFView, atau s100py.",
-          "File TPXO menggunakan dataDynamicity=1 (astronomicalPrediction). File Luwes menggunakan dataDynamicity=3 (observed).",
+          "File TPXO: dataDynamicity=1. File Luwes: dataDynamicity=3.",
         ],
       },
       {
@@ -127,7 +136,7 @@ const C = {
         title: "Mengubah Tanggal",
         steps: [
           "Gunakan pemilih tanggal di Panel Info untuk melihat data hari mana saja.",
-          "Data cuaca di-cache untuk ±14 hari dari hari ini — tanggal lampau dan mendatang didukung.",
+          "Data cuaca di-cache untuk ±14 hari dari hari ini.",
           "Prediksi pasut dan data Luwes diambil ulang setiap kali tanggal berubah.",
           "Badge 'Cuaca tersimpan' muncul saat data cuaca disajikan dari cache sesi.",
           "Klik ikon segarkan (↻) di sebelah badge untuk memaksa pengambilan cuaca baru.",
@@ -142,9 +151,9 @@ const C = {
 };
 
 const ICONS: Record<string, React.ReactNode> = {
-  map:      <Map      size={18} />,
-  chart:    <BarChart2 size={18} />,
-  download: <Download size={18} />,
+  map:      <Map       size={16} />,
+  chart:    <BarChart2 size={16} />,
+  download: <Download  size={16} />,
 };
 
 export const GuidePage: React.FC = () => {
@@ -153,39 +162,46 @@ export const GuidePage: React.FC = () => {
   const [openIdx, setOpenIdx] = useState<number | null>(0);
 
   return (
-    <div style={{ background: "#f8fafc", minHeight: "100vh", paddingTop: 62 }}>
-      <div style={{ background: `linear-gradient(135deg,${NAVY} 0%,${PRIMARY} 60%,#0ea5e9 100%)`, padding: "56px 48px 48px", textAlign: "center" }}>
-        <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-          <BookOpen size={26} color="#fff" />
+    <div style={{ background: BG, minHeight: "100vh", paddingTop: 70 }}>
+      {/* Header */}
+      <div style={{ background: DARK1, padding: "52px 48px 44px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: AMBER }} />
+        <div style={{ position: "absolute", inset: 0, backgroundImage: `radial-gradient(rgba(245,193,24,0.04) 1px, transparent 1px)`, backgroundSize: "28px 28px", pointerEvents: "none" }} />
+        <div style={{ position: "relative", zIndex: 1 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(245,193,24,0.12)", border: "1px solid rgba(245,193,24,0.25)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+            <BookOpen size={24} color={AMBER} />
+          </div>
+          <h1 style={{ fontFamily: FONT, fontSize: "clamp(1.6rem,4vw,2.4rem)", fontWeight: 800, color: "#f5f0e8", marginBottom: 8, letterSpacing: "-0.03em" }}>{c.title}</h1>
+          <p style={{ fontFamily: FONT, fontSize: 14, color: "rgba(245,240,232,0.55)", maxWidth: 480, margin: "0 auto" }}>{c.sub}</p>
         </div>
-        <h1 style={{ fontFamily: SANS, fontSize: 32, fontWeight: 800, color: "#fff", marginBottom: 8, letterSpacing: "-0.02em" }}>{c.title}</h1>
-        <p style={{ fontFamily: SANS, fontSize: 15, color: "rgba(255,255,255,0.7)", maxWidth: 500, margin: "0 auto" }}>{c.sub}</p>
       </div>
 
       <div style={{ maxWidth: 820, margin: "0 auto", padding: "32px 24px 64px" }}>
         {c.sections.map((sec, i) => (
-          <div key={i} style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", marginBottom: 12 }}>
+          <div key={i} style={{ border: `1px solid ${BORDER}`, borderRadius: 12, overflow: "hidden", marginBottom: 10 }}>
             <button
               onClick={() => setOpenIdx(openIdx === i ? null : i)}
               style={{
                 width: "100%", display: "flex", alignItems: "center", gap: 12,
-                padding: "14px 20px", background: "#f8fafc", border: "none", cursor: "pointer",
-                fontFamily: SANS, fontSize: 14, fontWeight: 600, color: NAVY, textAlign: "left" as const,
+                padding: "14px 18px", background: openIdx === i ? SURF : BG,
+                border: "none", cursor: "pointer",
+                fontFamily: FONT, fontSize: 14, fontWeight: 600, color: TEXT1, textAlign: "left" as const,
+                transition: "background 0.15s",
               }}
             >
-              <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(3,105,161,0.10)", display: "flex", alignItems: "center", justifyContent: "center", color: PRIMARY, flexShrink: 0 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 9, background: openIdx === i ? BLUE_D : "#eee8e0", display: "flex", alignItems: "center", justifyContent: "center", color: openIdx === i ? "#fff" : TEXT3, flexShrink: 0, transition: "all 0.18s" }}>
                 {ICONS[sec.icon]}
               </div>
               <span style={{ flex: 1 }}>{sec.title}</span>
               {openIdx === i
-                ? <ChevronUp   size={16} style={{ color: "#94a3b8" }} />
-                : <ChevronDown size={16} style={{ color: "#94a3b8" }} />}
+                ? <ChevronUp   size={15} style={{ color: MUTED }} />
+                : <ChevronDown size={15} style={{ color: MUTED }} />}
             </button>
             {openIdx === i && (
-              <div style={{ padding: "16px 20px 20px", background: "#fff" }}>
-                <ol style={{ paddingLeft: 20, margin: 0 }}>
+              <div style={{ padding: "14px 18px 18px 66px", background: SURF, borderTop: `1px solid ${BORDER}` }}>
+                <ol style={{ paddingLeft: 18, margin: 0 }}>
                   {sec.steps.map((step, j) => (
-                    <li key={j} style={{ fontFamily: SANS, fontSize: 14, color: "#475569", lineHeight: 1.7, marginBottom: 6 }}>{step}</li>
+                    <li key={j} style={{ fontFamily: FONT, fontSize: 13, color: TEXT2, lineHeight: 1.72, marginBottom: 7 }}>{step}</li>
                   ))}
                 </ol>
               </div>
@@ -193,19 +209,21 @@ export const GuidePage: React.FC = () => {
           </div>
         ))}
 
-        <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", marginTop: 24 }}>
-          <div style={{ padding: "14px 20px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-            <p style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: NAVY, margin: 0 }}>{c.statusGuide}</p>
+        {/* Status guide */}
+        <div style={{ border: `1px solid ${BORDER}`, borderRadius: 12, overflow: "hidden", marginTop: 20 }}>
+          <div style={{ padding: "13px 18px", background: BG, borderBottom: `1px solid ${BORDER}`, display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 3, height: 18, background: AMBER, borderRadius: 2 }} />
+            <p style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: TEXT1, margin: 0 }}>{c.statusGuide}</p>
           </div>
-          <div style={{ padding: "16px 20px", background: "#fff", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ padding: "14px 18px", background: SURF, display: "flex", flexDirection: "column", gap: 10 }}>
             {[
-              { icon: <CheckCircle   size={16} />, color: "#16a34a", bg: "#f0fdf4", border: "#86efac", text: c.safe    },
-              { icon: <AlertTriangle size={16} />, color: "#d97706", bg: "#fffbeb", border: "#fde68a", text: c.caution },
-              { icon: <XCircle       size={16} />, color: "#dc2626", bg: "#fef2f2", border: "#fca5a5", text: c.avoid   },
+              { icon: <CheckCircle   size={15} />, color: "#15803d", bg: "#f0fdf4", border: "#bbf7d0", text: c.safe    },
+              { icon: <AlertTriangle size={15} />, color: "#92400e", bg: "#fffbeb", border: "#fde68a", text: c.caution },
+              { icon: <XCircle       size={15} />, color: "#991b1b", bg: "#fff1f2", border: "#fecdd3", text: c.avoid   },
             ].map((s, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px", background: s.bg, border: `1px solid ${s.border}`, borderRadius: 8 }}>
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px", background: s.bg, border: `1px solid ${s.border}`, borderRadius: 9 }}>
                 <span style={{ color: s.color, flexShrink: 0, marginTop: 1 }}>{s.icon}</span>
-                <p style={{ fontFamily: SANS, fontSize: 13, color: s.color, margin: 0, lineHeight: 1.6 }}>{s.text}</p>
+                <p style={{ fontFamily: FONT, fontSize: 13, color: s.color, margin: 0, lineHeight: 1.6, fontWeight: 500 }}>{s.text}</p>
               </div>
             ))}
           </div>
