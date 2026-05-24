@@ -322,8 +322,8 @@ const OverlayChart: React.FC<{
         type: "scatter",
         data: {
           datasets: [
-            { label: "TPXO", type: "line" as any, data: tpxoPts, borderColor: CHART_TPXO, backgroundColor: (c: any) => { const { chart: { ctx: cx, chartArea: ca } } = c; if (!ca) return "rgba(59,130,246,0.09)"; const g = cx.createLinearGradient(0, ca.top, 0, ca.bottom); g.addColorStop(0, "rgba(59,130,246,0.16)"); g.addColorStop(1, "rgba(59,130,246,0)"); return g; }, borderWidth: 2, fill: true, tension: 0, pointRadius: 0, spanGaps: false, order: 2, parsing: false },
-            { label: "Luwes RAW", type: "scatter" as any, data: luwesPts, borderColor: `${CHART_LUWES}bb`, backgroundColor: `${CHART_LUWES}99`, pointRadius: 1.8, order: 1, parsing: false },
+            { label: "Predicted", type: "line" as any, data: tpxoPts, borderColor: CHART_TPXO, backgroundColor: (c: any) => { const { chart: { ctx: cx, chartArea: ca } } = c; if (!ca) return "rgba(59,130,246,0.09)"; const g = cx.createLinearGradient(0, ca.top, 0, ca.bottom); g.addColorStop(0, "rgba(59,130,246,0.16)"); g.addColorStop(1, "rgba(59,130,246,0)"); return g; }, borderWidth: 2, fill: true, tension: 0, pointRadius: 0, spanGaps: false, order: 2, parsing: false },
+            { label: "Observed", type: "scatter" as any, data: luwesPts, borderColor: `${CHART_LUWES}bb`, backgroundColor: `${CHART_LUWES}99`, pointRadius: 1.8, order: 1, parsing: false },
           ],
         },
         options: {
@@ -689,7 +689,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
             {/* Overlay chart */}
             <div style={{ padding: "14px 14px 0" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 4, flexWrap: "wrap" as const }}>
-                <SL>{hasLuwesObs ? (lang==="en"?"Observation vs TPXO":"Observasi vs TPXO") : (lang==="en"?"TPXO Tide Levels":"Tinggi Pasut TPXO")}</SL>
+                <SL>{hasLuwesObs ? (lang==="en"?"Observation vs Prediction":"Observasi vs Prediksi") : (lang==="en"?"Prediction Tide Levels":"Tinggi Pasut Prediksi")}</SL>
                 <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 7 }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9.5, color: HIGH_TEXT, fontWeight: 700, background: HIGH_BG, border: `1px solid ${HIGH_BDR}`, padding: "2px 8px", borderRadius: 99, fontFamily: SANS }}><span style={{ display: "inline-block", width: 12, height: 2, background: CHART_TPXO, borderRadius: 1 }} />TPXO</span>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9.5, color: hasLuwesObs?"#be185d":"#8faabb", fontWeight: 700, background: hasLuwesObs?"#fdf2f8":"#f0f6fb", border: `1px solid ${hasLuwesObs?"#fbcfe8":"#dbeafe"}`, padding: "2px 8px", borderRadius: 99, fontFamily: SANS }}><span style={{ display: "inline-block", width: 6, height: 6, background: hasLuwesObs?CHART_LUWES:"#b0c8d8", borderRadius: "50%" }} />Luwes</span>
@@ -720,18 +720,6 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
                     <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: "#f59e0b", flexShrink: 0 }} /><p style={{ fontSize: 9, fontWeight: 700, color: LOW_TEXT, opacity: 0.8, textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: SANS, margin: 0 }}>TPXO · {lang==="en"?"Low":"Terendah"}</p></div>
                     <p style={{ fontFamily: MONO, color: LOW_TEXT, fontSize: 20, fontWeight: 800, lineHeight: 1, margin: 0 }}>{tpxoHighLow.min > 0 ? "+" : ""}{tpxoHighLow.min.toFixed(3)} m</p>
                     <p style={{ fontFamily: SANS, fontSize: 10, color: LOW_TEXT, marginTop: 3, opacity: 0.6 }}>~{tpxoHighLow.minTime} WIB</p>
-                  </div>
-                </div>
-              )}
-              {hasLuwesObs && luwesStatsCorrected?.max_m != null && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
-                  <div style={{ borderRadius: 11, padding: "10px 14px", background: "#fdf2f8", border: "1.5px solid #fbcfe8" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: CHART_LUWES, flexShrink: 0 }} /><p style={{ fontSize: 9, fontWeight: 700, color: "#be185d", opacity: 0.8, textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: SANS, margin: 0 }}>Luwes · {lang==="en"?"Max (TOL)":"Maks (TOL)"}</p></div>
-                    <p style={{ fontFamily: MONO, color: "#9d174d", fontSize: 20, fontWeight: 800, lineHeight: 1, margin: 0 }}>{luwesStatsCorrected.max_m!.toFixed(3)} m</p>
-                  </div>
-                  <div style={{ borderRadius: 11, padding: "10px 14px", background: "#fef9f0", border: "1.5px solid #fde8c8" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: "#ec8e2c", flexShrink: 0 }} /><p style={{ fontSize: 9, fontWeight: 700, color: "#92400e", opacity: 0.8, textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: SANS, margin: 0 }}>Luwes · {lang==="en"?"Min (TOL)":"Min (TOL)"}</p></div>
-                    <p style={{ fontFamily: MONO, color: "#92400e", fontSize: 20, fontWeight: 800, lineHeight: 1, margin: 0 }}>{luwesStatsCorrected.min_m!.toFixed(3)} m</p>
                   </div>
                 </div>
               )}
@@ -906,30 +894,8 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ coordinates, onClose }) =>
 
             {/* S-104 export */}
             <div style={{ padding: "14px 14px 0" }}>
-              <SL>{lang==="en"?"IHO S-100 / S-104 Compliance":"Kepatuhan IHO S-100 / S-104"}</SL>
+              <SL>{lang==="en"?"IHO S-104 Compliance":"Kepatuhan IHO S-104"}</SL>
               <S104ExportSection coordinates={coordinates} selectedDate={selDate} language={lang} />
-            </div>
-
-            {/* Metadata footer */}
-            <div style={{ margin: "14px 14px 24px", borderRadius: 11, padding: "10px 14px", background: BG_CARD, border: `1px solid ${BORDER}`, boxShadow: "0 1px 2px rgba(0,0,0,0.01)" }}>
-              {([
-                [lang==="en"?"Tide model":"Model pasut",       tideData?.metadata.model],
-                ["Datum",                                        tideData?.metadata.datum],
-                ...(tideData ? [[lang==="en"?"Nearest grid":"Grid terdekat", `${tideData.grid.lat.toFixed(3)}°, ${tideData.grid.lon.toFixed(3)}° · ${tideData.grid.distance_km.toFixed(1)} km`]] : []),
-                [lang==="en"?"Weather":"Cuaca",                 "Open-Meteo API"],
-                [lang==="en"?"Coverage":"Cakupan",              isPro
-                  ? (lang==="en" ? `Unlimited history · ${PRO_FWD_DAYS} days ahead` : `Historis tak terbatas · ${PRO_FWD_DAYS} hari ke depan`)
-                  : (lang==="en" ? `Past ${FREE_HIST_DAYS} days · ${FREE_FWD_DAYS} days ahead` : `${FREE_HIST_DAYS} hari lalu · ${FREE_FWD_DAYS} hari ke depan`)],
-                [lang==="en"?"Obs. station":"Stasiun obs.",     overlayData?.imei ? `IMEI ${overlayData.imei}` : "—"],
-                ["TOL",                                          "-2.156 m (Luwes → MSL TPXO9)"],
-                ["S-104",                                        "Ed.2.0.0 (Dec 2024)"],
-                [lang==="en"?"Plan":"Paket",                    isPro ? "Pro ✓" : (lang==="en"?"Free":"Gratis")],
-              ] as [string, string | undefined][]).map(([k, v]) => (
-                <div key={k} style={{ display: "flex", justifyContent: "space-between", marginBottom: 3, gap: 7 }}>
-                  <span style={{ fontFamily: MONO, fontSize: 9.5, color: TEXT_HINT, fontWeight: 500, flexShrink: 0 }}>{k}</span>
-                  <span style={{ fontFamily: MONO, fontSize: 9.5, color: TEXT_SEC, textAlign: "right" as const, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{v ?? "—"}</span>
-                </div>
-              ))}
             </div>
           </>
         )}

@@ -18,7 +18,7 @@ interface Props {
 
 const LABELS = {
   en: {
-    header:        "IHO S-100 / S-104 Ed. 2.0",
+    header:        "IHO S-104",
     headerSub:     "Water Level Standard",
     detailTitle:   "S-104 Compliance Details",
     detailBody:    "Compliant with IHO S-104 Edition 2.0.0 (adopted December 2024). Export as HDF5 files compatible with ECDIS, HDFView, and s100py.",
@@ -36,7 +36,7 @@ const LABELS = {
     changeRoleBtn:  "Change account type",
   },
   id: {
-    header:        "IHO S-100 / S-104 Ed. 2.0",
+    header:        "IHO S-104",
     headerSub:     "Standar Muka Air",
     detailTitle:   "Detail Kepatuhan S-104",
     detailBody:    "Memenuhi IHO S-104 Edition 2.0.0 (diadopsi Desember 2024). Ekspor ke file HDF5 yang kompatibel dengan ECDIS, HDFView, dan s100py.",
@@ -52,17 +52,6 @@ const LABELS = {
     changeRoleBtn:  "Ubah jenis akun",
   },
 };
-
-const INFO_ROWS: [string, string][] = [
-  ["Standard",        "IHO S-104 Ed.2.0.0"],
-  ["Horizontal CRS",  "EPSG:4326 (WGS 84)"],
-  ["Vertical Datum",  "MSL (IHO code 12)"],
-  ["TPXO data",       "dataDynamicity = 1 (astronomicalPrediction)"],
-  ["Luwes data",      "dataDynamicity = 3 (observed)"],
-  ["TOL correction",  "-2.156 m (Luwes to MSL)"],
-  ["Encoding",        "HDF5"],
-  ["Adopted",         "December 2024"],
-];
 
 async function downloadFile(url: string, filename: string) {
   const res = await fetch(url);
@@ -116,10 +105,6 @@ export const S104ExportSection: React.FC<Props> = ({ coordinates, selectedDate, 
   const [error,        setError]        = useState<string | null>(null);
   const [showPricing,  setShowPricing]  = useState(false);
 
-  // Determine which lock message to show
-  // researcher + no Pro  → show upgrade to Pro
-  // Pro + not researcher → show change account type
-  // neither              → show change account type (prioritize role message)
   const lockReason: "needs_pro" | "needs_role" | null =
     hasFullAccess       ? null :
     isResearcher        ? "needs_pro" :
@@ -143,42 +128,6 @@ export const S104ExportSection: React.FC<Props> = ({ coordinates, selectedDate, 
 
   return (
     <>
-      {/* Collapsed header */}
-      <div
-        onClick={() => setOpen((p) => !p)}
-        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 13px", cursor: "pointer", background: "linear-gradient(135deg,#eff8ff,#f0fdf4)", border: "1px solid #bfdbfe", borderRadius: 10 }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 26, height: 26, borderRadius: 6, background: PRIMARY, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <CheckCircle size={13} color="#fff" />
-          </div>
-          <div>
-            <p style={{ fontFamily: SANS, fontSize: 11.5, fontWeight: 700, color: PRIMARY, margin: 0 }}>{l.header}</p>
-            <p style={{ fontFamily: SANS, fontSize: 10, color: PRIMARY, margin: 0, opacity: 0.75 }}>{l.headerSub}</p>
-          </div>
-        </div>
-        {open ? <ChevronUp size={13} style={{ color: PRIMARY, opacity: 0.5 }} /> : <ChevronDown size={13} style={{ color: PRIMARY, opacity: 0.5 }} />}
-      </div>
-
-      {/* Details */}
-      {open && (
-        <div style={{ marginTop: 5, padding: "11px 13px", background: "#f8fafc", border: "1px solid #dbeafe", borderRadius: 10 }}>
-          <p style={{ fontFamily: SANS, fontSize: 11.5, fontWeight: 600, color: "#0f172a", marginBottom: 7 }}>{l.detailTitle}</p>
-          <p style={{ fontFamily: SANS, fontSize: 11, color: "#475569", lineHeight: 1.65, marginBottom: 9 }}>{l.detailBody}</p>
-          <div style={{ borderTop: "1px solid #e8f0f7", paddingTop: 7, marginBottom: 9 }}>
-            {INFO_ROWS.map(([k, v]) => (
-              <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "2.5px 0" }}>
-                <span style={{ fontFamily: SANS, fontSize: 10, color: "#8faabb" }}>{k}</span>
-                <span style={{ fontFamily: '"Courier New",monospace', fontSize: 10, color: "#475569", textAlign: "right" }}>{v}</span>
-              </div>
-            ))}
-          </div>
-          <a href="https://iho.int/en/s-100-based-product-specifications" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 3, fontFamily: SANS, fontSize: 10.5, color: PRIMARY, textDecoration: "none", marginBottom: 10 }}>
-            {lang === "en" ? "IHO S-100 Resources" : "Sumber IHO S-100"} <ExternalLink size={9} />
-          </a>
-        </div>
-      )}
-
       {/* Export buttons area */}
       <div style={{ marginTop: 7, position: "relative" }}>
         {/* Lock overlay */}

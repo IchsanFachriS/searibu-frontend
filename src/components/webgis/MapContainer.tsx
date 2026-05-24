@@ -51,8 +51,8 @@ const PORT_LOCATIONS = [
 const LUWES_STATION = {
   id: "luwes_tidal", name: "Sta. Pasut Luwes", nameEn: "Luwes Tidal Station",
   lat: -5.7439, lon: 106.6128,
-  descId: "Stasiun pengamatan pasut otomatis Luwes milik Pushidrosal. Data observasi digunakan sebagai koreksi terhadap prediksi TPXO dalam sistem Searibu.",
-  descEn: "Luwes automatic tide gauge station operated by Pushidrosal. Observation data is used as correction against TPXO prediction in the Searibu system.",
+  descId: "Stasiun pengamatan pasut otomatis Luwes milik PT Luwes Inovasi Mandiri. Data observasi digunakan sebagai koreksi terhadap prediksi TPXO dalam sistem Searibu.",
+  descEn: "Luwes automatic tide gauge station operated by PT Luwes Inovasi Mandiri. Observation data is used as correction against TPXO prediction in the Searibu system.",
 };
 
 const BASEMAPS = {
