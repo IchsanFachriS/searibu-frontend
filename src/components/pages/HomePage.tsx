@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext";
 import {
   ArrowRight, Waves, Wind, Navigation, BarChart2, Map, Shield,
@@ -30,7 +31,7 @@ const TEXT2    = "#3d3d3d";
 const TEXT3    = "#6b6b6b";
 const MUTED    = "#9a9a9a";
 
-interface HomePageProps { onNavigate?: (page: string) => void; }
+interface HomePageProps {}
 
 const ISLANDS = [
   { id: "bidadari",    nameId: "Pulau Bidadari",    nameEn: "Bidadari Island",    lat: -6.035347, lon: 106.746234 },
@@ -437,8 +438,9 @@ const SafetySection: React.FC<{ language: "en"|"id"; onNavigate?: (p: string) =>
 };
 
 /* ── HomePage ─────────────────────────────────────────────────────────── */
-export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
-  const { language } = useLanguage();
+export const HomePage: React.FC<HomePageProps> = () => {
+  const navigate = useNavigate();
+  const onNavigate = (page: string) => navigate(page === "home" ? "/" : `/${page}`);  const { language } = useLanguage();
   const c    = COPY[language as "en"|"id"];
   const lang = language as "en"|"id";
 

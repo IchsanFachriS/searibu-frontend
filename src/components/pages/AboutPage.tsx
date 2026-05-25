@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext";
-import { Download } from "lucide-react";
+import { Info } from "lucide-react";
 
 const FONT     = "'Inter', system-ui, -apple-system, sans-serif";
 const DARK1    = "#2b2b2b";
@@ -82,7 +83,7 @@ const C = {
     hero: "About Searibu",
     heroSub: "Ocean Weather-Informed Marine Tourism System in Kepulauan Seribu",
     heroDesc: "A capstone design project by ITB Geodesy and Geomatics Engineering students, building a unified marine information platform integrating tidal prediction, real-time observations, and weather forecasting for safer and smarter island tourism.",
-    downloadBtn: "Download Manual",
+    guideBtn: "How to Use",
     missionTitle: "Our Mission",
     missionBody: "To provide accurate, science-backed marine information that empowers tourists, researchers, and maritime professionals operating in the Kepulauan Seribu archipelago — making every voyage safer and every decision better-informed.",
     team: [
@@ -108,7 +109,7 @@ const C = {
     hero: "Tentang Searibu",
     heroSub: "Sistem Informasi Kelautan untuk Wisata Bahari di Kepulauan Seribu",
     heroDesc: "Proyek capstone mahasiswa Teknik Geodesi dan Geomatika ITB yang membangun platform informasi kelautan terpadu — mengintegrasikan prediksi pasang surut, telemetri real-time, dan prakiraan cuaca untuk wisata bahari yang lebih aman.",
-    downloadBtn: "Unduh Manual",
+    guideBtn: "Cara Penggunaan",
     missionTitle: "Misi Kami",
     missionBody: "Menyediakan informasi kelautan yang akurat dan berbasis ilmiah untuk memberdayakan wisatawan, peneliti, dan profesional maritim yang beroperasi di Kepulauan Seribu — menjadikan setiap perjalanan lebih aman dan setiap keputusan lebih terinformasi.",
     team: [
@@ -216,6 +217,7 @@ const SupervisorCard: React.FC<{ name: string; title: string; photo: string; del
 export const AboutPage: React.FC = () => {
   const { language } = useLanguage();
   const c = C[language as "en" | "id"];
+  const navigate = useNavigate();
   const [heroVisible, setHeroVisible] = useState(false);
   const missionSection = useInView(0.15);
   const teamSection    = useInView(0.1);
@@ -395,25 +397,23 @@ export const AboutPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Download button */}
+          {/* How to Use button */}
           <div className={`ab-fadein${heroVisible ? " visible" : ""}`} style={{ transitionDelay: "320ms", marginBottom: 44 }}>
-            <a
-              href="/searibu_manual.pdf"
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={() => navigate("/guide")}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: "11px 22px", borderRadius: 9,
                 background: "rgba(255,255,255,0.07)",
                 border: "1.5px solid rgba(255,255,255,0.16)",
                 color: OFF_WHITE, fontFamily: FONT, fontSize: 13, fontWeight: 600,
-                textDecoration: "none", transition: "all 0.2s",
+                cursor: "pointer", transition: "all 0.2s",
               }}
               onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.32)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.16)"; }}
             >
-              <Download size={13} /> {c.downloadBtn}
-            </a>
+              <Info size={13} /> {c.guideBtn}
+            </button>
           </div>
         </div>
 
