@@ -113,16 +113,16 @@ const C = {
     missionTitle: "Misi Kami",
     missionBody: "Menyediakan informasi kelautan yang akurat dan berbasis ilmiah untuk memberdayakan wisatawan, peneliti, dan profesional maritim yang beroperasi di Kepulauan Seribu — menjadikan setiap perjalanan lebih aman dan setiap keputusan lebih terinformasi.",
     team: [
-      { name: "Revalia Aura Cahaya Prasetyo",  nim: "15122003", role: "Frontend Developer", photo: "" },
-      { name: "Muhammad Syahrul Tasyrifan",    nim: "15122009", role: "Backend Developer",  photo: "" },
-      { name: "Evin Petra Pebrina Debataraja", nim: "15122035", role: "GIS & Data",          photo: "" },
-      { name: "Ichsan Fachri Siroj",           nim: "15122092", role: "Full-stack & Lead",   photo: "" },
+      { name: "Revalia Aura Cahaya Prasetyo",  nim: "15122003", role: "Frontend Developer", photo: "img/team/reva.jpeg" },
+      { name: "Muhammad Syahrul Tasyrifan",    nim: "15122009", role: "Backend Developer",  photo: "img/team/syahrul.jpeg" },
+      { name: "Evin Petra Pebrina Debataraja", nim: "15122035", role: "GIS & Data",          photo: "img/team/evin.jpeg" },
+      { name: "Ichsan Fachri Siroj",           nim: "15122092", role: "Full-stack & Lead",   photo: "img/team/ichsan.jpeg" },
     ],
     supTitle: "Dosen Pembimbing",
     supervisors: [
-      { name: "Prof. Dr.rer.nat. Poerbandono, S.T., M.M.",   title: "Pembimbing 1", photo: "" },
-      { name: "Dr. Akhmad Riqqi, M.Si.",        title: "Pembimbing 2", photo: "" },
-      { name: "Dr. Madam Taqiyya, S.Si., M.Sc.", title: "Pembimbing 3", photo: "" },
+      { name: "Prof. Dr.rer.nat. Poerbandono, S.T., M.M.",   title: "Pembimbing 1", photo: "img/supervisors/pak-poer.jpg" },
+      { name: "Dr. Akhmad Riqqi, M.Si.",        title: "Pembimbing 2", photo: "img/supervisors/pak-riqqi.png" },
+      { name: "Dr. Madam Taqiyya, S.Si., M.Sc.", title: "Pembimbing 3", photo: "img/supervisors/bu-madam.jpg" },
     ],
   },
 };
