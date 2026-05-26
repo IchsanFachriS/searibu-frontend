@@ -96,12 +96,12 @@ const COPY: Record<"en" | "id", GuideCopy> = {
   en: {
     heroBadge: "Quick Guide",
     heroTitle: "How to Use Searibu",
-    heroDesc: "A concise guide to get you started with the Searibu marine information system.",
+    heroDesc: "A concise guide to get you started with the Searibu marine information system — from opening the map to reading tidal forecasts and checking activity safety.",
     downloadBtn: "Download Full Manual",
 
     videoLabel: "Tutorial Video",
     videoTitle: "Watch: Getting Started",
-    videoDesc: "A step-by-step walkthrough of Searibu core features.",
+    videoDesc: "A step-by-step walkthrough of Searibu core features. Full video coming soon.",
     videoPlaceholder: "Tutorial video will be available here",
 
     quickLabel: "Quick Start",
@@ -153,7 +153,7 @@ const COPY: Record<"en" | "id", GuideCopy> = {
     s104Label: "S-104 Export",
     s104Title: "Downloading S-104 HDF5 files",
     s104Items: [
-      { title: "Who can export", body: "S-104 export requires a Researcher or Professional account AND an active Pro subscription. You can change your account type in the Profile menu." },
+      { title: "Who can export", body: "S-104 export is available to all users with an active Pro subscription — no specific account type required." },
       { title: "TPXO export", body: "Downloads astronomical tidal prediction for the selected grid cell and date as an IHO S-104 Edition 2.0.0 compliant HDF5 file (dataDynamicity = 1)." },
       { title: "Luwes export", body: "Downloads real-time observed water level data from the Luwes station as an S-104 HDF5 file (dataDynamicity = 3). Requires Luwes data to be available for that date." },
       { title: "Opening the file", body: "HDF5 files can be opened with HDFView, ECDIS software, or processed programmatically using the open-source s100py Python library." },
@@ -166,7 +166,7 @@ const COPY: Record<"en" | "id", GuideCopy> = {
       { q: "The tidal prediction and observation lines do not match. Is that normal?", a: "Yes. TPXO9 computes the astronomical (gravitational) tide only. Observations from the Luwes station reflect total water level including storm surge, swell, and local effects — so some difference is expected, especially during strong weather." },
       { q: "Can I use the data offline?", a: "Once the Info Panel has loaded, tidal chart data stays available for your session. Weather data is also cached per session. For offline use, export an S-104 HDF5 file (requires Pro and Researcher account)." },
       { q: "Why does the safety check say Avoid even on a calm-looking day?", a: "The tool uses daily averages across all available hours. A single stormy hour is enough to push the average above the threshold. For a more granular view, check the hourly data table in the Info Panel." },
-      { q: "How do I change my account type from General to Researcher?", a: "Click your name in the navigation bar, then select Profile and Account Type. Choose Researcher or Professional and save. Note that S-104 export also requires a Pro subscription." },
+      { q: "How do I change my account type from General to Researcher?", a: "Click your name in the navigation bar, then select Profile and Account Type. Choose Researcher or Professional and save. S-104 export is available to all Pro users." },
       { q: "What is the TOL correction and why does it matter?", a: "Transfer of Level (TOL = -2.156 m) is applied to shift the Luwes station reference datum to Mean Sea Level (MSL), the same datum used by TPXO. This makes the two datasets directly comparable on the chart." },
     ],
 
@@ -179,12 +179,12 @@ const COPY: Record<"en" | "id", GuideCopy> = {
   id: {
     heroBadge: "Panduan Cepat",
     heroTitle: "Cara Menggunakan Searibu",
-    heroDesc: "Panduan singkat untuk mulai menggunakan sistem informasi kelautan Searibu.",
+    heroDesc: "Panduan singkat untuk mulai menggunakan sistem informasi kelautan Searibu — dari membuka peta hingga membaca prakiraan pasut dan memeriksa keamanan aktivitas.",
     downloadBtn: "Unduh Manual Lengkap",
 
     videoLabel: "Video Tutorial",
     videoTitle: "Tonton: Mulai Menggunakan Searibu",
-    videoDesc: "Panduan langkah demi langkah fitur-fitur utama Searibu.",
+    videoDesc: "Panduan langkah demi langkah fitur-fitur utama Searibu. Video lengkap segera hadir.",
     videoPlaceholder: "Video tutorial akan tersedia di sini",
 
     quickLabel: "Mulai Cepat",
@@ -236,7 +236,7 @@ const COPY: Record<"en" | "id", GuideCopy> = {
     s104Label: "Ekspor S-104",
     s104Title: "Mengunduh file S-104 HDF5",
     s104Items: [
-      { title: "Siapa yang bisa ekspor", body: "Ekspor S-104 membutuhkan akun Peneliti atau Profesional DAN langganan Pro aktif. Jenis akun dapat diubah di menu Profil." },
+      { title: "Siapa yang bisa ekspor", body: "Ekspor S-104 tersedia untuk semua pengguna dengan langganan Pro aktif — tidak perlu jenis akun tertentu." },
       { title: "Ekspor TPXO", body: "Mengunduh prediksi pasut astronomis untuk sel grid dan tanggal yang dipilih sebagai file HDF5 berstandar IHO S-104 Edition 2.0.0 (dataDynamicity = 1)." },
       { title: "Ekspor Luwes", body: "Mengunduh data muka air observasi real-time dari stasiun Luwes sebagai file S-104 HDF5 (dataDynamicity = 3). Membutuhkan data Luwes yang tersedia untuk tanggal tersebut." },
       { title: "Membuka file", body: "File HDF5 dapat dibuka dengan HDFView, perangkat lunak ECDIS, atau diproses secara terprogram menggunakan pustaka Python open-source s100py." },
@@ -249,7 +249,7 @@ const COPY: Record<"en" | "id", GuideCopy> = {
       { q: "Garis prediksi pasut dan observasi tidak sesuai. Apakah normal?", a: "Ya. TPXO9 hanya menghitung pasut astronomis (gravitasi). Observasi dari stasiun Luwes mencerminkan total muka air termasuk storm surge, ombak, dan efek lokal — sehingga perbedaan memang diharapkan, terutama saat cuaca buruk." },
       { q: "Bisakah saya menggunakan data secara offline?", a: "Setelah Panel Info dimuat, data grafik pasut tetap tersedia untuk sesi Anda. Data cuaca juga di-cache per sesi. Untuk penggunaan offline, ekspor file S-104 HDF5 (membutuhkan akun Pro dan Peneliti)." },
       { q: "Kenapa cek keamanan menunjukkan Hindari meski kelihatan tenang?", a: "Alat ini menggunakan rata-rata harian dari semua jam yang tersedia. Satu jam badai saja cukup untuk mendorong rata-rata harian melampaui ambang batas. Untuk tampilan lebih granular, periksa tabel data per jam di Panel Info." },
-      { q: "Bagaimana cara mengubah jenis akun dari Umum ke Peneliti?", a: "Klik nama Anda di bilah navigasi, lalu pilih Profil dan Jenis Akun. Pilih Peneliti atau Profesional dan simpan. Catatan: ekspor S-104 juga membutuhkan langganan Pro." },
+      { q: "Bagaimana cara mengubah jenis akun dari Umum ke Peneliti?", a: "Klik nama Anda di bilah navigasi, lalu pilih Profil dan Jenis Akun. Pilih Peneliti atau Profesional dan simpan. Ekspor S-104 tersedia untuk semua pengguna Pro." },
       { q: "Apa itu koreksi TOL dan mengapa penting?", a: "Transfer of Level (TOL = -2,156 m) diterapkan untuk menggeser datum referensi stasiun Luwes agar sesuai dengan Mean Sea Level (MSL), datum yang sama yang digunakan TPXO. Ini membuat kedua dataset dapat dibandingkan langsung di grafik." },
     ],
 
@@ -424,12 +424,12 @@ export const GuidePage: React.FC = () => {
         </div>
 
         {/* ── FAQ ──────────────────────────────────────────────────── */}
-        {/* <div className="gd-sec" ref={sec8.ref}>
+        <div className="gd-sec" ref={sec8.ref}>
           <SectionHeader label={c.faqLabel} title={c.faqTitle} inView={sec8.inView} />
           <div style={fadeIn(sec8.inView, 100)}>
             {c.faqs.map((f: GuideFaq, i: number) => <FaqItem key={i} q={f.q} a={f.a} defaultOpen={i === 0} />)}
           </div>
-        </div> */}
+        </div>
 
         {/* ── MANUAL CTA ───────────────────────────────────────────── */}
         <div style={{ padding: "64px 0 80px" }}>

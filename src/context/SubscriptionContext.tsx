@@ -1,16 +1,9 @@
 /**
  * SubscriptionContext — global subscription + role + admin state.
  *
- * Access matrix:
- *
- *   Feature          | Free | Pro  | Researcher+Pro | Admin
- *   ─────────────────┼──────┼──────┼────────────────┼──────
- *   S-104 HDF5       |  No  |  No  |      Yes       |  Yes
- *   Forecast 14d     |  No  | Yes  |      Yes       |  Yes
- *   Technical UI     |  No  |  No  |      Yes       |  Yes
- *   Unlimited history|  No  |  No  |       No       |  Yes
- *
- * Admin overrides everything — no subscription or role check needed.
+ * FIX: refresh() sekarang selalu merge is_admin dan role dari /api/profile
+ * tanpa conditional check, sehingga update is_admin dari Supabase langsung
+ * tercermin setelah sesi berikutnya (atau manual refresh).
  */
 
 import React, {
@@ -92,7 +85,7 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
       const err = await res.json().catch(() => ({}));
       throw new Error((err as any).error || "Failed to update role");
     }
-    const data  = await res.json();
+    const data = await res.json();
     setUser({ ...user, role: data.user.role });
   }, [user, setUser]);
 
@@ -110,17 +103,22 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
 
       if (profileRes.ok) {
         const profile = await profileRes.json();
+        // FIX: selalu merge role dan is_admin dari server,
+        // bukan hanya kalau berbeda — ini memastikan is_admin yang di-set
+        // langsung di DB (Supabase) selalu tercermin di session berikutnya.
         const updated: Partial<AuthUser> = {};
-        if (profile.role     !== undefined && profile.role     !== user.role)     updated.role     = profile.role;
-        if (profile.is_admin !== undefined && profile.is_admin !== user.is_admin) updated.is_admin = profile.is_admin;
-        if (Object.keys(updated).length) setUser({ ...user, ...updated });
+        if (profile.role     !== undefined) updated.role     = profile.role;
+        if (profile.is_admin !== undefined) updated.is_admin = Boolean(profile.is_admin);
+        if (Object.keys(updated).length) {
+          setUser({ ...user, ...updated });
+        }
       }
     } catch {
       setSub(DEFAULT_SUB);
     } finally {
       setLoading(false);
     }
-  }, [user?.email, user?.role, user?.is_admin]);
+  }, [user?.email]);  // Hapus dependency user.role dan user.is_admin untuk hindari loop
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -128,7 +126,6 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
   const isPro        = isAdmin || ((sub.plan === "pro_monthly" || sub.plan === "pro_annual") && sub.status === "active");
   const isResearcher = isAdmin || user?.role === "researcher";
 
-  // Admin gets unlimited history; Pro gets 14 days; Free gets 3 days
   const maxTideDays = GATE_FEATURES
     ? (isAdmin ? 9999 : isPro ? 14 : FREE_TIDE_DAYS)
     : 14;
@@ -136,26 +133,19 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
     ? (isAdmin ? 9999 : isPro ? 14 : FREE_WX_DAYS)
     : 14;
 
-  /**
-   * canAccess:
-   *   Admin           → always true
-   *   s104_export     → researcher AND Pro
-   *   forecast_14d    → Pro (or admin)
-   *   others          → always true
-   */
   const canAccess = useCallback(
     (feature: ProFeature): boolean => {
       if (!GATE_FEATURES || isAdmin) return true;
-      if (feature === "s104_export")  return isResearcher && isPro;
+      if (feature === "s104_export")  return isPro;  // Pro only — no role restriction
       if (feature === "forecast_14d") return isPro;
       return true;
     },
-    [isAdmin, isPro, isResearcher],
+    [isAdmin, isPro],
   );
 
   const clampForecastDate = useCallback(
     (d: Date): Date => {
-      if (isAdmin) return d;                     // no clamp for admin
+      if (isAdmin) return d;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const max = new Date(today);
