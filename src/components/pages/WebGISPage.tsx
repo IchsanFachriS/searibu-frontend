@@ -18,8 +18,8 @@ interface GridOption {
 }
 
 const GRID_OPTIONS: GridOption[] = [
-  { key: "tpxo",  color: "#3b82f6", labelEn: "TPXO9",       labelId: "TPXO9",        descEn: "Tidal prediction",        descId: "Prediksi pasut"         },
-  { key: "ecmwf", color: "#f59e0b", labelEn: "ECMWF IFS",   labelId: "ECMWF IFS",    descEn: "Weather forecast (~9 km)", descId: "Prakiraan cuaca (~9 km)" },
+  { key: "tpxo",  color: "#3b82f6", labelEn: "TPXO9",        labelId: "TPXO9",        descEn: "Tidal prediction",        descId: "Prediksi pasut"          },
+  { key: "ecmwf", color: "#f59e0b", labelEn: "ECMWF IFS",    labelId: "ECMWF IFS",    descEn: "Weather forecast (~9 km)", descId: "Prakiraan cuaca (~9 km)" },
   { key: "smoc",  color: "#10b981", labelEn: "SMOC / MFWAM", labelId: "SMOC / MFWAM", descEn: "Wave & current (0.083°)",  descId: "Gelombang & arus (0,083°)" },
 ];
 
@@ -29,13 +29,11 @@ interface Coords { lat: number; lon: number }
 
 export const WebGISPage: React.FC = () => {
   const { language } = useLanguage();
-  const [basemap, setBasemap] = useState<BasemapType>("satellite");
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [basemap,        setBasemap]        = useState<BasemapType>("satellite");
+  const [panelOpen,      setPanelOpen]      = useState(false);
   const [selectedCoords, setSelectedCoords] = useState<Coords | null>(null);
-  const [gridLayer, setGridLayer] = useState<GridLayer>("tpxo");
-
-  /* State untuk kustomisasi lebar desktop panel */
-  const [panelWidth, setPanelWidth] = useState(480);
+  const [gridLayer,      setGridLayer]      = useState<GridLayer>("tpxo");
+  const [panelWidth,     setPanelWidth]     = useState(480);
   const isResizing = useRef(false);
 
   const handleGridClick = (coords: Coords) => {
@@ -48,7 +46,6 @@ export const WebGISPage: React.FC = () => {
     setTimeout(() => setSelectedCoords(null), 400);
   };
 
-  /* Handler untuk Resize Panel Desktop */
   const startResize = (e: React.MouseEvent) => {
     e.preventDefault();
     isResizing.current = true;
@@ -59,14 +56,11 @@ export const WebGISPage: React.FC = () => {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing.current) return;
-      // Menghitung sisa ruang dari sisi kanan layar
       const newWidth = window.innerWidth - e.clientX;
-      // Batasi lebar minimum 340px dan maksimum 65% dari lebar layar
       if (newWidth >= 340 && newWidth <= window.innerWidth * 0.65) {
         setPanelWidth(newWidth);
       }
     };
-
     const handleMouseUp = () => {
       if (isResizing.current) {
         isResizing.current = false;
@@ -74,7 +68,6 @@ export const WebGISPage: React.FC = () => {
         document.body.style.userSelect = "auto";
       }
     };
-
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
     return () => {
@@ -115,11 +108,17 @@ export const WebGISPage: React.FC = () => {
           overscroll-behavior: none;
         }
 
+        /*
+         * TOOLBAR: position:fixed agar tidak dipengaruhi oleh
+         * transform/overflow parent mana pun (termasuk panel mobile
+         * yang slide up/down). top:82px = navbar(70) + gap(12).
+         * z-index:450 — di bawah navbar(500) sehingga tidak overlap.
+         */
         .webgis-toolbar {
-          position: absolute;
-          top: 12px;
+          position: fixed;
+          top: 82px;
           left: 12px;
-          z-index: 1000;
+          z-index: 450;
           display: flex;
           align-items: center;
           gap: 6px;
@@ -141,8 +140,8 @@ export const WebGISPage: React.FC = () => {
           transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
           white-space: nowrap;
         }
-        .webgis-basemap-btn.active  { background: #0284c7; color: #fff; box-shadow: 0 2px 8px rgba(2,132,199,0.4); }
-        .webgis-basemap-btn.inactive{ background: transparent; color: #1e293b; }
+        .webgis-basemap-btn.active   { background: #0284c7; color: #fff; box-shadow: 0 2px 8px rgba(2,132,199,0.4); }
+        .webgis-basemap-btn.inactive { background: transparent; color: #1e293b; }
 
         .webgis-toolbar-card {
           display: flex;
@@ -184,7 +183,13 @@ export const WebGISPage: React.FC = () => {
         .webgis-grid-btn:hover { background: #f1f5f9; }
         .webgis-grid-btn.open  { background: #f1f5f9; }
 
-        /* ── Desktop Panel & Resize Handle ── */
+        @media (max-width: 400px) {
+          .webgis-toolbar      { gap: 4px; }
+          .webgis-basemap-btn  { padding: 5px 8px; font-size: 10px; }
+          .webgis-grid-btn     { padding: 5px 7px; }
+        }
+
+        /* ── Desktop panel ── */
         @media (min-width: 769px) {
           .webgis-panel-desktop {
             position: relative;
@@ -195,8 +200,6 @@ export const WebGISPage: React.FC = () => {
             display: flex;
             transition: transform .35s cubic-bezier(.4,0,.2,1);
           }
-          
-          /* Handle Penyeret Lebar */
           .webgis-resize-handle {
             position: absolute;
             top: 0; left: 0; bottom: 0;
@@ -206,11 +209,10 @@ export const WebGISPage: React.FC = () => {
             z-index: 100;
             transition: background 0.2s;
           }
-          .webgis-resize-handle:hover, .webgis-resize-handle:active {
-            background: rgba(2, 132, 199, 0.4);
-            width: 5px;
+          .webgis-resize-handle:hover,
+          .webgis-resize-handle:active {
+            background: rgba(2,132,199,0.4);
           }
-
           .webgis-panel-desktop.closed {
             transform: translateX(100%);
             position: absolute;
@@ -218,12 +220,6 @@ export const WebGISPage: React.FC = () => {
           }
           .webgis-panel-mobile    { display: none !important; }
           .webgis-mobile-backdrop { display: none !important; }
-        }
-
-        @media (max-width: 400px) {
-          .webgis-toolbar { gap: 4px; }
-          .webgis-basemap-btn { padding: 5px 8px; font-size: 10px; }
-          .webgis-grid-btn    { padding: 5px 7px; }
         }
 
         /* ── Mobile panel ── */
@@ -281,44 +277,53 @@ export const WebGISPage: React.FC = () => {
         }
       `}</style>
 
+      {/*
+        TOOLBAR dirender di sini — LUAR dari webgis-wrapper.
+        Karena position:fixed, posisinya terikat ke viewport,
+        bukan ke parent container mana pun.
+      */}
+      <div className="webgis-toolbar">
+        <div className="webgis-toolbar-card">
+          {/* Basemap: Map */}
+          <button
+            className={`webgis-basemap-btn ${basemap === "osm" ? "active" : "inactive"}`}
+            onClick={() => setBasemap("osm")}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+            </svg>
+            {language === "id" ? "Peta" : "Map"}
+          </button>
+
+          {/* Basemap: Satellite */}
+          <button
+            className={`webgis-basemap-btn ${basemap === "satellite" ? "active" : "inactive"}`}
+            onClick={() => setBasemap("satellite")}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/>
+            </svg>
+            {language === "id" ? "Sat." : "Sat."}
+          </button>
+
+          {/* Divider */}
+          <div className="webgis-toolbar-divider" />
+
+          {/* Grid layer selector */}
+          <GridLayerToggleInline
+            current={gridLayer}
+            onChange={setGridLayer}
+            language={language}
+          />
+        </div>
+      </div>
+
       <div
         className="webgis-wrapper"
         onWheel={(e) => e.preventDefault()}
         onTouchMove={(e) => { if (!panelOpen) e.preventDefault(); }}
       >
         <div className="webgis-map-area">
-          <div className="webgis-toolbar">
-            <div className="webgis-toolbar-card">
-              <button
-                className={`webgis-basemap-btn ${basemap === "osm" ? "active" : "inactive"}`}
-                onClick={() => setBasemap("osm")}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
-                </svg>
-                {language === "id" ? "Peta" : "Map"}
-              </button>
-
-              <button
-                className={`webgis-basemap-btn ${basemap === "satellite" ? "active" : "inactive"}`}
-                onClick={() => setBasemap("satellite")}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="3"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/>
-                </svg>
-                {language === "id" ? "Sat." : "Sat."}
-              </button>
-
-              <div className="webgis-toolbar-divider" />
-
-              <GridLayerToggleInline
-                current={gridLayer}
-                onChange={setGridLayer}
-                language={language}
-              />
-            </div>
-          </div>
-
           <MapContainer
             basemap={basemap}
             gridLayer={gridLayer}
@@ -329,8 +334,8 @@ export const WebGISPage: React.FC = () => {
           />
         </div>
 
-        {/* Desktop side panel (Dengan lebar dinamis hasil drag) */}
-        <div 
+        {/* Desktop side panel */}
+        <div
           className={`webgis-panel-desktop ${panelOpen ? "" : "closed"}`}
           style={{ width: panelOpen ? panelWidth : 0 }}
         >
@@ -360,14 +365,14 @@ export const WebGISPage: React.FC = () => {
   );
 };
 
-/* ── GridLayerToggleInline ── */
+/* ── GridLayerToggleInline ─────────────────────────────────────────────── */
 const GridLayerToggleInline: React.FC<{
   current:  GridLayer;
   onChange: (l: GridLayer) => void;
   language: string;
 }> = ({ current, onChange, language }) => {
   const [open, setOpen] = useState(false);
-  const cfg = GRID_OPTIONS.find(o => o.key === current)!;
+  const cfg   = GRID_OPTIONS.find(o => o.key === current)!;
   const label = language === "id" ? cfg.labelId : cfg.labelEn;
   const desc  = language === "id" ? cfg.descId  : cfg.descEn;
 
@@ -388,12 +393,12 @@ const GridLayerToggleInline: React.FC<{
 
       {open && (
         <>
-          <div style={{ position: "fixed", inset: 0, zIndex: 998 }} onClick={() => setOpen(false)} />
+          <div style={{ position: "fixed", inset: 0, zIndex: 448 }} onClick={() => setOpen(false)} />
           <div style={{
             position: "absolute", top: "calc(100% + 8px)", left: 0,
             background: "rgba(255,255,255,0.99)", borderRadius: 12,
             boxShadow: "0 12px 32px rgba(0,0,0,0.18)", border: "1px solid rgba(0,0,0,0.08)",
-            overflow: "hidden", minWidth: 210, zIndex: 999,
+            overflow: "hidden", minWidth: 210, zIndex: 449,
           }}>
             <div style={{ padding: "8px 12px 7px", borderBottom: "1px solid #f1f5f9" }}>
               <p style={{ fontFamily: SANS, fontSize: 9.5, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase" as const, color: "#94a3b8", margin: 0 }}>
@@ -401,8 +406,8 @@ const GridLayerToggleInline: React.FC<{
               </p>
             </div>
             {GRID_OPTIONS.map(opt => {
-              const lbl = language === "id" ? opt.labelId : opt.labelEn;
-              const dsc = language === "id" ? opt.descId  : opt.descEn;
+              const lbl    = language === "id" ? opt.labelId : opt.labelEn;
+              const dsc    = language === "id" ? opt.descId  : opt.descEn;
               const active = current === opt.key;
               return (
                 <button
