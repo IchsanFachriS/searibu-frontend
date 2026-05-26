@@ -96,7 +96,7 @@ const COPY: Record<"en" | "id", GuideCopy> = {
   en: {
     heroBadge: "Quick Guide",
     heroTitle: "How to Use Searibu",
-    heroDesc: "A concise guide to get you started with the Searibu marine information system ",
+    heroDesc: "A concise guide to get you started with the Searibu marine information system.",
     downloadBtn: "Download Full Manual",
 
     videoLabel: "Tutorial Video",
@@ -179,7 +179,7 @@ const COPY: Record<"en" | "id", GuideCopy> = {
   id: {
     heroBadge: "Panduan Cepat",
     heroTitle: "Cara Menggunakan Searibu",
-    heroDesc: "Panduan singkat untuk mulai menggunakan sistem informasi kelautan Searibu",
+    heroDesc: "Panduan singkat untuk mulai menggunakan sistem informasi kelautan Searibu.",
     downloadBtn: "Unduh Manual Lengkap",
 
     videoLabel: "Video Tutorial",
@@ -321,7 +321,7 @@ export const GuidePage: React.FC = () => {
             <p style={{ fontFamily: FONT, fontSize: "clamp(14px,1.6vw,16px)", lineHeight: 1.8, color: "rgba(245,240,232,0.60)", maxWidth: 560, margin: 0 }}>{c.heroDesc}</p>
           </div>
           <div className={`gd-fadein${heroVisible ? " vis" : ""}`} style={{ transitionDelay: "280ms", paddingBottom: 52 }}>
-            <a href="/searibu_manual.pdf" target="_blank" rel="noopener noreferrer"
+            <a href="/docs/Manual_Searibu.pdf" target="_blank" rel="noopener noreferrer"
               style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 22px", borderRadius: 9, background: AMBER, color: DARK1, fontFamily: FONT, fontSize: 13, fontWeight: 700, textDecoration: "none", transition: "opacity 0.18s" }}
               onMouseEnter={e => (e.currentTarget.style.opacity = "0.85")}
               onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
@@ -429,8 +429,8 @@ export const GuidePage: React.FC = () => {
           <div style={fadeIn(sec8.inView, 100)}>
             {c.faqs.map((f: GuideFaq, i: number) => <FaqItem key={i} q={f.q} a={f.a} defaultOpen={i === 0} />)}
           </div>
-        </div>
- */}
+        </div> */}
+
         {/* ── MANUAL CTA ───────────────────────────────────────────── */}
         <div style={{ padding: "64px 0 80px" }}>
           <div style={{ background: DARK1, borderRadius: 16, padding: "clamp(32px,5vw,52px)", position: "relative", overflow: "hidden" }}>
@@ -443,7 +443,7 @@ export const GuidePage: React.FC = () => {
               </div>
               <h2 style={{ fontFamily: FONT, fontSize: "clamp(1.4rem,3vw,2rem)", fontWeight: 800, color: OFF_WHITE, margin: "0 0 14px", letterSpacing: "-0.03em" }}>{c.manualTitle}</h2>
               <p style={{ fontFamily: FONT, fontSize: 14, lineHeight: 1.8, color: "rgba(245,240,232,0.55)", maxWidth: 520, margin: "0 0 28px" }}>{c.manualDesc}</p>
-              <a href="/searibu_manual.pdf" target="_blank" rel="noopener noreferrer"
+              <a href="/docs/Manual_Searibu.pdf" target="_blank" rel="noopener noreferrer"
                 style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 22px", borderRadius: 9, background: AMBER, color: DARK1, fontFamily: FONT, fontSize: 13, fontWeight: 700, textDecoration: "none", transition: "opacity 0.18s" }}
                 onMouseEnter={e => (e.currentTarget.style.opacity = "0.85")}
                 onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
