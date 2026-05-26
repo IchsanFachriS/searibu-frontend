@@ -110,15 +110,24 @@ export const WebGISPage: React.FC = () => {
 
         /*
          * TOOLBAR: position:fixed agar tidak dipengaruhi oleh
-         * transform/overflow parent mana pun (termasuk panel mobile
-         * yang slide up/down). top:82px = navbar(70) + gap(12).
-         * z-index:450 — di bawah navbar(500) sehingga tidak overlap.
+         * transform/overflow parent mana pun.
+         * top:82px = navbar(70) + gap(12).
+         *
+         * FIX z-index: 380 (turun dari 450)
+         * ─────────────────────────────────
+         * Navbar         = z-index 500  → selalu di atas
+         * Mobile drawer  = z-index 400  → menutupi toolbar ✓
+         * Mobile overlay = z-index 390  → menutupi toolbar ✓
+         * Toolbar        = z-index 380  → di bawah drawer & overlay ✓
+         *
+         * Sebelumnya toolbar z-index 450 tembus di atas drawer (400)
+         * sehingga tampak mengambang di atas menu mobile yang terbuka.
          */
         .webgis-toolbar {
           position: fixed;
           top: 82px;
           left: 12px;
-          z-index: 450;
+          z-index: 380;       /* FIX: turun dari 450 → 380 */
           display: flex;
           align-items: center;
           gap: 6px;
@@ -279,8 +288,9 @@ export const WebGISPage: React.FC = () => {
 
       {/*
         TOOLBAR dirender di sini — LUAR dari webgis-wrapper.
-        Karena position:fixed, posisinya terikat ke viewport,
-        bukan ke parent container mana pun.
+        position:fixed, terikat ke viewport.
+        z-index: 380 — di bawah navbar (500), drawer (400), overlay (390).
+        Saat mobile drawer terbuka, toolbar tertutup secara natural. ✓
       */}
       <div className="webgis-toolbar">
         <div className="webgis-toolbar-card">
@@ -393,12 +403,15 @@ const GridLayerToggleInline: React.FC<{
 
       {open && (
         <>
-          <div style={{ position: "fixed", inset: 0, zIndex: 448 }} onClick={() => setOpen(false)} />
+          <div style={{ position: "fixed", inset: 0, zIndex: 377 }} onClick={() => setOpen(false)} />
           <div style={{
             position: "absolute", top: "calc(100% + 8px)", left: 0,
             background: "rgba(255,255,255,0.99)", borderRadius: 12,
             boxShadow: "0 12px 32px rgba(0,0,0,0.18)", border: "1px solid rgba(0,0,0,0.08)",
-            overflow: "hidden", minWidth: 210, zIndex: 449,
+            overflow: "hidden", minWidth: 210,
+            /* FIX: z-index dropdown satu level di atas toolbar (378) tapi tetap
+               di bawah navbar drawer (390/400) */
+            zIndex: 379,
           }}>
             <div style={{ padding: "8px 12px 7px", borderBottom: "1px solid #f1f5f9" }}>
               <p style={{ fontFamily: SANS, fontSize: 9.5, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase" as const, color: "#94a3b8", margin: 0 }}>
