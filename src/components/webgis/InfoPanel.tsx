@@ -79,7 +79,7 @@ const LOW_TEXT  = "#b45309";
 const SANS = '"Plus Jakarta Sans", "Inter", "DM Sans", system-ui, sans-serif';
 const MONO = '"Inter", "DM Sans", system-ui, sans-serif';
 
-const TOL_CORRECTION = -2.156;
+const TOL_CORRECTION = -1.944;
 const API_BASE = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:5000";
 
 const FREE_HIST_DAYS = 10;

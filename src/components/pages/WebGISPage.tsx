@@ -409,8 +409,6 @@ const GridLayerToggleInline: React.FC<{
             background: "rgba(255,255,255,0.99)", borderRadius: 12,
             boxShadow: "0 12px 32px rgba(0,0,0,0.18)", border: "1px solid rgba(0,0,0,0.08)",
             overflow: "hidden", minWidth: 210,
-            /* FIX: z-index dropdown satu level di atas toolbar (378) tapi tetap
-               di bawah navbar drawer (390/400) */
             zIndex: 379,
           }}>
             <div style={{ padding: "8px 12px 7px", borderBottom: "1px solid #f1f5f9" }}>

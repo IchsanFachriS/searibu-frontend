@@ -16,7 +16,6 @@ L.Icon.Default.mergeOptions({
 const SANS         = '"Plus Jakarta Sans", "Inter", system-ui, sans-serif';
 const ISLAND_COLOR = "#0284c7";
 
-/* ── Grid layer configuration ───────────────────────────────────────────── */
 interface GridConfig {
   file:      string;
   color:     string;
@@ -32,8 +31,8 @@ const GRID_CONFIG: Record<GridLayer, GridConfig> = {
     file:      "/GRID_TPXO_SERIBU.geojson",
     color:     "#3b82f6",
     fillColor: "#3b82f6",
-    labelEn:   "TPXO9",
-    labelId:   "TPXO9",
+    labelEn:   "TPXO-10 Atlas",
+    labelId:   "TPXO-10 Atlas",
     tipEn:     "Click for tide & weather",
     tipId:     "Klik untuk pasut & cuaca",
   },
@@ -50,8 +49,8 @@ const GRID_CONFIG: Record<GridLayer, GridConfig> = {
     file:      "/GRID_SMOC-MFWAM_SERIBU.geojson",
     color:     "#10b981",
     fillColor: "#10b981",
-    labelEn:   "SMOC / MFWAM",
-    labelId:   "SMOC / MFWAM",
+    labelEn:   "SMOC & MFWAM",
+    labelId:   "SMOC & MFWAM",
     tipEn:     "Click for wave & current data",
     tipId:     "Klik untuk gelombang & arus",
   },
@@ -97,8 +96,8 @@ const PORT_LOCATIONS = [
 const LUWES_STATION = {
   name: "Sta. Pasut Luwes", nameEn: "Luwes Tidal Station",
   lat: -5.7439, lon: 106.6128,
-  descId: "Stasiun pengamatan pasut otomatis Luwes milik PT Luwes Inovasi Mandiri. Data observasi digunakan sebagai koreksi terhadap prediksi TPXO dalam sistem Searibu.",
-  descEn: "Luwes automatic tide gauge station operated by PT Luwes Inovasi Mandiri. Observation data is used as correction against TPXO prediction.",
+  descId: "Stasiun pengamatan pasut otomatis Luwes milik PT Luwes Inovasi Mandiri.",
+  descEn: "Luwes automatic tide gauge station operated by PT Luwes Inovasi Mandiri.",
 };
 
 const BASEMAPS = {
@@ -385,7 +384,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
     let isCurrentRequest = true;
 
-    /* ✅ Copot layer grid lama yang terpasang secara instan */
     if (geoJsonLayerRef.current) {
       if (mapRef.current.hasLayer(geoJsonLayerRef.current)) {
         mapRef.current.removeLayer(geoJsonLayerRef.current);
