@@ -162,7 +162,7 @@ const COPY = {
   id: {
     tagline: "INFORMASI KELAUTAN · KEPULAUAN SERIBU",
     headline: "Ketahui Sebelum\nBerlayar.",
-    subline: "Prediksi pasut berbasis ilmiah dan kondisi laut real-time untuk wisata bahari yang aman di gugusan pulau terpopuler Indonesia.",
+    subline: "Prediksi pasut berbasis ilmiah dan kondisi laut real-time untuk wisata bahari yang aman di Kepulauan Seribu.",
     heroCta: "Buka WebGIS",
     heroGhost: "Cek Keamanan",
     safetyEyebrow: "Cek Keamanan Aktivitas",
