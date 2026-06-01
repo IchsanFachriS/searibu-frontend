@@ -85,7 +85,7 @@ const C = {
     heroDesc: "A capstone design project by ITB Geodesy and Geomatics Engineering students, building a unified marine information platform integrating tidal prediction, real-time observations, and weather forecasting for safer and smarter island tourism.",
     guideBtn: "How to Use",
     missionTitle: "Our Mission",
-    missionBody: "To provide accurate, science-backed marine information that empowers tourists, researchers, and maritime professionals operating in the Kepulauan Seribu archipelago — making every voyage safer and every decision better-informed.",
+    missionBody: "To provide accurate, science-backed marine information that empowers tourists, researchers, and maritime professionals operating in the Kepulauan Seribu archipelago, making every voyage safer and every decision better-informed.",
     team: [
       { name: "Revalia Aura Cahaya Prasetyo",  nim: "15122003", role: "Frontend Developer", photo: "img/team/reva.jpeg" },
       { name: "Muhammad Syahrul Tasyrifan",    nim: "15122009", role: "Backend Developer",  photo: "img/team/syahrul.jpeg" },
@@ -108,10 +108,10 @@ const C = {
   id: {
     hero: "Tentang Searibu",
     heroSub: "Sistem Informasi Kelautan untuk Wisata Bahari di Kepulauan Seribu",
-    heroDesc: "Proyek capstone mahasiswa Teknik Geodesi dan Geomatika ITB yang membangun platform informasi kelautan terpadu — mengintegrasikan prediksi pasang surut, telemetri real-time, dan prakiraan cuaca untuk wisata bahari yang lebih aman.",
+    heroDesc: "Proyek capstone mahasiswa Teknik Geodesi dan Geomatika ITB yang membangun platform informasi kelautan terpadu dengan mengintegrasikan prediksi pasang surut, observasi real-time, dan prakiraan cuaca untuk wisata bahari yang lebih aman.",
     guideBtn: "Cara Penggunaan",
     missionTitle: "Misi Kami",
-    missionBody: "Menyediakan informasi kelautan yang akurat dan berbasis ilmiah untuk memberdayakan wisatawan, peneliti, dan profesional maritim yang beroperasi di Kepulauan Seribu — menjadikan setiap perjalanan lebih aman dan setiap keputusan lebih terinformasi.",
+    missionBody: "Menyediakan informasi kelautan yang akurat dan berbasis ilmiah untuk memberdayakan wisatawan, peneliti, dan profesional maritim yang beroperasi di Kepulauan Seribu, membuat setiap perjalanan lebih aman dan setiap keputusan lebih terinformasi.",
     team: [
       { name: "Revalia Aura Cahaya Prasetyo",  nim: "15122003", role: "Frontend Developer", photo: "img/team/reva.jpeg" },
       { name: "Muhammad Syahrul Tasyrifan",    nim: "15122009", role: "Backend Developer",  photo: "img/team/syahrul.jpeg" },

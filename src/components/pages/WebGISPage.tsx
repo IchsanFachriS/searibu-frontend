@@ -2,31 +2,206 @@ import React, { useState, useEffect, useRef } from "react";
 import { MapContainer }  from "../webgis/MapContainer";
 import { InfoPanel }     from "../webgis/InfoPanel";
 import { useLanguage }   from "../../context/LanguageContext";
-import { Layers }        from "lucide-react";
+import { Layers, Map, Satellite } from "lucide-react";
 import type { BasemapType } from "../../types";
 
-/* ── GridLayer type ──────────────────────────────────────────────────────── */
 export type GridLayer = "tpxo" | "ecmwf" | "smoc";
 
 interface GridOption {
-  key:     GridLayer;
-  color:   string;
-  labelEn: string;
-  labelId: string;
-  descEn:  string;
-  descId:  string;
+  key: GridLayer; color: string;
+  labelEn: string; labelId: string;
+  descEn: string;  descId: string;
 }
 
 const GRID_OPTIONS: GridOption[] = [
-  { key: "tpxo",  color: "#3b82f6", labelEn: "TPXO9",        labelId: "TPXO9",        descEn: "Tidal prediction",        descId: "Prediksi pasut"          },
-  { key: "ecmwf", color: "#f59e0b", labelEn: "ECMWF IFS",    labelId: "ECMWF IFS",    descEn: "Weather forecast (~9 km)", descId: "Prakiraan cuaca (~9 km)" },
-  { key: "smoc",  color: "#10b981", labelEn: "SMOC / MFWAM", labelId: "SMOC / MFWAM", descEn: "Wave & current (0.083°)",  descId: "Gelombang & arus (0,083°)" },
+  { key:"tpxo",  color:"#38bdf8", labelEn:"TPXO10 Atlas",        labelId:"TPXO10 Atlas",        descEn:"Tidal prediction",        descId:"Prediksi pasut"          },
+  { key:"ecmwf", color:"#f59e0b", labelEn:"ECMWF IFS",    labelId:"ECMWF IFS",    descEn:"Weather forecast (~9 km)", descId:"Prakiraan cuaca (~9 km)" },
+  { key:"smoc",  color:"#34d399", labelEn:"SMOC / MFWAM", labelId:"SMOC / MFWAM", descEn:"Wave & current (0.083°)",  descId:"Gelombang & arus (0,083°)"},
 ];
 
-const SANS = '"Plus Jakarta Sans", "Inter", system-ui, sans-serif';
+/* ── Design tokens ── */
+const FONT  = "'Inter', system-ui, sans-serif";
+const C = {
+  bg:      "#0f1824",
+  surface: "#111d2c",
+  card:    "#152232",
+  border:  "#1e3044",
+  border2: "#243548",
+  sky:     "#38bdf8",
+  text1:   "#e8f4fd",
+  text2:   "#7fa8c9",
+  text3:   "#3d5a75",
+};
 
 interface Coords { lat: number; lon: number }
 
+/* ══════════════════════════════════════════════════════════════════
+   BasemapToggle — standalone pill
+══════════════════════════════════════════════════════════════════ */
+const BasemapToggle: React.FC<{
+  basemap: BasemapType;
+  onChange: (b: BasemapType) => void;
+  language: string;
+}> = ({ basemap, onChange, language }) => (
+  <div style={{
+    display: "flex", alignItems: "center", gap: 3,
+    background: "rgba(15,24,36,0.90)",
+    border: `1px solid ${C.border}`,
+    borderRadius: 10, padding: 3,
+    backdropFilter: "blur(12px)",
+    boxShadow: "0 4px 16px rgba(0,0,0,0.40)",
+  }}
+    onWheel={e => e.stopPropagation()}
+    onTouchMove={e => e.stopPropagation()}
+  >
+    {(["osm","satellite"] as BasemapType[]).map(type => {
+      const active = basemap === type;
+      return (
+        <button key={type} onClick={() => onChange(type)}
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "6px 11px", borderRadius: 7, border: "none",
+            cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 600,
+            transition: "all 0.18s",
+            background: active ? C.sky : "transparent",
+            color: active ? C.bg : C.text3,
+            boxShadow: active ? "0 2px 8px rgba(56,189,248,0.35)" : "none",
+            whiteSpace: "nowrap",
+          }}
+          onMouseEnter={e => { if (!active) { e.currentTarget.style.color = C.text2; e.currentTarget.style.background = `rgba(255,255,255,0.06)`; }}}
+          onMouseLeave={e => { if (!active) { e.currentTarget.style.color = C.text3; e.currentTarget.style.background = "transparent"; }}}
+        >
+          {type === "osm"
+            ? <Map size={12} />
+            : <Satellite size={12} />}
+          {type === "osm"
+            ? (language === "id" ? "Peta" : "Map")
+            : (language === "id" ? "Satelit" : "Sat.")}
+        </button>
+      );
+    })}
+  </div>
+);
+
+/* ══════════════════════════════════════════════════════════════════
+   GridLayerToggle — standalone pill with dropdown
+══════════════════════════════════════════════════════════════════ */
+const GridLayerToggle: React.FC<{
+  current:  GridLayer;
+  onChange: (l: GridLayer) => void;
+  language: string;
+}> = ({ current, onChange, language }) => {
+  const [open, setOpen] = useState(false);
+  const cfg = GRID_OPTIONS.find(o => o.key === current)!;
+
+  return (
+    <div style={{ position: "relative" }}
+      onWheel={e => e.stopPropagation()}
+      onTouchMove={e => e.stopPropagation()}
+    >
+      {/* Trigger */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: "flex", alignItems: "center", gap: 7,
+          padding: "6px 11px 6px 9px",
+          background: open ? "rgba(56,189,248,0.10)" : "rgba(15,24,36,0.90)",
+          border: `1px solid ${open ? "rgba(56,189,248,0.30)" : C.border}`,
+          borderRadius: 10, cursor: "pointer",
+          backdropFilter: "blur(12px)",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.40)",
+          transition: "all .18s",
+          fontFamily: FONT,
+        }}
+        onMouseEnter={e => { if (!open) { e.currentTarget.style.borderColor = `rgba(56,189,248,0.25)`; e.currentTarget.style.background = `rgba(56,189,248,0.07)`; }}}
+        onMouseLeave={e => { if (!open) { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = "rgba(15,24,36,0.90)"; }}}
+      >
+        {/* Color dot */}
+        <div style={{
+          width: 8, height: 8, borderRadius: "50%",
+          background: cfg.color, flexShrink: 0,
+          boxShadow: `0 0 6px ${cfg.color}80`,
+        }} />
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.text1, lineHeight: 1.2, whiteSpace: "nowrap" }}>
+            {language === "id" ? cfg.labelId : cfg.labelEn}
+          </div>
+          <div style={{ fontSize: 9, color: C.text3, lineHeight: 1.1, whiteSpace: "nowrap" }}>
+            {language === "id" ? cfg.descId : cfg.descEn}
+          </div>
+        </div>
+        <Layers size={11} style={{ color: open ? C.sky : C.text3, flexShrink: 0, marginLeft: 2, transition: "color .15s" }} />
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 376 }} onClick={() => setOpen(false)} />
+          <div style={{
+            position: "absolute", top: "calc(100% + 6px)", left: 0,
+            background: "rgba(15,24,36,0.97)",
+            border: `1px solid ${C.border}`,
+            borderRadius: 12,
+            overflow: "hidden",
+            minWidth: 220,
+            zIndex: 377,
+            boxShadow: "0 16px 40px rgba(0,0,0,0.60)",
+            backdropFilter: "blur(16px)",
+          }}>
+            {/* Header */}
+            <div style={{ padding: "8px 12px 7px", borderBottom: `1px solid ${C.border}` }}>
+              <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: C.text3 }}>
+                {language === "id" ? "Model Grid" : "Grid Model"}
+              </span>
+            </div>
+            {/* Options */}
+            {GRID_OPTIONS.map(opt => {
+              const active = current === opt.key;
+              const lbl = language === "id" ? opt.labelId : opt.labelEn;
+              const dsc = language === "id" ? opt.descId  : opt.descEn;
+              return (
+                <button key={opt.key} onClick={() => { onChange(opt.key); setOpen(false); }}
+                  style={{
+                    width: "100%", display: "flex", alignItems: "center", gap: 11,
+                    padding: "10px 13px",
+                    background: active ? `rgba(56,189,248,0.07)` : "none",
+                    border: "none", cursor: "pointer",
+                    textAlign: "left" as const,
+                    borderBottom: `1px solid ${C.border}`,
+                    transition: "background 0.12s",
+                  }}
+                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = `rgba(255,255,255,0.03)`; }}
+                  onMouseLeave={e => { if (!active) e.currentTarget.style.background = "none"; }}
+                >
+                  {/* Icon box */}
+                  <div style={{
+                    width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                    background: `${opt.color}12`,
+                    border: `1.5px solid ${opt.color}40`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <div style={{ width: 12, height: 12, borderRadius: 3, background: opt.color, opacity: active ? 1 : 0.7 }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontFamily: FONT, fontSize: 12.5, fontWeight: 600, margin: 0, lineHeight: 1.3, color: active ? opt.color : C.text1 }}>{lbl}</p>
+                    <p style={{ fontFamily: FONT, fontSize: 10.5, margin: 0, color: C.text3 }}>{dsc}</p>
+                  </div>
+                  {active && (
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: opt.color, flexShrink: 0, boxShadow: `0 0 6px ${opt.color}` }} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+/* ══════════════════════════════════════════════════════════════════
+   WebGISPage
+══════════════════════════════════════════════════════════════════ */
 export const WebGISPage: React.FC = () => {
   const { language } = useLanguage();
   const [basemap,        setBasemap]        = useState<BasemapType>("satellite");
@@ -40,7 +215,6 @@ export const WebGISPage: React.FC = () => {
     setSelectedCoords(coords);
     setPanelOpen(true);
   };
-
   const handleClosePanel = () => {
     setPanelOpen(false);
     setTimeout(() => setSelectedCoords(null), 400);
@@ -57,9 +231,7 @@ export const WebGISPage: React.FC = () => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing.current) return;
       const newWidth = window.innerWidth - e.clientX;
-      if (newWidth >= 340 && newWidth <= window.innerWidth * 0.65) {
-        setPanelWidth(newWidth);
-      }
+      if (newWidth >= 340 && newWidth <= window.innerWidth * 0.65) setPanelWidth(newWidth);
     };
     const handleMouseUp = () => {
       if (isResizing.current) {
@@ -69,25 +241,20 @@ export const WebGISPage: React.FC = () => {
       }
     };
     window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
+    window.addEventListener("mouseup",   handleMouseUp);
+    return () => { window.removeEventListener("mousemove", handleMouseMove); window.removeEventListener("mouseup", handleMouseUp); };
   }, []);
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap');
-
         html, body, #root {
           overscroll-behavior: none !important;
           overflow: hidden;
-          height: 100%;
-          width: 100%;
+          height: 100%; width: 100%;
         }
 
+        /* ── Map wrapper ── */
         .webgis-wrapper {
           display: flex;
           height: calc(100vh - 70px);
@@ -95,115 +262,39 @@ export const WebGISPage: React.FC = () => {
           overflow: hidden;
           margin-top: 70px;
           position: relative;
-          background: #1a1e2e;
+          background: #0f1824;
           overscroll-behavior: none;
           touch-action: none;
         }
-
         .webgis-map-area {
           position: relative;
-          flex: 1;
-          min-width: 0;
+          flex: 1; min-width: 0;
           overflow: hidden;
           overscroll-behavior: none;
         }
 
-        /*
-         * TOOLBAR: position:fixed agar tidak dipengaruhi oleh
-         * transform/overflow parent mana pun.
-         * top:82px = navbar(70) + gap(12).
-         *
-         * FIX z-index: 380 (turun dari 450)
-         * ─────────────────────────────────
-         * Navbar         = z-index 500  → selalu di atas
-         * Mobile drawer  = z-index 400  → menutupi toolbar ✓
-         * Mobile overlay = z-index 390  → menutupi toolbar ✓
-         * Toolbar        = z-index 380  → di bawah drawer & overlay ✓
-         *
-         * Sebelumnya toolbar z-index 450 tembus di atas drawer (400)
-         * sehingga tampak mengambang di atas menu mobile yang terbuka.
-         */
+        /* ── Toolbar: two separate pills, fixed ──────────────────────
+           z-index 380 — below navbar (500), mobile drawer (400), overlay (390)
+           Top: 82px = navbar (70) + gap (12)
+        ─────────────────────────────────────────────────────────────── */
         .webgis-toolbar {
           position: fixed;
           top: 82px;
           left: 12px;
-          z-index: 380;       /* FIX: turun dari 450 → 380 */
+          z-index: 380;
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           overscroll-behavior: contain;
           touch-action: manipulation;
         }
 
-        .webgis-basemap-btn {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          padding: 6px 12px;
-          border-radius: 7px;
-          border: none;
-          cursor: pointer;
-          font-family: ${SANS};
-          font-size: 11px;
-          font-weight: 600;
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-          white-space: nowrap;
-        }
-        .webgis-basemap-btn.active   { background: #0284c7; color: #fff; box-shadow: 0 2px 8px rgba(2,132,199,0.4); }
-        .webgis-basemap-btn.inactive { background: transparent; color: #1e293b; }
-
-        .webgis-toolbar-card {
-          display: flex;
-          align-items: center;
-          gap: 3px;
-          background: rgba(255,255,255,0.98);
-          border-radius: 10px;
-          padding: 3px;
-          box-shadow: 0 6px 20px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.15);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          border: 1px solid rgba(255,255,255,0.2);
-        }
-
-        .webgis-toolbar-divider {
-          width: 1px;
-          height: 20px;
-          background: #e2e8f0;
-          flex-shrink: 0;
-          margin: 0 2px;
-        }
-
-        .webgis-grid-btn {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 6px 10px;
-          border-radius: 7px;
-          border: none;
-          cursor: pointer;
-          font-family: ${SANS};
-          font-size: 11px;
-          font-weight: 600;
-          white-space: nowrap;
-          transition: all 0.15s;
-          background: transparent;
-          color: #1e293b;
-        }
-        .webgis-grid-btn:hover { background: #f1f5f9; }
-        .webgis-grid-btn.open  { background: #f1f5f9; }
-
-        @media (max-width: 400px) {
-          .webgis-toolbar      { gap: 4px; }
-          .webgis-basemap-btn  { padding: 5px 8px; font-size: 10px; }
-          .webgis-grid-btn     { padding: 5px 7px; }
-        }
-
-        /* ── Desktop panel ── */
+        /* ── Desktop side panel ── */
         @media (min-width: 769px) {
           .webgis-panel-desktop {
             position: relative;
             height: 100%;
-            background: #f7f4ef;
+            background: #0f1824;
             flex-shrink: 0;
             overflow: hidden;
             display: flex;
@@ -212,26 +303,23 @@ export const WebGISPage: React.FC = () => {
           .webgis-resize-handle {
             position: absolute;
             top: 0; left: 0; bottom: 0;
-            width: 5px;
+            width: 4px;
             cursor: ew-resize;
             background: transparent;
             z-index: 100;
             transition: background 0.2s;
           }
           .webgis-resize-handle:hover,
-          .webgis-resize-handle:active {
-            background: rgba(2,132,199,0.4);
-          }
+          .webgis-resize-handle:active { background: rgba(56,189,248,0.35); }
           .webgis-panel-desktop.closed {
             transform: translateX(100%);
-            position: absolute;
-            right: 0;
+            position: absolute; right: 0;
           }
           .webgis-panel-mobile    { display: none !important; }
           .webgis-mobile-backdrop { display: none !important; }
         }
 
-        /* ── Mobile panel ── */
+        /* ── Mobile panel — FIXED: top accounts for navbar (70px) ── */
         @media (max-width: 768px) {
           .webgis-panel-desktop { display: none !important; }
 
@@ -245,8 +333,8 @@ export const WebGISPage: React.FC = () => {
             transition: transform .35s cubic-bezier(.4,0,.2,1);
             border-radius: 16px 16px 0 0;
             overflow: hidden;
-            box-shadow: 0 -8px 40px rgba(0,0,0,0.18);
-            background: #f7f4ef;
+            box-shadow: 0 -8px 40px rgba(0,0,0,0.60);
+            background: #0f1824;
             overscroll-behavior: contain;
           }
           .webgis-panel-mobile.open { transform: translateY(0); }
@@ -255,13 +343,19 @@ export const WebGISPage: React.FC = () => {
             position: absolute; top: 8px; left: 50%;
             transform: translateX(-50%);
             width: 36px; height: 4px;
-            background: rgba(0,0,0,0.12);
-            border-radius: 2px; z-index: 10; cursor: grab;
+            background: rgba(56,189,248,0.18);
+            border-radius: 2px; z-index: 10;
+            cursor: grab;
           }
 
+          /* Backdrop sits below navbar — zIndex 499 */
           .webgis-mobile-backdrop {
-            position: fixed; inset: 0; z-index: 499;
-            background: rgba(0,0,0,0.28);
+            position: fixed;
+            /* Top at navbar bottom so it doesn't cover navbar */
+            top: 70px;
+            left: 0; right: 0; bottom: 0;
+            z-index: 499;
+            background: rgba(0,0,0,0.45);
             opacity: 0; pointer-events: none;
             transition: opacity .3s;
           }
@@ -274,65 +368,34 @@ export const WebGISPage: React.FC = () => {
           .webgis-panel-mobile { height: 80vh; max-height: 80vh; }
         }
 
+        /* Landscape phone */
         @media (max-width: 768px) and (orientation: landscape) {
           .webgis-panel-mobile {
             height: 90vh; max-height: 90vh;
-            left: auto; right: 0; top: 70px; bottom: 0;
+            left: auto; right: 0;
+            /* Start BELOW navbar */
+            top: 70px; bottom: 0;
             width: 340px; max-width: 340px;
             transform: translateX(100%);
-            border-radius: 12px 0 0 12px;
+            border-radius: 0;
           }
           .webgis-panel-mobile.open { transform: translateX(0); }
         }
       `}</style>
 
-      {/*
-        TOOLBAR dirender di sini — LUAR dari webgis-wrapper.
-        position:fixed, terikat ke viewport.
-        z-index: 380 — di bawah navbar (500), drawer (400), overlay (390).
-        Saat mobile drawer terbuka, toolbar tertutup secara natural. ✓
-      */}
+      {/* ── Toolbar: two separate pills ── */}
       <div className="webgis-toolbar">
-        <div className="webgis-toolbar-card">
-          {/* Basemap: Map */}
-          <button
-            className={`webgis-basemap-btn ${basemap === "osm" ? "active" : "inactive"}`}
-            onClick={() => setBasemap("osm")}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
-            </svg>
-            {language === "id" ? "Peta" : "Map"}
-          </button>
-
-          {/* Basemap: Satellite */}
-          <button
-            className={`webgis-basemap-btn ${basemap === "satellite" ? "active" : "inactive"}`}
-            onClick={() => setBasemap("satellite")}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/>
-            </svg>
-            {language === "id" ? "Sat." : "Sat."}
-          </button>
-
-          {/* Divider */}
-          <div className="webgis-toolbar-divider" />
-
-          {/* Grid layer selector */}
-          <GridLayerToggleInline
-            current={gridLayer}
-            onChange={setGridLayer}
-            language={language}
-          />
-        </div>
+        {/* Pill 1: Basemap toggle */}
+        <BasemapToggle basemap={basemap} onChange={setBasemap} language={language} />
+        {/* Pill 2: Grid layer toggle */}
+        <GridLayerToggle current={gridLayer} onChange={setGridLayer} language={language} />
       </div>
 
-      <div
-        className="webgis-wrapper"
-        onWheel={(e) => e.preventDefault()}
-        onTouchMove={(e) => { if (!panelOpen) e.preventDefault(); }}
+      <div className="webgis-wrapper"
+        onWheel={e => e.preventDefault()}
+        onTouchMove={e => { if (!panelOpen) e.preventDefault(); }}
       >
+        {/* Map */}
         <div className="webgis-map-area">
           <MapContainer
             basemap={basemap}
@@ -345,10 +408,7 @@ export const WebGISPage: React.FC = () => {
         </div>
 
         {/* Desktop side panel */}
-        <div
-          className={`webgis-panel-desktop ${panelOpen ? "" : "closed"}`}
-          style={{ width: panelOpen ? panelWidth : 0 }}
-        >
+        <div className={`webgis-panel-desktop ${panelOpen ? "" : "closed"}`} style={{ width: panelOpen ? panelWidth : 0 }}>
           <div className="webgis-resize-handle" onMouseDown={startResize} />
           {selectedCoords && (
             <div style={{ width: "100%", height: "100%", overflow: "hidden" }}>
@@ -357,103 +417,15 @@ export const WebGISPage: React.FC = () => {
           )}
         </div>
 
-        {/* Mobile backdrop */}
-        <div
-          className={`webgis-mobile-backdrop ${panelOpen ? "visible" : ""}`}
-          onClick={handleClosePanel}
-        />
+        {/* Mobile backdrop — below navbar */}
+        <div className={`webgis-mobile-backdrop ${panelOpen ? "visible" : ""}`} onClick={handleClosePanel} />
 
         {/* Mobile bottom sheet */}
         <div className={`webgis-panel-mobile ${panelOpen ? "open" : ""}`}>
           <div className="mobile-drag-handle" />
-          {selectedCoords && (
-            <InfoPanel coordinates={selectedCoords} onClose={handleClosePanel} />
-          )}
+          {selectedCoords && <InfoPanel coordinates={selectedCoords} onClose={handleClosePanel} />}
         </div>
       </div>
     </>
-  );
-};
-
-/* ── GridLayerToggleInline ─────────────────────────────────────────────── */
-const GridLayerToggleInline: React.FC<{
-  current:  GridLayer;
-  onChange: (l: GridLayer) => void;
-  language: string;
-}> = ({ current, onChange, language }) => {
-  const [open, setOpen] = useState(false);
-  const cfg   = GRID_OPTIONS.find(o => o.key === current)!;
-  const label = language === "id" ? cfg.labelId : cfg.labelEn;
-  const desc  = language === "id" ? cfg.descId  : cfg.descEn;
-
-  return (
-    <div style={{ position: "relative" }}>
-      <button
-        className={`webgis-grid-btn${open ? " open" : ""}`}
-        onClick={() => setOpen(o => !o)}
-        title={language === "id" ? "Pilih layer grid" : "Select grid layer"}
-      >
-        <div style={{ width: 8, height: 8, borderRadius: 2, background: cfg.color, flexShrink: 0 }} />
-        <div style={{ textAlign: "left" as const, lineHeight: 1.25 }}>
-          <div style={{ fontFamily: SANS, fontSize: 11, fontWeight: 700, color: "#1e293b" }}>{label}</div>
-          <div style={{ fontFamily: SANS, fontSize: 9,  fontWeight: 400, color: "#64748b" }}>{desc}</div>
-        </div>
-        <Layers size={11} style={{ color: "#94a3b8", flexShrink: 0, marginLeft: 1 }} />
-      </button>
-
-      {open && (
-        <>
-          <div style={{ position: "fixed", inset: 0, zIndex: 377 }} onClick={() => setOpen(false)} />
-          <div style={{
-            position: "absolute", top: "calc(100% + 8px)", left: 0,
-            background: "rgba(255,255,255,0.99)", borderRadius: 12,
-            boxShadow: "0 12px 32px rgba(0,0,0,0.18)", border: "1px solid rgba(0,0,0,0.08)",
-            overflow: "hidden", minWidth: 210,
-            zIndex: 379,
-          }}>
-            <div style={{ padding: "8px 12px 7px", borderBottom: "1px solid #f1f5f9" }}>
-              <p style={{ fontFamily: SANS, fontSize: 9.5, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase" as const, color: "#94a3b8", margin: 0 }}>
-                {language === "id" ? "Model Grid" : "Grid Model"}
-              </p>
-            </div>
-            {GRID_OPTIONS.map(opt => {
-              const lbl    = language === "id" ? opt.labelId : opt.labelEn;
-              const dsc    = language === "id" ? opt.descId  : opt.descEn;
-              const active = current === opt.key;
-              return (
-                <button
-                  key={opt.key}
-                  onClick={() => { onChange(opt.key); setOpen(false); }}
-                  style={{
-                    width: "100%", display: "flex", alignItems: "center", gap: 10,
-                    padding: "10px 12px",
-                    background: active ? `${opt.color}10` : "none",
-                    border: "none", cursor: "pointer",
-                    textAlign: "left" as const,
-                    borderBottom: "1px solid #f8fafc",
-                    transition: "background 0.12s",
-                  }}
-                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = "#f8fafc"; }}
-                  onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? `${opt.color}10` : "none"; }}
-                >
-                  <div style={{
-                    width: 30, height: 30, borderRadius: 7, flexShrink: 0,
-                    background: `${opt.color}18`, border: `1.5px solid ${opt.color}55`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    <div style={{ width: 11, height: 11, borderRadius: 2, background: opt.color }} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontFamily: SANS, fontSize: 12, fontWeight: 600, margin: 0, lineHeight: 1.3, color: active ? opt.color : "#0f172a" }}>{lbl}</p>
-                    <p style={{ fontFamily: SANS, fontSize: 10.5, margin: 0, color: active ? opt.color : "#94a3b8", opacity: active ? 0.8 : 1 }}>{dsc}</p>
-                  </div>
-                  {active && <div style={{ width: 7, height: 7, borderRadius: "50%", background: opt.color, flexShrink: 0 }} />}
-                </button>
-              );
-            })}
-          </div>
-        </>
-      )}
-    </div>
   );
 };

@@ -1,58 +1,72 @@
 /**
- * PricingModal.tsx — DUMMY PAYMENT MODE
+ * PricingModal.tsx — Dark nautical theme, fully responsive.
  *
- * FIX v3: ReactDOM.createPortal
- * ─────────────────────────────
- * Modal di-render langsung ke document.body via Portal, sehingga
- * position:fixed tidak terperangkap dalam stacking context manapun
- * (hero section punya z-index:5, transform, dsb.) — modal selalu
- * tampil di atas semua elemen halaman tanpa perlu z-index tinggi.
+ * Layout strategy:
+ *   ≥ 680px  → 3-column card row (desktop/tablet landscape)
+ *   < 680px  → tabbed single-card view on mobile (Free | Pro Monthly | Pro Annual)
+ *              so each card has full width and nothing gets squished
  *
- * FIX v2: Mobile responsiveness
- * ─────────────────────────────
- * - Header: padding fluid, title flex:1/minWidth:0, badge flexShrink:0
- * - Subtitle: clamp font-size, natural wrap
- * - Tab row: overflowX:auto + padding fluid
- * - Plan cards: minmax(min(200px,100%),1fr)
- * - Body: padding clamp()
- * - UpgradeModal: padding fluid, maxHeight+overflowY, plan selector flexWrap
+ * Portal-mounted → never trapped in any stacking context.
  */
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   X, Check, Lock, Zap, Download, BarChart2,
-  Calendar, Shield, RefreshCw, Loader2, CheckCircle,
+  Calendar, Shield, RefreshCw, Loader2, CheckCircle, Waves,
 } from "lucide-react";
 import { useSubContext } from "../../context/SubscriptionContext";
 
-const SANS    = '"Plus Jakarta Sans", "Inter", system-ui, sans-serif';
-const NAVY    = "#0c4a6e";
-const PRIMARY = "#0369a1";
-const SKY     = "#0ea5e9";
-const API     = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:5000";
+const FONT = "'Inter', system-ui, sans-serif";
+const MONO = "'Inter', monospace";
+const API  = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:5000";
 
-/* ─── copy ──────────────────────────────────────────────── */
+/* ── Design tokens ────────────────────────────────────────────────── */
+const M = {
+  bg:      "#0f1824",
+  surface: "#162030",
+  card:    "#1a2840",
+  border:  "#1e3044",
+  border2: "#243548",
+  amber:   "#f5c518",
+  amberD:  "#d4a814",
+  sky:     "#38bdf8",
+  text1:   "#f0f6ff",
+  text2:   "#8ba3be",
+  text3:   "#4a6580",
+  green:   "#4ade80",
+  red:     "#f87171",
+  DARK1:   "#0f1824",
+};
+
+/* ── Responsive hook ──────────────────────────────────────────────── */
+function useWidth() {
+  const [w, setW] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth : 900
+  );
+  useEffect(() => {
+    const h = () => setW(window.innerWidth);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+  return w;
+}
+
+/* ── Copy ─────────────────────────────────────────────────────────── */
 const COPY = {
   en: {
     title: "Choose your plan",
-    sub: "Get accurate tidal, weather, and marine data for Kepulauan Seribu",
-    monthly: "Billed monthly",
-    annual: "Billed annually",
-    save: "Save 40%",
-    currentPlan: "Current plan",
-    upgrade: "Upgrade",
-    freeName: "Free",
-    monthlyName: "Pro Monthly",
-    annualName: "Pro Annual",
+    sub:   "Accurate tidal, weather & marine data for Kepulauan Seribu",
+    tabPricing: "Plans", tabStatus: "My subscription",
+    demoBadge: "Demo Mode",
+    freeName: "Free", monthlyName: "Pro Monthly", annualName: "Pro Annual",
     freeDesc: "For occasional visitors",
     monthlyDesc: "For regular trip planners",
     annualDesc: "Best value for enthusiasts",
-    freePrice: "Rp 0",
-    monthlyPrice: "Rp 39.000",
-    annualPrice: "Rp 139.000",
-    perMonth: "/mo",
-    perYear: "/yr",
+    freePrice: "Rp 0", monthlyPrice: "Rp 39.000", annualPrice: "Rp 139.000",
+    perMonth: "/mo", perYear: "/yr",
+    monthly: "Billed monthly", annual: "Billed annually", save: "Save 40%",
+    currentPlan: "Current plan", upgrade: "Upgrade",
     features: {
       free: [
         { on: true,  label: "3-day tidal forecast" },
@@ -75,50 +89,34 @@ const COPY = {
         { on: true, label: "Priority support" },
       ],
     },
-    statusTitle: "Your subscription",
-    planLabel: "Plan",
-    expiresLabel: "Renews",
-    manageBilling: "Manage billing",
+    planLabel: "Plan", expiresLabel: "Renews",
     proFeatures: "Pro features included",
-    featExport: "S-104 HDF5 export",
-    featForecast: "14-day forecast",
-    featActivity: "Full activity guide",
-    featLuwes: "Luwes overlay",
+    featExport: "S-104 HDF5 export", featForecast: "14-day forecast",
+    featActivity: "Full activity guide", featLuwes: "Luwes overlay",
     upgradeModal: {
-      title: "Upgrade to Pro",
-      sub: "Select a billing period to continue",
-      cta: "Activate Pro (Demo)",
-      cancel: "Maybe later",
-      processing: "Activating…",
-      successTitle: "Pro activated!",
+      title: "Upgrade to Pro", sub: "Select a billing period to continue",
+      cta: "Activate Pro (Demo)", cancel: "Maybe later",
+      processing: "Activating…", successTitle: "Pro activated!",
       successSub: "Your Pro plan is now active. Enjoy full access.",
-      errorTitle: "Activation failed",
-      retry: "Try again",
+      errorTitle: "Activation failed", retry: "Try again",
+      demoNote: "Demo mode — subscription activates instantly without payment.",
     },
     notLoggedIn: "Sign in to upgrade your plan",
-    demoBadge: "Demo Mode",
-    tabPricing: "Plans",
-    tabStatus: "My subscription",
+    planTabFree: "Free", planTabMonthly: "Monthly", planTabAnnual: "Annual",
   },
   id: {
     title: "Pilih paket Anda",
-    sub: "Dapatkan data pasut, cuaca, dan kelautan akurat untuk Kepulauan Seribu",
-    monthly: "Ditagih bulanan",
-    annual: "Ditagih tahunan",
-    save: "Hemat 40%",
-    currentPlan: "Paket saat ini",
-    upgrade: "Upgrade",
-    freeName: "Gratis",
-    monthlyName: "Pro Bulanan",
-    annualName: "Pro Tahunan",
+    sub:   "Data pasut, cuaca & kelautan akurat untuk Kepulauan Seribu",
+    tabPricing: "Paket", tabStatus: "Langganan saya",
+    demoBadge: "Mode Demo",
+    freeName: "Gratis", monthlyName: "Pro Bulanan", annualName: "Pro Tahunan",
     freeDesc: "Untuk pengunjung sesekali",
     monthlyDesc: "Untuk perencana perjalanan rutin",
     annualDesc: "Paling hemat untuk penggemar",
-    freePrice: "Rp 0",
-    monthlyPrice: "Rp 39.000",
-    annualPrice: "Rp 139.000",
-    perMonth: "/bln",
-    perYear: "/thn",
+    freePrice: "Rp 0", monthlyPrice: "Rp 39.000", annualPrice: "Rp 139.000",
+    perMonth: "/bln", perYear: "/thn",
+    monthly: "Ditagih bulanan", annual: "Ditagih tahunan", save: "Hemat 40%",
+    currentPlan: "Paket saat ini", upgrade: "Upgrade",
     features: {
       free: [
         { on: true,  label: "Prakiraan pasut 3 hari" },
@@ -141,77 +139,461 @@ const COPY = {
         { on: true, label: "Dukungan prioritas" },
       ],
     },
-    statusTitle: "Langganan Anda",
-    planLabel: "Paket",
-    expiresLabel: "Perpanjang",
-    manageBilling: "Kelola tagihan",
+    planLabel: "Paket", expiresLabel: "Perpanjang",
     proFeatures: "Fitur Pro yang disertakan",
-    featExport: "Ekspor S-104 HDF5",
-    featForecast: "Prakiraan 14 hari",
-    featActivity: "Panduan aktivitas penuh",
-    featLuwes: "Overlay Luwes",
+    featExport: "Ekspor S-104 HDF5", featForecast: "Prakiraan 14 hari",
+    featActivity: "Panduan aktivitas penuh", featLuwes: "Overlay Luwes",
     upgradeModal: {
-      title: "Upgrade ke Pro",
-      sub: "Pilih periode tagihan untuk melanjutkan",
-      cta: "Aktifkan Pro (Demo)",
-      cancel: "Mungkin nanti",
-      processing: "Mengaktifkan…",
-      successTitle: "Pro aktif!",
+      title: "Upgrade ke Pro", sub: "Pilih periode tagihan untuk melanjutkan",
+      cta: "Aktifkan Pro (Demo)", cancel: "Mungkin nanti",
+      processing: "Mengaktifkan…", successTitle: "Pro aktif!",
       successSub: "Paket Pro Anda sekarang aktif. Nikmati akses penuh.",
-      errorTitle: "Aktivasi gagal",
-      retry: "Coba lagi",
+      errorTitle: "Aktivasi gagal", retry: "Coba lagi",
+      demoNote: "Mode demo — langganan aktif seketika tanpa pembayaran.",
     },
     notLoggedIn: "Masuk untuk upgrade paket",
-    demoBadge: "Mode Demo",
-    tabPricing: "Paket",
-    tabStatus: "Langganan saya",
+    planTabFree: "Gratis", planTabMonthly: "Bulanan", planTabAnnual: "Tahunan",
   },
 };
 
 const fmtDate = (iso: string | null) => {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("id-ID", {
-    day: "numeric", month: "short", year: "numeric",
-  });
+  return new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
 };
 
-/* ─── FeatureRow ───────────────────────────────────────── */
+type DummyPayState = "idle" | "loading" | "success" | "error";
+type PlanTab = "free" | "monthly" | "annual";
+
+/* ── FeatureRow ───────────────────────────────────────────────────── */
 const FeatureRow: React.FC<{ on: boolean; label: string }> = ({ on, label }) => (
-  <div style={{
-    display: "flex", alignItems: "flex-start", gap: 8,
-    fontFamily: SANS, fontSize: 13,
-    color: on ? "#374151" : "#94a3b8",
-    marginBottom: 7, lineHeight: 1.4,
-  }}>
+  <div style={{ display: "flex", alignItems: "flex-start", gap: 9, marginBottom: 8, lineHeight: 1.4 }}>
     <div style={{
-      width: 16, height: 16, borderRadius: "50%",
-      flexShrink: 0, marginTop: 1,
-      background: on ? "#dcfce7" : "#f1f5f9",
+      width: 16, height: 16, borderRadius: "50%", flexShrink: 0, marginTop: 1,
+      background: on ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.04)",
+      border: `1px solid ${on ? "rgba(74,222,128,0.35)" : M.border2}`,
       display: "flex", alignItems: "center", justifyContent: "center",
     }}>
-      {on ? <Check size={9} color="#16a34a" /> : <Lock size={9} color="#cbd5e1" />}
+      {on ? <Check size={9} color={M.green} /> : <Lock size={8} color={M.text3} />}
     </div>
-    {label}
+    <span style={{ fontFamily: FONT, fontSize: 12.5, color: on ? M.text2 : M.text3 }}>
+      {label}
+    </span>
   </div>
 );
 
-type DummyPayState = "idle" | "loading" | "success" | "error";
+/* ── PlanCard ─────────────────────────────────────────────────────── */
+interface PlanCardProps {
+  name: string; desc: string; price: string; period: string;
+  subLabel?: string; saveBadge?: string;
+  features: { on: boolean; label: string }[];
+  isCurrent: boolean; featured?: boolean;
+  isCurrentLabel: string; upgradeLabel?: string;
+  onUpgrade?: () => void;
+  compact?: boolean; // mobile single-column mode
+}
 
-/* ═══════════════════════════════════════════════════════
-   PricingModal — gunakan Portal agar selalu di atas semua layer
-═══════════════════════════════════════════════════════ */
+const PlanCard: React.FC<PlanCardProps> = ({
+  name, desc, price, period, subLabel, saveBadge,
+  features, isCurrent, featured,
+  isCurrentLabel, upgradeLabel, onUpgrade, compact,
+}) => (
+  <div style={{
+    background: featured ? M.card : M.surface,
+    border: featured ? `1.5px solid rgba(245,193,24,0.35)` : `1px solid ${M.border}`,
+    borderRadius: 14,
+    padding: compact ? "18px 16px" : "20px 18px",
+    display: "flex", flexDirection: "column",
+    position: "relative",
+    boxShadow: featured ? `0 0 32px rgba(245,193,24,0.07)` : "none",
+    height: "100%",
+  }}>
+    
+    {/* POPULAR badge */}
+    {featured && !compact && (
+      <div style={{
+        position: "absolute", top: -1, right: 14,
+        background: M.amber, color: M.DARK1,
+        fontFamily: FONT, fontSize: 9, fontWeight: 800,
+        padding: "3px 10px", borderRadius: "0 0 8px 8px",
+        letterSpacing: "0.07em",
+      }}>POPULAR</div>
+    )}
+    {featured && compact && (
+      <div style={{
+        display: "inline-flex", alignItems: "center", gap: 5,
+        background: "rgba(245,193,24,0.12)", border: "1px solid rgba(245,193,24,0.30)",
+        borderRadius: 99, padding: "3px 10px", marginBottom: 10, alignSelf: "flex-start",
+        fontFamily: FONT, fontSize: 10, fontWeight: 700, color: M.amber,
+      }}>⭐ POPULAR</div>
+    )}
+
+    {/* Save badge */}
+    {saveBadge && (
+      <div style={{
+        display: "inline-block", marginBottom: 10, alignSelf: "flex-start",
+        background: "rgba(74,222,128,0.10)", border: "1px solid rgba(74,222,128,0.25)",
+        color: M.green, fontFamily: FONT, fontSize: 10, fontWeight: 700,
+        padding: "3px 10px", borderRadius: 99,
+      }}>{saveBadge}</div>
+    )}
+
+    {/* Name + desc */}
+    <p style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: M.text1, margin: "0 0 3px" }}>{name}</p>
+    <p style={{ fontFamily: FONT, fontSize: 11.5, color: M.text3, margin: "0 0 14px" }}>{desc}</p>
+
+    {/* Price */}
+    <div style={{ display: "flex", alignItems: "baseline", gap: 3, marginBottom: 3 }}>
+      <span style={{
+        fontFamily: MONO, fontSize: compact ? 26 : (price === "Rp 0" ? 22 : 26),
+        fontWeight: 800, color: featured ? M.amber : M.text1, letterSpacing: "-0.02em",
+      }}>{price}</span>
+      {period && <span style={{ fontFamily: FONT, fontSize: 11.5, color: M.text3 }}>{period}</span>}
+    </div>
+    {subLabel
+      ? <p style={{ fontFamily: FONT, fontSize: 10.5, color: M.text3, margin: "0 0 16px" }}>{subLabel}</p>
+      : <div style={{ height: 16 }} />
+    }
+
+    {/* Features */}
+    <div style={{ flex: 1, marginBottom: 16 }}>
+      {features.map((f, i) => <FeatureRow key={i} on={f.on} label={f.label} />)}
+    </div>
+
+    {/* CTA */}
+    {isCurrent ? (
+      <div style={{
+        textAlign: "center", padding: "9px", borderRadius: 9,
+        background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.25)",
+        fontFamily: FONT, fontSize: 12, fontWeight: 600, color: M.green,
+      }}>✓ {isCurrentLabel}</div>
+    ) : onUpgrade ? (
+      <button
+        onClick={onUpgrade}
+        style={{
+          width: "100%", padding: "11px", borderRadius: 9, border: "none",
+          background: featured ? M.amber : M.border2,
+          color: featured ? M.DARK1 : M.text2,
+          fontFamily: FONT, fontSize: 13, fontWeight: 700,
+          cursor: "pointer", transition: "all .18s",
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = featured ? M.amberD : M.border; if (!featured) e.currentTarget.style.color = M.text1; }}
+        onMouseLeave={e => { e.currentTarget.style.background = featured ? M.amber : M.border2; if (!featured) e.currentTarget.style.color = M.text2; }}
+      >{upgradeLabel} →</button>
+    ) : null}
+  </div>
+);
+
+/* ── MobilePlanTabs — card switcher for narrow screens ────────────── */
+const MobilePlanTabs: React.FC<{
+  l: typeof COPY["en"]; sub: any; isPro: boolean;
+  onUpgrade: (plan: "pro_monthly" | "pro_annual") => void;
+}> = ({ l, sub, isPro, onUpgrade }) => {
+  const [active, setActive] = useState<PlanTab>("monthly");
+
+  const tabs: { key: PlanTab; label: string }[] = [
+    { key: "free",    label: l.planTabFree },
+    { key: "monthly", label: l.planTabMonthly },
+    { key: "annual",  label: l.planTabAnnual },
+  ];
+
+  const cardProps: Record<PlanTab, PlanCardProps> = {
+    free: {
+      name: l.freeName, desc: l.freeDesc,
+      price: l.freePrice, period: "",
+      features: l.features.free,
+      isCurrent: sub.plan === "free",
+      isCurrentLabel: l.currentPlan,
+      compact: true,
+    },
+    monthly: {
+      name: l.monthlyName, desc: l.monthlyDesc,
+      price: l.monthlyPrice, period: l.perMonth,
+      subLabel: l.monthly, featured: true,
+      features: l.features.pro,
+      isCurrent: sub.plan === "pro_monthly" && isPro,
+      isCurrentLabel: l.currentPlan,
+      upgradeLabel: l.upgrade,
+      onUpgrade: () => onUpgrade("pro_monthly"),
+      compact: true,
+    },
+    annual: {
+      name: l.annualName, desc: l.annualDesc,
+      price: l.annualPrice, period: l.perYear,
+      subLabel: l.annual, saveBadge: l.save,
+      features: l.features.pro,
+      isCurrent: sub.plan === "pro_annual" && isPro,
+      isCurrentLabel: l.currentPlan,
+      upgradeLabel: l.upgrade,
+      onUpgrade: () => onUpgrade("pro_annual"),
+      compact: true,
+    },
+  };
+
+  return (
+    <div>
+      {/* Tab pills */}
+      <div style={{
+        display: "flex", gap: 6, marginBottom: 16,
+        background: M.surface, border: `1px solid ${M.border}`,
+        borderRadius: 10, padding: 4,
+      }}>
+        {tabs.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setActive(t.key)}
+            style={{
+              flex: 1, padding: "8px 4px", borderRadius: 7, border: "none",
+              cursor: "pointer", fontFamily: FONT, fontSize: 12, fontWeight: 600,
+              background: active === t.key
+                ? (t.key === "free" ? M.border : M.amber)
+                : "transparent",
+              color: active === t.key
+                ? (t.key === "free" ? M.text1 : M.DARK1)
+                : M.text3,
+              transition: "all .18s",
+              whiteSpace: "nowrap",
+            }}
+          >{t.label}</button>
+        ))}
+      </div>
+
+      {/* Active card */}
+      <PlanCard {...cardProps[active]} />
+    </div>
+  );
+};
+
+/* ── StatusTab ────────────────────────────────────────────────────── */
+const StatusTab: React.FC<{
+  sub: any; isPro: boolean; user: any; planName: string;
+  language: "en" | "id"; l: typeof COPY["en"];
+  onUpgrade: () => void; onRefresh: () => void;
+}> = ({ sub, isPro, user, planName, language, l, onUpgrade, onRefresh }) => {
+  const initials = user?.full_name.split(" ").slice(0, 2).map((w: string) => w[0]).join("").toUpperCase() ?? "?";
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* User card */}
+      <div style={{
+        background: M.card, border: `1px solid ${M.border}`,
+        borderRadius: 12, padding: "16px 18px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        flexWrap: "wrap", gap: 12, position: "relative", overflow: "hidden",
+      }}>
+        {isPro && (
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(to right, ${M.amber}, #f59e0b)` }} />
+        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
+            background: isPro ? "rgba(245,193,24,0.12)" : M.border,
+            border: `2px solid ${isPro ? "rgba(245,193,24,0.35)" : M.border2}`,
+            display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden",
+          }}>
+            {user?.avatar
+              ? <img src={user.avatar} alt="" style={{ width: 44, height: 44, objectFit: "cover" }} />
+              : <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: isPro ? M.amber : M.text2 }}>{initials}</span>}
+          </div>
+          <div>
+            <p style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: M.text1, margin: 0 }}>{user?.full_name || "Guest"}</p>
+            <p style={{ fontFamily: FONT, fontSize: 11, color: M.text3, margin: "2px 0 0" }}>{user?.email || "—"}</p>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 5,
+            background: isPro ? "rgba(245,193,24,0.10)" : "rgba(255,255,255,0.04)",
+            border: `1px solid ${isPro ? "rgba(245,193,24,0.30)" : M.border2}`,
+            borderRadius: 99, padding: "4px 12px",
+            fontFamily: FONT, fontSize: 11, fontWeight: 700, color: isPro ? M.amber : M.text3,
+          }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: isPro ? M.amber : M.text3 }} />
+            {isPro ? (language === "en" ? "Pro active" : "Pro aktif") : planName}
+          </div>
+          <button
+            onClick={onRefresh}
+            style={{ background: M.border, border: `1px solid ${M.border2}`, cursor: "pointer", color: M.text3, padding: 6, borderRadius: 7, display: "flex", transition: "all .15s" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = M.sky; e.currentTarget.style.color = M.sky; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = M.border2; e.currentTarget.style.color = M.text3; }}
+          ><RefreshCw size={12} /></button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(min(120px,100%), 1fr))",
+        gap: 8,
+      }}>
+        {[
+          { label: l.planLabel, value: planName },
+          { label: l.expiresLabel, value: fmtDate(sub.expires_at) },
+          { label: "Status", value: sub.status },
+          { label: language === "en" ? "Member since" : "Bergabung", value: fmtDate(user?.created_at ?? null) },
+        ].map(({ label, value }) => (
+          <div key={label} style={{ padding: "10px 12px", background: M.card, border: `1px solid ${M.border}`, borderRadius: 9 }}>
+            <p style={{ fontFamily: FONT, fontSize: 9.5, color: M.text3, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" as const, margin: "0 0 4px" }}>{label}</p>
+            <p style={{ fontFamily: MONO, fontSize: 13, fontWeight: 600, color: M.text1, margin: 0 }}>{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Pro features */}
+      {isPro && (
+        <div style={{ background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.18)", borderRadius: 12, padding: "14px 16px" }}>
+          <p style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase" as const, color: M.green, marginBottom: 10 }}>{l.proFeatures}</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(140px,100%), 1fr))", gap: 8 }}>
+            {[
+              { icon: <Download size={13} />, label: l.featExport },
+              { icon: <Calendar size={13} />, label: l.featForecast },
+              { icon: <Shield size={13} />,   label: l.featActivity },
+              { icon: <BarChart2 size={13} />, label: l.featLuwes },
+            ].map(({ icon, label }) => (
+              <div key={label} style={{ display: "flex", alignItems: "center", gap: 8, background: M.surface, border: "1px solid rgba(74,222,128,0.18)", borderRadius: 8, padding: "8px 10px" }}>
+                <div style={{ color: M.green, flexShrink: 0 }}>{icon}</div>
+                <span style={{ fontFamily: FONT, fontSize: 11.5, fontWeight: 600, color: M.text2 }}>{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!isPro && (
+        <button
+          onClick={onUpgrade}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "12px", borderRadius: 10, border: "none", background: M.amber, color: M.DARK1, fontFamily: FONT, fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "all .18s" }}
+          onMouseEnter={e => { e.currentTarget.style.background = M.amberD; e.currentTarget.style.transform = "translateY(-1px)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = M.amber; e.currentTarget.style.transform = "none"; }}
+        >
+          <Zap size={14} fill={M.DARK1} />
+          {language === "en" ? "Upgrade to Pro" : "Upgrade ke Pro"}
+        </button>
+      )}
+    </div>
+  );
+};
+
+/* ── UpgradeModal ─────────────────────────────────────────────────── */
+const UpgradeModal: React.FC<{
+  language: "en" | "id"; l: typeof COPY["en"];
+  selectedPlan: "pro_monthly" | "pro_annual";
+  setSelectedPlan: (p: "pro_monthly" | "pro_annual") => void;
+  payState: DummyPayState; payError: string | null; user: any;
+  onActivate: () => void; onClose: () => void; onDone: () => void;
+}> = ({ language, l, selectedPlan, setSelectedPlan, payState, payError, user, onActivate, onClose, onDone }) => {
+  const um = l.upgradeModal;
+  const plans = [
+    { id: "pro_monthly" as const, name: l.monthlyName, price: `${l.monthlyPrice}${l.perMonth}` },
+    { id: "pro_annual"  as const, name: l.annualName,  price: `${l.annualPrice}${l.perYear}`, save: l.save },
+  ];
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, background: "rgba(5,12,24,0.72)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div style={{ background: M.bg, border: `1px solid ${M.border}`, borderRadius: 16, padding: "clamp(18px,5vw,28px)", width: "100%", maxWidth: 400, maxHeight: "90vh", overflowY: "auto", WebkitOverflowScrolling: "touch", boxShadow: "0 24px 60px rgba(0,0,0,0.60)", position: "relative" }}>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(to right, ${M.amber}, #f59e0b)`, borderRadius: "16px 16px 0 0" }} />
+
+        {payState === "success" && (
+          <div style={{ textAlign: "center", padding: "16px 0 20px" }}>
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(74,222,128,0.12)", border: "2px solid rgba(74,222,128,0.35)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px" }}>
+              <CheckCircle size={28} color={M.green} />
+            </div>
+            <p style={{ fontFamily: FONT, fontSize: 18, fontWeight: 700, color: M.text1, marginBottom: 8 }}>{um.successTitle}</p>
+            <p style={{ fontFamily: FONT, fontSize: 13, color: M.text2, marginBottom: 24, lineHeight: 1.6 }}>{um.successSub}</p>
+            <button onClick={onDone} style={{ padding: "10px 32px", borderRadius: 9, border: "none", background: M.amber, color: M.DARK1, fontFamily: FONT, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+              {language === "en" ? "Continue" : "Lanjut"}
+            </button>
+          </div>
+        )}
+
+        {payState === "error" && (
+          <div style={{ textAlign: "center", padding: "8px 0 16px" }}>
+            <p style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: M.text1, marginBottom: 6 }}>{um.errorTitle}</p>
+            <p style={{ fontFamily: FONT, fontSize: 12, color: M.red, marginBottom: 20, lineHeight: 1.5 }}>{payError}</p>
+            <button onClick={onActivate} style={{ padding: "9px 28px", borderRadius: 8, border: "none", background: M.amber, color: M.DARK1, fontFamily: FONT, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>{um.retry}</button>
+          </div>
+        )}
+
+        {(payState === "idle" || payState === "loading") && (
+          <>
+            {/* Demo notice */}
+            <div style={{ background: "rgba(245,193,24,0.07)", border: `1px solid rgba(245,193,24,0.25)`, borderRadius: 9, padding: "9px 12px", marginBottom: 18, display: "flex", alignItems: "flex-start", gap: 8 }}>
+              <Zap size={13} color={M.amber} style={{ flexShrink: 0, marginTop: 1 }} />
+              <p style={{ fontFamily: FONT, fontSize: 11.5, color: M.amber, margin: 0, lineHeight: 1.5, opacity: 0.85 }}>{um.demoNote}</p>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12, gap: 8 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h3 style={{ fontFamily: FONT, fontSize: 17, fontWeight: 700, color: M.text1, margin: 0 }}>{um.title}</h3>
+                {!user && <p style={{ fontFamily: FONT, fontSize: 12, color: M.red, margin: "6px 0 0" }}>{l.notLoggedIn}</p>}
+              </div>
+              <button onClick={onClose} style={{ background: M.border, border: `1px solid ${M.border2}`, cursor: "pointer", borderRadius: 8, padding: 7, display: "flex", color: M.text2, transition: "all .15s", flexShrink: 0 }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = M.amber; e.currentTarget.style.color = M.amber; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = M.border2; e.currentTarget.style.color = M.text2; }}>
+                <X size={14} />
+              </button>
+            </div>
+
+            <p style={{ fontFamily: FONT, fontSize: 13, color: M.text2, marginBottom: 16 }}>{um.sub}</p>
+
+            {/* Plan selector */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+              {plans.map(p => (
+                <div key={p.id} onClick={() => setSelectedPlan(p.id)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6, padding: "12px 14px", borderRadius: 10, cursor: "pointer", border: selectedPlan === p.id ? `1.5px solid ${M.amber}` : `1px solid ${M.border2}`, background: selectedPlan === p.id ? "rgba(245,193,24,0.07)" : M.surface, transition: "all .15s" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                    <div style={{ width: 16, height: 16, borderRadius: "50%", flexShrink: 0, border: `2px solid ${selectedPlan === p.id ? M.amber : M.text3}`, background: selectedPlan === p.id ? M.amber : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {selectedPlan === p.id && <div style={{ width: 6, height: 6, borderRadius: "50%", background: M.DARK1 }} />}
+                    </div>
+                    <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: selectedPlan === p.id ? M.amber : M.text1 }}>{p.name}</span>
+                    {p.save && <span style={{ background: "rgba(74,222,128,0.10)", color: M.green, border: "1px solid rgba(74,222,128,0.25)", fontFamily: FONT, fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 99 }}>{p.save}</span>}
+                  </div>
+                  <span style={{ fontFamily: MONO, fontSize: 13, fontWeight: 700, color: selectedPlan === p.id ? M.amber : M.text2, marginLeft: "auto" }}>{p.price}</span>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={onActivate}
+              disabled={payState === "loading" || !user}
+              style={{ width: "100%", padding: "12px", borderRadius: 9, border: "none", background: !user ? M.border : M.amber, color: !user ? M.text3 : M.DARK1, fontFamily: FONT, fontSize: 13, fontWeight: 700, cursor: !user || payState === "loading" ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: payState === "loading" ? 0.7 : 1, marginBottom: 10, transition: "all .2s", boxShadow: user && payState !== "loading" ? `0 4px 16px rgba(245,193,24,0.28)` : "none" }}
+              onMouseEnter={e => { if (user && payState !== "loading") { e.currentTarget.style.background = M.amberD; e.currentTarget.style.transform = "translateY(-1px)"; } }}
+              onMouseLeave={e => { if (user && payState !== "loading") { e.currentTarget.style.background = M.amber; e.currentTarget.style.transform = "none"; } }}
+            >
+              {payState === "loading"
+                ? <><Loader2 size={14} style={{ animation: "pm-spin .7s linear infinite" }} /> {um.processing}</>
+                : <><Zap size={14} fill={M.DARK1} /> {um.cta}</>}
+            </button>
+
+            <button onClick={onClose} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", fontFamily: FONT, fontSize: 12, color: M.text3, padding: 6, transition: "color .15s" }}
+              onMouseEnter={e => (e.currentTarget.style.color = M.text2)}
+              onMouseLeave={e => (e.currentTarget.style.color = M.text3)}>
+              {um.cancel}
+            </button>
+          </>
+        )}
+      </div>
+      <style>{`@keyframes pm-spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+};
+
+/* ══════════════════════════════════════════════════════════════════════
+   PricingModal — main component
+══════════════════════════════════════════════════════════════════════ */
 interface Props {
-  open: boolean;
-  onClose: () => void;
-  language?: "en" | "id";
-  initialTab?: "pricing" | "status";
+  open: boolean; onClose: () => void;
+  language?: "en" | "id"; initialTab?: "pricing" | "status";
 }
 
 export const PricingModal: React.FC<Props> = ({
   open, onClose, language = "en", initialTab = "pricing",
 }) => {
-  const l = COPY[language];
+  const l   = COPY[language];
   const { sub, isPro, user, refresh } = useSubContext();
+  const vw  = useWidth();
+  const wide = vw >= 680; // threshold: 3-col vs mobile tabs
 
   const [tab,          setTab]          = useState<"pricing" | "status">(initialTab);
   const [showUpgrade,  setShowUpgrade]  = useState(false);
@@ -221,57 +603,37 @@ export const PricingModal: React.FC<Props> = ({
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (open) {
-      setTab(initialTab);
-      setPayState("idle");
-      setPayError(null);
-      setShowUpgrade(false);
-    }
+    if (open) { setTab(initialTab); setPayState("idle"); setPayError(null); setShowUpgrade(false); }
   }, [open, initialTab]);
 
-  /* Keyboard close */
   useEffect(() => {
     if (!open) return;
     const h = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (showUpgrade) setShowUpgrade(false);
-        else onClose();
-      }
+      if (e.key === "Escape") { if (showUpgrade) setShowUpgrade(false); else onClose(); }
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   }, [open, showUpgrade, onClose]);
 
-  /* Kunci scroll body saat modal terbuka */
   useEffect(() => {
-    if (open) {
-      const prev = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => { document.body.style.overflow = prev; };
-    }
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
   }, [open]);
 
   const handleUpgrade = useCallback(async () => {
     if (!user?.email) return;
-    setPayState("loading");
-    setPayError(null);
+    setPayState("loading"); setPayError(null);
     try {
-      const res = await fetch(`${API}/api/create-payment`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: selectedPlan, email: user.email }),
-      });
+      const res  = await fetch(`${API}/api/create-payment`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan: selectedPlan, email: user.email }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Activation failed");
       setPayState("success");
       await refresh();
-    } catch (e: any) {
-      setPayState("error");
-      setPayError(e.message || "Unknown error");
-    }
+    } catch (e: any) { setPayState("error"); setPayError(e.message || "Unknown error"); }
   }, [user?.email, selectedPlan, refresh]);
 
-  /* Jangan render apapun saat closed */
   if (!open) return null;
 
   const planName =
@@ -279,250 +641,162 @@ export const PricingModal: React.FC<Props> = ({
     sub.plan === "pro_monthly" ? l.monthlyName :
     l.annualName;
 
-  /* ──────────────────────────────────────────────────────
-     PORTAL CONTENT
-     Semua style untuk overlay & sheet di sini.
-     position:fixed di dalam Portal (yang di-mount ke body)
-     tidak terpengaruh oleh stacking context ancestor manapun.
-  ────────────────────────────────────────────────────── */
+  const openUpgrade = (plan: "pro_monthly" | "pro_annual") => {
+    setSelectedPlan(plan); setShowUpgrade(true);
+  };
+
   const modalContent = (
     <>
-      {/* Global style untuk sembunyikan scrollbar di tab row */}
       <style>{`
         .pm-tab-row::-webkit-scrollbar { display: none; }
-        @keyframes pm-spin { to { transform: rotate(360deg); } }
+        @keyframes pm-spin    { to { transform: rotate(360deg); } }
+        @keyframes pm-fadein  { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
-      {/* Overlay backdrop */}
+      {/* ── Backdrop ── */}
       <div
         ref={overlayRef}
-        onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+        onClick={e => { if (e.target === overlayRef.current) onClose(); }}
         style={{
-          position: "fixed",
-          inset: 0,
-          /* FIX: z-index sangat tinggi — di luar stacking context manapun karena Portal */
-          zIndex: 9999,
-          background: "rgba(2,78,120,0.42)",
-          backdropFilter: "blur(6px)",
-          WebkitBackdropFilter: "blur(6px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "12px",
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(5,12,24,0.80)",
+          backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: wide ? 16 : 0,          // edge-to-edge on narrow
         }}
       >
-        {/* Modal sheet */}
+        {/* ── Modal sheet ── */}
         <div style={{
-          background: "#fff",
-          borderRadius: 16,
+          background: M.bg, border: wide ? `1px solid ${M.border}` : "none",
+          borderRadius: wide ? 18 : 0,
           width: "100%",
-          maxWidth: 760,
-          maxHeight: "95vh",
+          maxWidth: wide ? 860 : "100vw",
+          /* Full height on mobile, capped on desktop */
+          height: wide ? "auto" : "100%",
+          maxHeight: wide ? "92vh" : "100%",
           overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: "0 24px 64px rgba(2,78,120,0.28)",
-          /* isolation:isolate memastikan stacking context baru di dalam sheet */
-          isolation: "isolate",
+          display: "flex", flexDirection: "column",
+          boxShadow: wide ? "0 40px 100px rgba(0,0,0,0.70)" : "none",
+          animation: "pm-fadein 0.22s ease",
         }}>
 
-          {/* ════ HEADER ════ */}
+          {/* ── HEADER ── */}
           <div style={{
-            background: `linear-gradient(135deg,${NAVY} 0%,${PRIMARY} 60%,${SKY} 100%)`,
-            padding: "16px 16px 0",
-            flexShrink: 0,
+            background: `linear-gradient(135deg, rgba(245,193,24,0.10) 0%, rgba(56,189,248,0.06) 100%)`,
+            borderBottom: `1px solid ${M.border}`,
+            padding: wide ? "20px 24px 0" : "16px 18px 0",
+            flexShrink: 0, position: "relative",
           }}>
-            {/* Title row */}
-            <div style={{
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              marginBottom: 10,
-              gap: 10,
-            }}>
-              {/* Left: title + badge + subtitle */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  marginBottom: 5,
-                  flexWrap: "wrap",
-                }}>
-                  <h2 style={{
-                    fontFamily: SANS,
-                    fontSize: "clamp(15px, 3.5vw, 20px)",
-                    fontWeight: 700,
-                    color: "#fff",
-                    margin: 0,
-                    lineHeight: 1.2,
-                  }}>
-                    {l.title}
-                  </h2>
-                  <span style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    padding: "2px 8px",
-                    borderRadius: 99,
-                    background: "rgba(245,193,24,0.25)",
-                    border: "1px solid rgba(245,193,24,0.5)",
-                    fontFamily: SANS,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: "#f5c518",
-                    letterSpacing: "0.04em",
-                    flexShrink: 0,
-                    whiteSpace: "nowrap",
-                  }}>
-                    {l.demoBadge}
-                  </span>
-                </div>
-                <p style={{
-                  fontFamily: SANS,
-                  fontSize: "clamp(11px, 2.5vw, 13px)",
-                  color: "rgba(255,255,255,0.65)",
-                  margin: 0,
-                  lineHeight: 1.45,
-                }}>
-                  {l.sub}
-                </p>
-              </div>
 
+            {/* Title row */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, flexWrap: "wrap" }}>
+                {/* Logo */}
+                <img
+                  src="/logo.svg" alt="Searibu"
+                  style={{ height: 22, width: "auto", filter: "brightness(0) invert(1)", opacity: 0.9, flexShrink: 0 }}
+                />
+                <h2 style={{ fontFamily: FONT, fontSize: wide ? 18 : 16, fontWeight: 700, color: M.text1, margin: 0, lineHeight: 1.2 }}>
+                  {l.title}
+                </h2>
+                {/* Demo badge */}
+                <span style={{
+                  display: "inline-flex", alignItems: "center",
+                  padding: "2px 9px", borderRadius: 99,
+                  background: "rgba(245,193,24,0.10)", border: "1px solid rgba(245,193,24,0.30)",
+                  fontFamily: FONT, fontSize: 10, fontWeight: 700, color: M.amber,
+                  flexShrink: 0, whiteSpace: "nowrap",
+                }}>{l.demoBadge}</span>
+              </div>
               {/* Close button */}
               <button
                 onClick={onClose}
-                style={{
-                  background: "rgba(255,255,255,0.12)",
-                  border: "none",
-                  cursor: "pointer",
-                  borderRadius: 8,
-                  padding: 7,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#fff",
-                  flexShrink: 0,
-                  alignSelf: "flex-start",
-                }}
-              >
-                <X size={15} />
-              </button>
+                style={{ background: M.border, border: `1px solid ${M.border2}`, cursor: "pointer", borderRadius: 9, padding: 8, display: "flex", alignItems: "center", justifyContent: "center", color: M.text2, flexShrink: 0, transition: "all .15s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = M.amber; e.currentTarget.style.color = M.amber; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = M.border2; e.currentTarget.style.color = M.text2; }}
+              ><X size={15} /></button>
             </div>
 
-            {/* Tab row */}
-            <div
-              className="pm-tab-row"
-              style={{
-                display: "flex",
-                gap: 2,
-                overflowX: "auto",
-                scrollbarWidth: "none",
-                WebkitOverflowScrolling: "touch",
-              }}
-            >
-              {(["pricing", "status"] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  style={{
-                    padding: `7px clamp(10px, 3vw, 18px)`,
-                    border: "none",
-                    cursor: "pointer",
-                    fontFamily: SANS,
-                    fontSize: "clamp(11px, 2.5vw, 13px)",
-                    fontWeight: 600,
-                    borderRadius: "8px 8px 0 0",
-                    background: tab === t ? "#fff" : "transparent",
-                    color: tab === t ? PRIMARY : "rgba(255,255,255,0.65)",
-                    transition: "all .15s",
-                    whiteSpace: "nowrap",
-                    flexShrink: 0,
-                  }}
-                >
+            {/* Subtitle */}
+            <p style={{ fontFamily: FONT, fontSize: 12.5, color: M.text2, margin: "0 0 14px", lineHeight: 1.45 }}>
+              {l.sub}
+            </p>
+
+            {/* Tabs */}
+            <div className="pm-tab-row" style={{ display: "flex", gap: 2, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+              {(["pricing", "status"] as const).map(t => (
+                <button key={t} onClick={() => setTab(t)} style={{
+                  padding: `8px ${wide ? "20px" : "14px"}`,
+                  border: "none", cursor: "pointer",
+                  fontFamily: FONT, fontSize: 13, fontWeight: 600,
+                  borderRadius: "8px 8px 0 0",
+                  background: tab === t ? M.surface : "transparent",
+                  color: tab === t ? M.amber : M.text2,
+                  borderBottom: tab === t ? `2px solid ${M.amber}` : "2px solid transparent",
+                  transition: "all .15s", whiteSpace: "nowrap", flexShrink: 0,
+                }}>
                   {t === "pricing" ? l.tabPricing : l.tabStatus}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* ════ BODY ════ */}
+          {/* ── BODY ── */}
           <div style={{
-            flex: 1,
-            overflowY: "auto",
-            padding: "clamp(14px, 3.5vw, 24px)",
+            flex: 1, overflowY: "auto",
+            padding: wide ? "24px" : "18px 16px",
             WebkitOverflowScrolling: "touch",
+            scrollbarWidth: "thin",
+            scrollbarColor: `${M.border2} transparent`,
           }}>
 
             {/* PRICING TAB */}
             {tab === "pricing" && (
               <div>
-                <div style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(min(200px, 100%), 1fr))",
-                  gap: 14,
-                }}>
-                  <PlanCard
-                    name={l.freeName} desc={l.freeDesc}
-                    price={l.freePrice} period=""
-                    features={l.features.free}
-                    isCurrent={sub.plan === "free"}
-                    isCurrentLabel={l.currentPlan}
-                    language={language}
-                  />
-                  <PlanCard
-                    name={l.monthlyName} desc={l.monthlyDesc}
-                    price={l.monthlyPrice} period={l.perMonth}
-                    subLabel={l.monthly}
-                    features={l.features.pro}
-                    isCurrent={sub.plan === "pro_monthly" && isPro}
-                    featured
-                    isCurrentLabel={l.currentPlan}
-                    upgradeLabel={l.upgrade}
-                    onUpgrade={() => { setSelectedPlan("pro_monthly"); setShowUpgrade(true); }}
-                    language={language}
-                  />
-                  <PlanCard
-                    name={l.annualName} desc={l.annualDesc}
-                    price={l.annualPrice} period={l.perYear}
-                    subLabel={l.annual} saveBadge={l.save}
-                    features={l.features.pro}
-                    isCurrent={sub.plan === "pro_annual" && isPro}
-                    isCurrentLabel={l.currentPlan}
-                    upgradeLabel={l.upgrade}
-                    onUpgrade={() => { setSelectedPlan("pro_annual"); setShowUpgrade(true); }}
-                    language={language}
-                  />
-                </div>
+                {wide ? (
+                  /* ── Desktop: 3-column grid ── */
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, alignItems: "stretch" }}>
+                    <PlanCard
+                      name={l.freeName} desc={l.freeDesc} price={l.freePrice} period=""
+                      features={l.features.free}
+                      isCurrent={sub.plan === "free"} isCurrentLabel={l.currentPlan}
+                    />
+                    <PlanCard
+                      name={l.monthlyName} desc={l.monthlyDesc} price={l.monthlyPrice} period={l.perMonth}
+                      subLabel={l.monthly} featured
+                      features={l.features.pro}
+                      isCurrent={sub.plan === "pro_monthly" && isPro} isCurrentLabel={l.currentPlan}
+                      upgradeLabel={l.upgrade} onUpgrade={() => openUpgrade("pro_monthly")}
+                    />
+                    <PlanCard
+                      name={l.annualName} desc={l.annualDesc} price={l.annualPrice} period={l.perYear}
+                      subLabel={l.annual} saveBadge={l.save}
+                      features={l.features.pro}
+                      isCurrent={sub.plan === "pro_annual" && isPro} isCurrentLabel={l.currentPlan}
+                      upgradeLabel={l.upgrade} onUpgrade={() => openUpgrade("pro_annual")}
+                    />
+                  </div>
+                ) : (
+                  /* ── Mobile: tab switcher ── */
+                  <MobilePlanTabs l={l} sub={sub} isPro={isPro} onUpgrade={openUpgrade} />
+                )}
 
-                {!isPro && (
-                  <div style={{ marginTop: 24 }}>
-                    <p style={{
-                      fontFamily: SANS, fontSize: 11, fontWeight: 700,
-                      letterSpacing: "0.06em", textTransform: "uppercase",
-                      color: "#94a3b8", marginBottom: 12,
-                    }}>
+                {/* Pro feature pills (desktop only, non-Pro) */}
+                {wide && !isPro && (
+                  <div style={{ marginTop: 20 }}>
+                    <p style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase" as const, color: M.text3, marginBottom: 10 }}>
                       {l.proFeatures}
                     </p>
-                    <div style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(min(170px, 100%), 1fr))",
-                      gap: 10,
-                    }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
                       {[
-                        { icon: <Download size={14} />, title: l.featExport },
-                        { icon: <Calendar size={14} />, title: l.featForecast },
-                        { icon: <Shield size={14} />,   title: l.featActivity },
-                        { icon: <BarChart2 size={14} />,title: l.featLuwes },
-                      ].map((f, i) => (
-                        <div key={i} style={{
-                          display: "flex", alignItems: "center", gap: 9,
-                          padding: "10px 13px", borderRadius: 9,
-                          background: "#f0f9ff", border: "1px solid #bae6fd",
-                        }}>
-                          <div style={{ color: PRIMARY, flexShrink: 0 }}>{f.icon}</div>
-                          <span style={{ fontFamily: SANS, fontSize: 12, fontWeight: 600, color: "#075985" }}>
-                            {f.title}
-                          </span>
+                        { icon: <Download size={13} />, label: l.featExport },
+                        { icon: <Calendar size={13} />, label: l.featForecast },
+                        { icon: <Shield size={13} />,   label: l.featActivity },
+                        { icon: <BarChart2 size={13} />, label: l.featLuwes },
+                      ].map(({ icon, label }) => (
+                        <div key={label} style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 12px", borderRadius: 9, background: M.surface, border: `1px solid ${M.border}` }}>
+                          <div style={{ color: M.amber, flexShrink: 0 }}>{icon}</div>
+                          <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: M.text2 }}>{label}</span>
                         </div>
                       ))}
                     </div>
@@ -536,7 +810,6 @@ export const PricingModal: React.FC<Props> = ({
               <StatusTab
                 sub={sub} isPro={isPro} user={user}
                 planName={planName} language={language} l={l}
-                fmtDate={fmtDate}
                 onUpgrade={() => setTab("pricing")}
                 onRefresh={refresh}
               />
@@ -545,12 +818,11 @@ export const PricingModal: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* UpgradeModal — juga di dalam Portal yang sama */}
+      {/* UpgradeModal */}
       {showUpgrade && (
         <UpgradeModal
           language={language} l={l}
-          selectedPlan={selectedPlan}
-          setSelectedPlan={setSelectedPlan}
+          selectedPlan={selectedPlan} setSelectedPlan={setSelectedPlan}
           payState={payState} payError={payError} user={user}
           onActivate={handleUpgrade}
           onClose={() => { setShowUpgrade(false); setPayState("idle"); setPayError(null); }}
@@ -560,368 +832,7 @@ export const PricingModal: React.FC<Props> = ({
     </>
   );
 
-  /* Mount ke document.body via Portal — keluar dari semua stacking context */
   return createPortal(modalContent, document.body);
-};
-
-/* ── PlanCard ─────────────────────────────────────────────── */
-const PlanCard: React.FC<{
-  name: string; desc: string; price: string; period: string;
-  subLabel?: string; saveBadge?: string;
-  features: { on: boolean; label: string }[];
-  isCurrent: boolean; featured?: boolean;
-  isCurrentLabel: string; upgradeLabel?: string;
-  onUpgrade?: () => void; language?: "en" | "id";
-}> = ({
-  name, desc, price, period, subLabel, saveBadge,
-  features, isCurrent, featured,
-  isCurrentLabel, upgradeLabel, onUpgrade,
-}) => (
-  <div style={{
-    background: "#fff",
-    border: featured ? `2px solid ${PRIMARY}` : "1px solid #e2e8f0",
-    borderRadius: 12,
-    padding: "18px 16px",
-    display: "flex", flexDirection: "column",
-    position: "relative",
-  }}>
-    {featured && (
-      <div style={{
-        position: "absolute", top: -1, right: 14,
-        background: PRIMARY, color: "#fff",
-        fontFamily: SANS, fontSize: 10, fontWeight: 700,
-        padding: "3px 10px", borderRadius: "0 0 8px 8px",
-        letterSpacing: "0.04em",
-      }}>
-        POPULAR
-      </div>
-    )}
-    {saveBadge && (
-      <div style={{
-        display: "inline-block", marginBottom: 8,
-        background: "#f0fdf4", border: "1px solid #bbf7d0",
-        color: "#15803d", fontFamily: SANS, fontSize: 10,
-        fontWeight: 700, padding: "3px 10px", borderRadius: 99,
-      }}>
-        {saveBadge}
-      </div>
-    )}
-    <div style={{ fontFamily: SANS, fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 3 }}>
-      {name}
-    </div>
-    <div style={{ fontFamily: SANS, fontSize: 11, color: "#94a3b8", marginBottom: 12 }}>
-      {desc}
-    </div>
-    <div style={{ display: "flex", alignItems: "baseline", gap: 3, marginBottom: 4 }}>
-      <span style={{
-        fontFamily: SANS,
-        fontSize: price === "Rp 0" ? 18 : 22,
-        fontWeight: 700, color: "#0f172a",
-      }}>
-        {price}
-      </span>
-      {period && <span style={{ fontFamily: SANS, fontSize: 11, color: "#94a3b8" }}>{period}</span>}
-    </div>
-    {subLabel && (
-      <div style={{ fontFamily: SANS, fontSize: 10, color: "#cbd5e1", marginBottom: 14 }}>
-        {subLabel}
-      </div>
-    )}
-    <div style={{ flex: 1, marginTop: subLabel ? 0 : 14, marginBottom: 14 }}>
-      {features.map((f, i) => <FeatureRow key={i} on={f.on} label={f.label} />)}
-    </div>
-    {isCurrent ? (
-      <div style={{
-        textAlign: "center", padding: "8px", borderRadius: 8,
-        background: "#f0f9ff", border: "1px solid #bae6fd",
-        fontFamily: SANS, fontSize: 12, fontWeight: 600, color: PRIMARY,
-      }}>
-        ✓ {isCurrentLabel}
-      </div>
-    ) : onUpgrade ? (
-      <button
-        onClick={onUpgrade}
-        style={{
-          width: "100%", padding: "9px", borderRadius: 8, border: "none",
-          background: featured ? PRIMARY : "#f8fafc",
-          color: featured ? "#fff" : "#374151",
-          fontFamily: SANS, fontSize: 13, fontWeight: 600,
-          cursor: "pointer", transition: "opacity .15s",
-        }}
-        onMouseEnter={e => (e.currentTarget.style.opacity = "0.85")}
-        onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
-      >
-        {upgradeLabel} →
-      </button>
-    ) : null}
-  </div>
-);
-
-/* ── StatusTab ─────────────────────────────────────────────── */
-const StatusTab: React.FC<{
-  sub: any; isPro: boolean; user: any; planName: string;
-  language: "en" | "id"; l: any;
-  fmtDate: (s: string | null) => string;
-  onUpgrade: () => void; onRefresh: () => void;
-}> = ({ sub, isPro, user, planName, language, l, fmtDate, onUpgrade, onRefresh }) => {
-  const initials = user
-    ? user.full_name.split(" ").slice(0, 2).map((w: string) => w[0]).join("").toUpperCase()
-    : "?";
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {/* User hero */}
-      <div style={{
-        background: isPro ? `linear-gradient(135deg,${NAVY},${PRIMARY})` : "#f8fafc",
-        border: isPro ? "none" : "1px solid #e2e8f0",
-        borderRadius: 12, padding: "16px 18px",
-        display: "flex", alignItems: "center",
-        justifyContent: "space-between",
-        flexWrap: "wrap", gap: 12,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{
-            width: 42, height: 42, borderRadius: "50%",
-            background: isPro ? "rgba(255,255,255,0.18)" : "#e0f2fe",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: SANS, fontSize: 14, fontWeight: 700,
-            color: isPro ? "#fff" : PRIMARY,
-            flexShrink: 0, overflow: "hidden",
-          }}>
-            {user?.avatar
-              ? <img src={user.avatar} alt="" style={{ width: 42, height: 42, objectFit: "cover" }} />
-              : initials}
-          </div>
-          <div>
-            <div style={{ fontFamily: SANS, fontSize: 14, fontWeight: 700, color: isPro ? "#fff" : "#0f172a" }}>
-              {user?.full_name || "Guest"}
-            </div>
-            <div style={{ fontFamily: SANS, fontSize: 11, color: isPro ? "rgba(255,255,255,0.6)" : "#94a3b8" }}>
-              {user?.email || "—"}
-            </div>
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 5,
-            background: isPro ? "rgba(255,255,255,0.18)" : "#fff",
-            border: isPro ? "1px solid rgba(255,255,255,0.25)" : "1px solid #e2e8f0",
-            borderRadius: 99, padding: "4px 12px",
-            fontFamily: SANS, fontSize: 11, fontWeight: 700,
-            color: isPro ? "#fff" : "#64748b",
-          }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: isPro ? "#4ade80" : "#94a3b8" }} />
-            {isPro ? (language === "en" ? "Pro active" : "Pro aktif") : planName}
-          </div>
-          <button onClick={onRefresh} title="Refresh"
-            style={{ background: "none", border: "none", cursor: "pointer", color: isPro ? "rgba(255,255,255,0.6)" : "#94a3b8", padding: 4 }}>
-            <RefreshCw size={12} />
-          </button>
-        </div>
-      </div>
-
-      {/* Stats grid */}
-      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "14px 16px" }}>
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(min(130px, 100%), 1fr))",
-          gap: 10,
-        }}>
-          {[
-            { label: l.planLabel,    value: planName },
-            { label: l.expiresLabel, value: fmtDate(sub.expires_at) },
-            { label: language === "en" ? "Status" : "Status", value: sub.status },
-            { label: language === "en" ? "Member since" : "Bergabung", value: fmtDate(user?.created_at ?? null) },
-          ].map(({ label, value }) => (
-            <div key={label} style={{ padding: "8px 10px", background: "#f8fafc", borderRadius: 8 }}>
-              <div style={{ fontFamily: SANS, fontSize: 10, color: "#94a3b8", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 4 }}>
-                {label}
-              </div>
-              <div style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{value}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Pro features */}
-      {isPro && (
-        <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "14px 16px" }}>
-          <p style={{ fontFamily: SANS, fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#15803d", marginBottom: 10 }}>
-            {l.proFeatures}
-          </p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(140px, 100%), 1fr))", gap: 8 }}>
-            {[
-              { icon: <Download size={13} />, label: l.featExport },
-              { icon: <Calendar size={13} />, label: l.featForecast },
-              { icon: <Shield size={13} />,   label: l.featActivity },
-              { icon: <BarChart2 size={13} />,label: l.featLuwes },
-            ].map(({ icon, label }) => (
-              <div key={label} style={{ display: "flex", alignItems: "center", gap: 7, background: "#fff", border: "1px solid #bbf7d0", borderRadius: 8, padding: "8px 10px" }}>
-                <div style={{ color: "#16a34a", flexShrink: 0 }}>{icon}</div>
-                <span style={{ fontFamily: SANS, fontSize: 11, fontWeight: 600, color: "#166534" }}>{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {!isPro && (
-        <button onClick={onUpgrade}
-          style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            width: "100%", padding: "11px", borderRadius: 10, border: "none",
-            background: `linear-gradient(135deg,${NAVY},${PRIMARY})`,
-            color: "#fff", fontFamily: SANS, fontSize: 13, fontWeight: 700, cursor: "pointer",
-          }}
-          onMouseEnter={e => (e.currentTarget.style.opacity = "0.88")}
-          onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
-        >
-          <Zap size={14} />
-          {language === "en" ? "Upgrade to Pro" : "Upgrade ke Pro"}
-        </button>
-      )}
-    </div>
-  );
-};
-
-/* ── UpgradeModal ──────────────────────────────────────────── */
-const UpgradeModal: React.FC<{
-  language: "en" | "id"; l: any;
-  selectedPlan: "pro_monthly" | "pro_annual";
-  setSelectedPlan: (p: "pro_monthly" | "pro_annual") => void;
-  payState: DummyPayState; payError: string | null; user: any;
-  onActivate: () => void; onClose: () => void; onDone: () => void;
-}> = ({ language, l, selectedPlan, setSelectedPlan, payState, payError, user, onActivate, onClose, onDone }) => {
-  const um = l.upgradeModal;
-  const plans = [
-    { id: "pro_monthly" as const, name: l.monthlyName, price: `${l.monthlyPrice}${l.perMonth}` },
-    { id: "pro_annual"  as const, name: l.annualName,  price: `${l.annualPrice}${l.perYear}`, save: l.save },
-  ];
-
-  return (
-    /* UpgradeModal overlay — z-index 10000, satu level di atas PricingModal overlay */
-    <div
-      style={{
-        position: "fixed", inset: 0,
-        background: "rgba(2,78,120,0.45)",
-        backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)",
-        zIndex: 10000,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "12px",
-      }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div style={{
-        background: "#fff", borderRadius: 14,
-        padding: "clamp(16px, 4vw, 24px)",
-        width: "100%", maxWidth: 380,
-        maxHeight: "90vh", overflowY: "auto",
-        WebkitOverflowScrolling: "touch",
-        boxShadow: "0 20px 60px rgba(2,78,120,0.22)",
-      }}>
-
-        {payState === "success" && (
-          <div style={{ textAlign: "center", padding: "8px 0 16px" }}>
-            <div style={{ width: 60, height: 60, borderRadius: "50%", background: "linear-gradient(135deg,#dcfce7,#bbf7d0)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", boxShadow: "0 4px 14px rgba(22,163,74,0.25)" }}>
-              <CheckCircle size={28} color="#16a34a" />
-            </div>
-            <p style={{ fontFamily: SANS, fontSize: 18, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>{um.successTitle}</p>
-            <p style={{ fontFamily: SANS, fontSize: 13, color: "#64748b", marginBottom: 24, lineHeight: 1.6 }}>{um.successSub}</p>
-            <button onClick={onDone} style={{ padding: "10px 32px", borderRadius: 9, border: "none", background: `linear-gradient(135deg,${NAVY},${PRIMARY})`, color: "#fff", fontFamily: SANS, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-              {language === "en" ? "Continue" : "Lanjut"}
-            </button>
-          </div>
-        )}
-
-        {payState === "error" && (
-          <div style={{ textAlign: "center", padding: "8px 0 16px" }}>
-            <p style={{ fontFamily: SANS, fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>{um.errorTitle}</p>
-            <p style={{ fontFamily: SANS, fontSize: 12, color: "#dc2626", marginBottom: 20, lineHeight: 1.5 }}>{payError}</p>
-            <button onClick={onActivate} style={{ padding: "9px 28px", borderRadius: 8, border: "none", background: PRIMARY, color: "#fff", fontFamily: SANS, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{um.retry}</button>
-          </div>
-        )}
-
-        {(payState === "idle" || payState === "loading") && (
-          <>
-            {/* Demo notice */}
-            <div style={{ background: "rgba(245,193,24,0.08)", border: "1px solid rgba(245,193,24,0.4)", borderRadius: 9, padding: "9px 12px", marginBottom: 16, display: "flex", alignItems: "flex-start", gap: 8 }}>
-              <Zap size={13} color="#b8940a" style={{ flexShrink: 0, marginTop: 1 }} />
-              <p style={{ fontFamily: SANS, fontSize: 11.5, color: "#b8940a", margin: 0, lineHeight: 1.4 }}>
-                {language === "en"
-                  ? "Demo mode — subscription activates instantly without payment."
-                  : "Mode demo — langganan aktif seketika tanpa pembayaran."}
-              </p>
-            </div>
-
-            {/* Title row */}
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12, gap: 8 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ fontFamily: SANS, fontSize: 17, fontWeight: 700, color: "#0f172a", margin: 0 }}>{um.title}</h3>
-                {!user && <p style={{ fontFamily: SANS, fontSize: 12, color: "#f87171", margin: "6px 0 0" }}>{l.notLoggedIn}</p>}
-              </div>
-              <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 4, flexShrink: 0 }}>
-                <X size={15} />
-              </button>
-            </div>
-
-            <p style={{ fontFamily: SANS, fontSize: 13, color: "#64748b", marginBottom: 16 }}>{um.sub}</p>
-
-            {/* Plan selector */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
-              {plans.map((p) => (
-                <div key={p.id} onClick={() => setSelectedPlan(p.id)}
-                  style={{
-                    display: "flex", alignItems: "center",
-                    justifyContent: "space-between",
-                    flexWrap: "wrap", gap: 6,
-                    padding: "12px 14px", borderRadius: 9, cursor: "pointer",
-                    border: selectedPlan === p.id ? `2px solid ${PRIMARY}` : "1px solid #e2e8f0",
-                    background: selectedPlan === p.id ? "#eff8ff" : "#fff",
-                    transition: "all .15s",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ width: 14, height: 14, borderRadius: "50%", flexShrink: 0, border: `2px solid ${selectedPlan === p.id ? PRIMARY : "#cbd5e1"}`, background: selectedPlan === p.id ? PRIMARY : "transparent" }} />
-                    <span style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: selectedPlan === p.id ? PRIMARY : "#0f172a" }}>{p.name}</span>
-                    {p.save && <span style={{ background: "#dcfce7", color: "#15803d", fontFamily: SANS, fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 99, flexShrink: 0 }}>{p.save}</span>}
-                  </div>
-                  <span style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: selectedPlan === p.id ? PRIMARY : "#64748b", marginLeft: "auto" }}>{p.price}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Activate */}
-            <button onClick={onActivate}
-              disabled={payState === "loading" || !user}
-              style={{
-                width: "100%", padding: "12px", borderRadius: 9, border: "none",
-                background: !user ? "#e2e8f0" : `linear-gradient(135deg,${NAVY},${PRIMARY})`,
-                color: !user ? "#94a3b8" : "#fff",
-                fontFamily: SANS, fontSize: 13, fontWeight: 700,
-                cursor: !user || payState === "loading" ? "not-allowed" : "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                opacity: payState === "loading" ? 0.7 : 1,
-                marginBottom: 10, transition: "all 0.2s",
-                boxShadow: user && payState !== "loading" ? "0 4px 14px rgba(12,74,110,0.3)" : "none",
-              }}
-              onMouseEnter={e => { if (user && payState !== "loading") e.currentTarget.style.transform = "translateY(-1px)"; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = "none"; }}
-            >
-              {payState === "loading"
-                ? <><Loader2 size={14} style={{ animation: "pm-spin .7s linear infinite" }} /> {um.processing}</>
-                : <><Zap size={14} fill="rgba(255,255,255,0.7)" /> {um.cta}</>
-              }
-            </button>
-
-            <button onClick={onClose}
-              style={{ width: "100%", background: "none", border: "none", cursor: "pointer", fontFamily: SANS, fontSize: 12, color: "#94a3b8", padding: 6 }}>
-              {um.cancel}
-            </button>
-          </>
-        )}
-      </div>
-    </div>
-  );
 };
 
 export default PricingModal;
