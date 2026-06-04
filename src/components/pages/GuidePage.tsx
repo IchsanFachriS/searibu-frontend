@@ -96,12 +96,12 @@ const COPY: Record<"en" | "id", GuideCopy> = {
   en: {
     heroBadge: "Quick Guide",
     heroTitle: "How to Use Searibu",
-    heroDesc: "A concise guide to get you started with the Searibu marine information system — from opening the map to reading tidal forecasts and checking activity safety.",
+    heroDesc: "A concise guide to get you started with the Searibu marine information system.",
     downloadBtn: "Download Full Manual",
 
     videoLabel: "Tutorial Video",
     videoTitle: "Watch: Getting Started",
-    videoDesc: "A step-by-step walkthrough of Searibu core features. Full video coming soon.",
+    videoDesc: "A step-by-step walkthrough of Searibu core features.",
     videoPlaceholder: "Tutorial video will be available here",
 
     quickLabel: "Quick Start",
@@ -179,12 +179,12 @@ const COPY: Record<"en" | "id", GuideCopy> = {
   id: {
     heroBadge: "Panduan Cepat",
     heroTitle: "Cara Menggunakan Searibu",
-    heroDesc: "Panduan singkat untuk mulai menggunakan sistem informasi kelautan Searibu — dari membuka peta hingga membaca prakiraan pasut dan memeriksa keamanan aktivitas.",
+    heroDesc: "Panduan singkat untuk mulai menggunakan sistem informasi kelautan Searibu.",
     downloadBtn: "Unduh Manual Lengkap",
 
     videoLabel: "Video Tutorial",
     videoTitle: "Tonton: Mulai Menggunakan Searibu",
-    videoDesc: "Panduan langkah demi langkah fitur-fitur utama Searibu. Video lengkap segera hadir.",
+    videoDesc: "Panduan langkah demi langkah fitur-fitur utama Searibu.",
     videoPlaceholder: "Video tutorial akan tersedia di sini",
 
     quickLabel: "Mulai Cepat",
@@ -345,12 +345,18 @@ export const GuidePage: React.FC = () => {
             <h2 style={{ fontFamily: FONT, fontSize: "clamp(1.2rem,2.5vw,1.6rem)", fontWeight: 800, color: TEXT1, margin: "0 0 10px", letterSpacing: "-0.02em" }}>{c.videoTitle}</h2>
             <p style={{ fontFamily: FONT, fontSize: 14, color: TEXT3, lineHeight: 1.7, margin: "0 0 24px" }}>{c.videoDesc}</p>
             {/* YouTube placeholder — replace with <iframe> when ready */}
-            <div style={{ width: "100%", aspectRatio: "16/9", background: DARK1, borderRadius: 12, border: `1px solid ${BORDER}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", inset: 0, backgroundImage: `radial-gradient(rgba(245,193,24,0.04) 1px, transparent 1px)`, backgroundSize: "28px 28px" }} />
-              <div style={{ width: 64, height: 64, borderRadius: "50%", border: `2px solid rgba(245,193,24,0.35)`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
-                <div style={{ width: 0, height: 0, borderTop: "10px solid transparent", borderBottom: "10px solid transparent", borderLeft: "18px solid rgba(245,193,24,0.50)", marginLeft: 4 }} />
-              </div>
-              <p style={{ fontFamily: FONT, fontSize: 13, color: "rgba(245,240,232,0.35)", letterSpacing: "0.04em", margin: 0, position: "relative", zIndex: 1 }}>{c.videoPlaceholder}</p>
+            <div style={{ width: "100%", aspectRatio: "16/9", borderRadius: 12, overflow: "hidden", border: `1px solid ${BORDER}` }}>
+              <iframe
+                width="100%"
+                height="100%"
+                src="https://www.youtube.com/embed/l6PgpfRsVz4?si=ik3vAUshN2y9WPU5"
+                title="YouTube video player"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+                style={{ display: "block" }}
+              />
             </div>
           </div>
         </div>

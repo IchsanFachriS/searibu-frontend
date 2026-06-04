@@ -14,194 +14,192 @@ interface GridOption {
 }
 
 const GRID_OPTIONS: GridOption[] = [
-  { key:"tpxo",  color:"#38bdf8", labelEn:"TPXO10 Atlas",        labelId:"TPXO10 Atlas",        descEn:"Tidal prediction",        descId:"Prediksi pasut"          },
-  { key:"ecmwf", color:"#f59e0b", labelEn:"ECMWF IFS",    labelId:"ECMWF IFS",    descEn:"Weather forecast (~9 km)", descId:"Prakiraan cuaca (~9 km)" },
-  { key:"smoc",  color:"#34d399", labelEn:"SMOC / MFWAM", labelId:"SMOC / MFWAM", descEn:"Wave & current (0.083°)",  descId:"Gelombang & arus (0,083°)"},
+  { key:"tpxo",  color:"#1a3bbf", labelEn:"TPXO10 Atlas", labelId:"TPXO10 Atlas", descEn:"Tidal prediction",        descId:"Prediksi pasut"          },
+  { key:"ecmwf", color:"#b45309", labelEn:"ECMWF IFS",    labelId:"ECMWF IFS",    descEn:"Weather forecast (~9 km)", descId:"Prakiraan cuaca (~9 km)" },
+  { key:"smoc",  color:"#0f766e", labelEn:"SMOC / MFWAM", labelId:"SMOC / MFWAM", descEn:"Wave & current (0.083°)",  descId:"Gelombang & arus (0,083°)"},
 ];
 
-/* ── Design tokens ── */
-const FONT  = "'Inter', system-ui, sans-serif";
-const C = {
-  bg:      "#0f1824",
-  surface: "#111d2c",
-  card:    "#152232",
-  border:  "#1e3044",
-  border2: "#243548",
-  sky:     "#38bdf8",
-  text1:   "#e8f4fd",
-  text2:   "#7fa8c9",
-  text3:   "#3d5a75",
+/* ── Design tokens — light/white, sesuai index.css ── */
+const FONT = "'Inter', system-ui, -apple-system, sans-serif";
+const L = {
+  bg:      "#ffffff",
+  bg2:     "#f7f4ef",
+  border:  "#e4ddd4",
+  borderS: "#ccc5bb",
+  text1:   "#1a1a1a",
+  text2:   "#3d3d3d",
+  text3:   "#6b6b6b",
+  text4:   "#9a9a9a",
+  blue:    "#1a3bbf",
+  blueH:   "#142d99",
+  blueL:   "#ddf0fb",
+  shadow:  "0 4px 14px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.07)",
+  shadowSm:"0 2px 6px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05)",
+};
+
+/* Grid color — map dot indicator uses saturated version of each model color */
+const GRID_MAP_COLOR: Record<GridLayer, string> = {
+  tpxo:  "#38bdf8",
+  ecmwf: "#f59e0b",
+  smoc:  "#34d399",
 };
 
 interface Coords { lat: number; lon: number }
 
-/* ══════════════════════════════════════════════════════════════════
-   BasemapToggle — standalone pill
-══════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════
+   BasemapToggle — white pill
+══════════════════════════════════════════════════════════ */
 const BasemapToggle: React.FC<{
   basemap: BasemapType;
   onChange: (b: BasemapType) => void;
   language: string;
 }> = ({ basemap, onChange, language }) => (
   <div style={{
-    display: "flex", alignItems: "center", gap: 3,
-    background: "rgba(15,24,36,0.90)",
-    border: `1px solid ${C.border}`,
+    display:"flex", alignItems:"center", gap:3,
+    background: L.bg,
+    border: `1.5px solid ${L.border}`,
     borderRadius: 10, padding: 3,
-    backdropFilter: "blur(12px)",
-    boxShadow: "0 4px 16px rgba(0,0,0,0.40)",
+    boxShadow: L.shadow,
   }}
-    onWheel={e => e.stopPropagation()}
-    onTouchMove={e => e.stopPropagation()}
+    onWheel={e=>e.stopPropagation()}
+    onTouchMove={e=>e.stopPropagation()}
   >
     {(["osm","satellite"] as BasemapType[]).map(type => {
       const active = basemap === type;
       return (
-        <button key={type} onClick={() => onChange(type)}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "6px 11px", borderRadius: 7, border: "none",
-            cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 600,
-            transition: "all 0.18s",
-            background: active ? C.sky : "transparent",
-            color: active ? C.bg : C.text3,
-            boxShadow: active ? "0 2px 8px rgba(56,189,248,0.35)" : "none",
-            whiteSpace: "nowrap",
-          }}
-          onMouseEnter={e => { if (!active) { e.currentTarget.style.color = C.text2; e.currentTarget.style.background = `rgba(255,255,255,0.06)`; }}}
-          onMouseLeave={e => { if (!active) { e.currentTarget.style.color = C.text3; e.currentTarget.style.background = "transparent"; }}}
+        <button key={type} onClick={() => onChange(type)} style={{
+          display:"flex", alignItems:"center", gap:6,
+          padding:"6px 12px", borderRadius:7, border:"none",
+          cursor:"pointer", fontFamily:FONT, fontSize:11, fontWeight:600,
+          transition:"all 0.18s",
+          background: active ? L.blue : "transparent",
+          color: active ? "#fff" : L.text3,
+          boxShadow: active ? "0 2px 8px rgba(26,59,191,0.30)" : "none",
+          whiteSpace:"nowrap",
+        }}
+          onMouseEnter={e => { if (!active) { e.currentTarget.style.color=L.text1; e.currentTarget.style.background=L.bg2; }}}
+          onMouseLeave={e => { if (!active) { e.currentTarget.style.color=L.text3; e.currentTarget.style.background="transparent"; }}}
         >
-          {type === "osm"
-            ? <Map size={12} />
-            : <Satellite size={12} />}
-          {type === "osm"
-            ? (language === "id" ? "Peta" : "Map")
-            : (language === "id" ? "Satelit" : "Sat.")}
+          {type==="osm" ? <Map size={12}/> : <Satellite size={12}/>}
+          {type==="osm"
+            ? (language==="id"?"Peta":"Map")
+            : (language==="id"?"Satelit":"Sat.")}
         </button>
       );
     })}
   </div>
 );
 
-/* ══════════════════════════════════════════════════════════════════
-   GridLayerToggle — standalone pill with dropdown
-══════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════
+   GridLayerToggle — white pill with dropdown
+══════════════════════════════════════════════════════════ */
 const GridLayerToggle: React.FC<{
-  current:  GridLayer;
+  current: GridLayer;
   onChange: (l: GridLayer) => void;
   language: string;
 }> = ({ current, onChange, language }) => {
   const [open, setOpen] = useState(false);
-  const cfg = GRID_OPTIONS.find(o => o.key === current)!;
+  const cfg  = GRID_OPTIONS.find(o => o.key === current)!;
+  const dotC = GRID_MAP_COLOR[current];
 
   return (
-    <div style={{ position: "relative" }}
-      onWheel={e => e.stopPropagation()}
-      onTouchMove={e => e.stopPropagation()}
+    <div style={{position:"relative"}}
+      onWheel={e=>e.stopPropagation()}
+      onTouchMove={e=>e.stopPropagation()}
     >
-      {/* Trigger */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          display: "flex", alignItems: "center", gap: 7,
-          padding: "6px 11px 6px 9px",
-          background: open ? "rgba(56,189,248,0.10)" : "rgba(15,24,36,0.90)",
-          border: `1px solid ${open ? "rgba(56,189,248,0.30)" : C.border}`,
-          borderRadius: 10, cursor: "pointer",
-          backdropFilter: "blur(12px)",
-          boxShadow: "0 4px 16px rgba(0,0,0,0.40)",
-          transition: "all .18s",
-          fontFamily: FONT,
-        }}
-        onMouseEnter={e => { if (!open) { e.currentTarget.style.borderColor = `rgba(56,189,248,0.25)`; e.currentTarget.style.background = `rgba(56,189,248,0.07)`; }}}
-        onMouseLeave={e => { if (!open) { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = "rgba(15,24,36,0.90)"; }}}
+      <button onClick={() => setOpen(o => !o)} style={{
+        display:"flex", alignItems:"center", gap:8,
+        padding:"6px 12px 6px 10px",
+        background: open ? L.blueL : L.bg,
+        border: `1.5px solid ${open ? L.blue : L.border}`,
+        borderRadius:10, cursor:"pointer",
+        boxShadow: L.shadow,
+        transition:"all .18s",
+        fontFamily:FONT,
+      }}
+        onMouseEnter={e => { if (!open) { e.currentTarget.style.borderColor=L.blue; e.currentTarget.style.background=L.blueL; }}}
+        onMouseLeave={e => { if (!open) { e.currentTarget.style.borderColor=L.border; e.currentTarget.style.background=L.bg; }}}
       >
-        {/* Color dot */}
+        {/* Color dot — uses saturated map color */}
         <div style={{
-          width: 8, height: 8, borderRadius: "50%",
-          background: cfg.color, flexShrink: 0,
-          boxShadow: `0 0 6px ${cfg.color}80`,
-        }} />
+          width:8, height:8, borderRadius:"50%",
+          background: dotC, flexShrink:0,
+          boxShadow: `0 0 0 2px ${dotC}30`,
+        }}/>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.text1, lineHeight: 1.2, whiteSpace: "nowrap" }}>
-            {language === "id" ? cfg.labelId : cfg.labelEn}
+          <div style={{fontSize:11, fontWeight:700, color: open?L.blue:L.text1, lineHeight:1.2, whiteSpace:"nowrap"}}>
+            {language==="id" ? cfg.labelId : cfg.labelEn}
           </div>
-          <div style={{ fontSize: 9, color: C.text3, lineHeight: 1.1, whiteSpace: "nowrap" }}>
-            {language === "id" ? cfg.descId : cfg.descEn}
+          <div style={{fontSize:9, color:L.text4, lineHeight:1.1, whiteSpace:"nowrap"}}>
+            {language==="id" ? cfg.descId : cfg.descEn}
           </div>
         </div>
-        <Layers size={11} style={{ color: open ? C.sky : C.text3, flexShrink: 0, marginLeft: 2, transition: "color .15s" }} />
+        <Layers size={11} style={{color:open?L.blue:L.text4, flexShrink:0, marginLeft:2, transition:"color .15s"}}/>
       </button>
 
-      {/* Dropdown */}
-      {open && (
-        <>
-          <div style={{ position: "fixed", inset: 0, zIndex: 376 }} onClick={() => setOpen(false)} />
-          <div style={{
-            position: "absolute", top: "calc(100% + 6px)", left: 0,
-            background: "rgba(15,24,36,0.97)",
-            border: `1px solid ${C.border}`,
-            borderRadius: 12,
-            overflow: "hidden",
-            minWidth: 220,
-            zIndex: 377,
-            boxShadow: "0 16px 40px rgba(0,0,0,0.60)",
-            backdropFilter: "blur(16px)",
-          }}>
-            {/* Header */}
-            <div style={{ padding: "8px 12px 7px", borderBottom: `1px solid ${C.border}` }}>
-              <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: C.text3 }}>
-                {language === "id" ? "Model Grid" : "Grid Model"}
-              </span>
-            </div>
-            {/* Options */}
-            {GRID_OPTIONS.map(opt => {
-              const active = current === opt.key;
-              const lbl = language === "id" ? opt.labelId : opt.labelEn;
-              const dsc = language === "id" ? opt.descId  : opt.descEn;
-              return (
-                <button key={opt.key} onClick={() => { onChange(opt.key); setOpen(false); }}
-                  style={{
-                    width: "100%", display: "flex", alignItems: "center", gap: 11,
-                    padding: "10px 13px",
-                    background: active ? `rgba(56,189,248,0.07)` : "none",
-                    border: "none", cursor: "pointer",
-                    textAlign: "left" as const,
-                    borderBottom: `1px solid ${C.border}`,
-                    transition: "background 0.12s",
-                  }}
-                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = `rgba(255,255,255,0.03)`; }}
-                  onMouseLeave={e => { if (!active) e.currentTarget.style.background = "none"; }}
-                >
-                  {/* Icon box */}
-                  <div style={{
-                    width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                    background: `${opt.color}12`,
-                    border: `1.5px solid ${opt.color}40`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    <div style={{ width: 12, height: 12, borderRadius: 3, background: opt.color, opacity: active ? 1 : 0.7 }} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontFamily: FONT, fontSize: 12.5, fontWeight: 600, margin: 0, lineHeight: 1.3, color: active ? opt.color : C.text1 }}>{lbl}</p>
-                    <p style={{ fontFamily: FONT, fontSize: 10.5, margin: 0, color: C.text3 }}>{dsc}</p>
-                  </div>
-                  {active && (
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: opt.color, flexShrink: 0, boxShadow: `0 0 6px ${opt.color}` }} />
-                  )}
-                </button>
-              );
-            })}
+      {open && (<>
+        <div style={{position:"fixed",inset:0,zIndex:376}} onClick={() => setOpen(false)}/>
+        <div style={{
+          position:"absolute", top:"calc(100% + 6px)", left:0,
+          background: L.bg,
+          border: `1.5px solid ${L.border}`,
+          borderRadius:12, overflow:"hidden",
+          minWidth:230, zIndex:377,
+          boxShadow: L.shadow,
+        }}>
+          {/* Header */}
+          <div style={{padding:"8px 14px 7px", borderBottom:`1px solid ${L.border}`, background:L.bg2}}>
+            <span style={{fontFamily:FONT, fontSize:9.5, fontWeight:800, letterSpacing:"0.10em", textTransform:"uppercase" as const, color:L.text4}}>
+              {language==="id"?"Model Grid":"Grid Model"}
+            </span>
           </div>
-        </>
-      )}
+          {/* Options */}
+          {GRID_OPTIONS.map(opt => {
+            const active = current === opt.key;
+            const mc = GRID_MAP_COLOR[opt.key];
+            return (
+              <button key={opt.key} onClick={() => { onChange(opt.key); setOpen(false); }} style={{
+                width:"100%", display:"flex", alignItems:"center", gap:11,
+                padding:"10px 14px",
+                background: active ? L.blueL : "none",
+                border:"none", cursor:"pointer",
+                textAlign:"left" as const,
+                borderBottom: `1px solid ${L.border}`,
+                transition:"background 0.12s",
+              }}
+                onMouseEnter={e => { if (!active) e.currentTarget.style.background=L.bg2; }}
+                onMouseLeave={e => { if (!active) e.currentTarget.style.background="none"; }}
+              >
+                {/* Icon */}
+                <div style={{
+                  width:34, height:34, borderRadius:9, flexShrink:0,
+                  background: active ? `${mc}18` : L.bg2,
+                  border: `1.5px solid ${active ? mc : L.border}`,
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                }}>
+                  <div style={{width:12, height:12, borderRadius:3, background:mc, opacity:active?1:0.65}}/>
+                </div>
+                <div style={{flex:1, minWidth:0}}>
+                  <p style={{fontFamily:FONT, fontSize:13, fontWeight:700, margin:0, lineHeight:1.3, color:active?L.blue:L.text1}}>
+                    {language==="id"?opt.labelId:opt.labelEn}
+                  </p>
+                  <p style={{fontFamily:FONT, fontSize:10.5, margin:0, color:L.text4}}>
+                    {language==="id"?opt.descId:opt.descEn}
+                  </p>
+                </div>
+                {active && (
+                  <div style={{width:7,height:7,borderRadius:"50%",background:L.blue,flexShrink:0}}/>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </>)}
     </div>
   );
 };
 
-/* ══════════════════════════════════════════════════════════════════
-   WebGISPage
-══════════════════════════════════════════════════════════════════ */
+/* ── WebGISPage ── */
 export const WebGISPage: React.FC = () => {
   const { language } = useLanguage();
   const [basemap,        setBasemap]        = useState<BasemapType>("satellite");
@@ -211,195 +209,61 @@ export const WebGISPage: React.FC = () => {
   const [panelWidth,     setPanelWidth]     = useState(480);
   const isResizing = useRef(false);
 
-  const handleGridClick = (coords: Coords) => {
-    setSelectedCoords(coords);
-    setPanelOpen(true);
-  };
-  const handleClosePanel = () => {
-    setPanelOpen(false);
-    setTimeout(() => setSelectedCoords(null), 400);
-  };
-
+  const handleGridClick = (coords: Coords) => { setSelectedCoords(coords); setPanelOpen(true); };
+  const handleClosePanel = () => { setPanelOpen(false); setTimeout(()=>setSelectedCoords(null),400); };
   const startResize = (e: React.MouseEvent) => {
-    e.preventDefault();
-    isResizing.current = true;
-    document.body.style.cursor = "ew-resize";
-    document.body.style.userSelect = "none";
+    e.preventDefault(); isResizing.current=true;
+    document.body.style.cursor="ew-resize"; document.body.style.userSelect="none";
   };
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing.current) return;
-      const newWidth = window.innerWidth - e.clientX;
-      if (newWidth >= 340 && newWidth <= window.innerWidth * 0.65) setPanelWidth(newWidth);
-    };
-    const handleMouseUp = () => {
-      if (isResizing.current) {
-        isResizing.current = false;
-        document.body.style.cursor = "default";
-        document.body.style.userSelect = "auto";
-      }
-    };
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup",   handleMouseUp);
-    return () => { window.removeEventListener("mousemove", handleMouseMove); window.removeEventListener("mouseup", handleMouseUp); };
-  }, []);
+  useEffect(()=>{
+    const onMove=(e:MouseEvent)=>{if(!isResizing.current)return;const nw=window.innerWidth-e.clientX;if(nw>=340&&nw<=window.innerWidth*0.65)setPanelWidth(nw);};
+    const onUp=()=>{if(isResizing.current){isResizing.current=false;document.body.style.cursor="default";document.body.style.userSelect="auto";}};
+    window.addEventListener("mousemove",onMove); window.addEventListener("mouseup",onUp);
+    return()=>{window.removeEventListener("mousemove",onMove);window.removeEventListener("mouseup",onUp);};
+  },[]);
 
   return (
     <>
       <style>{`
-        html, body, #root {
-          overscroll-behavior: none !important;
-          overflow: hidden;
-          height: 100%; width: 100%;
+        html,body,#root{overscroll-behavior:none !important;overflow:hidden;height:100%;width:100%;}
+        .wg-wrap{display:flex;height:calc(100vh - 70px);width:100%;overflow:hidden;margin-top:70px;position:relative;background:#1a1e2e;overscroll-behavior:none;touch-action:none;}
+        .wg-map{position:relative;flex:1;min-width:0;overflow:hidden;overscroll-behavior:none;}
+        .wg-toolbar{position:fixed;top:82px;left:12px;z-index:380;display:flex;align-items:center;gap:8px;overscroll-behavior:contain;touch-action:manipulation;}
+        @media (min-width:769px){
+          .wg-panel{position:relative;height:100%;background:#f7f4ef;flex-shrink:0;overflow:hidden;display:flex;transition:transform .35s cubic-bezier(.4,0,.2,1);}
+          .wg-handle{position:absolute;top:0;left:0;bottom:0;width:4px;cursor:ew-resize;background:transparent;z-index:100;transition:background 0.2s;}
+          .wg-handle:hover,.wg-handle:active{background:rgba(26,59,191,0.25);}
+          .wg-panel.closed{transform:translateX(100%);position:absolute;right:0;}
+          .wg-mob{display:none !important;}.wg-mob-bg{display:none !important;}
         }
-
-        /* ── Map wrapper ── */
-        .webgis-wrapper {
-          display: flex;
-          height: calc(100vh - 70px);
-          width: 100%;
-          overflow: hidden;
-          margin-top: 70px;
-          position: relative;
-          background: #0f1824;
-          overscroll-behavior: none;
-          touch-action: none;
+        @media (max-width:768px){
+          .wg-panel{display:none !important;}
+          .wg-mob{position:fixed;left:0;right:0;bottom:0;z-index:500;height:75vh;max-height:75vh;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);border-radius:16px 16px 0 0;overflow:hidden;box-shadow:0 -4px 30px rgba(0,0,0,0.15);background:#f7f4ef;overscroll-behavior:contain;}
+          .wg-mob.open{transform:translateY(0);}
+          .wg-mob-handle{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:36px;height:4px;background:rgba(26,59,191,0.18);border-radius:2px;z-index:10;cursor:grab;}
+          .wg-mob-bg{position:fixed;top:70px;left:0;right:0;bottom:0;z-index:499;background:rgba(0,0,0,0.25);opacity:0;pointer-events:none;transition:opacity .3s;}
+          .wg-mob-bg.on{opacity:1;pointer-events:auto;}
         }
-        .webgis-map-area {
-          position: relative;
-          flex: 1; min-width: 0;
-          overflow: hidden;
-          overscroll-behavior: none;
-        }
-
-        /* ── Toolbar: two separate pills, fixed ──────────────────────
-           z-index 380 — below navbar (500), mobile drawer (400), overlay (390)
-           Top: 82px = navbar (70) + gap (12)
-        ─────────────────────────────────────────────────────────────── */
-        .webgis-toolbar {
-          position: fixed;
-          top: 82px;
-          left: 12px;
-          z-index: 380;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          overscroll-behavior: contain;
-          touch-action: manipulation;
-        }
-
-        /* ── Desktop side panel ── */
-        @media (min-width: 769px) {
-          .webgis-panel-desktop {
-            position: relative;
-            height: 100%;
-            background: #0f1824;
-            flex-shrink: 0;
-            overflow: hidden;
-            display: flex;
-            transition: transform .35s cubic-bezier(.4,0,.2,1);
-          }
-          .webgis-resize-handle {
-            position: absolute;
-            top: 0; left: 0; bottom: 0;
-            width: 4px;
-            cursor: ew-resize;
-            background: transparent;
-            z-index: 100;
-            transition: background 0.2s;
-          }
-          .webgis-resize-handle:hover,
-          .webgis-resize-handle:active { background: rgba(56,189,248,0.35); }
-          .webgis-panel-desktop.closed {
-            transform: translateX(100%);
-            position: absolute; right: 0;
-          }
-          .webgis-panel-mobile    { display: none !important; }
-          .webgis-mobile-backdrop { display: none !important; }
-        }
-
-        /* ── Mobile panel — FIXED: top accounts for navbar (70px) ── */
-        @media (max-width: 768px) {
-          .webgis-panel-desktop { display: none !important; }
-
-          .webgis-panel-mobile {
-            position: fixed;
-            left: 0; right: 0; bottom: 0;
-            z-index: 500;
-            height: 72vh;
-            max-height: 72vh;
-            transform: translateY(100%);
-            transition: transform .35s cubic-bezier(.4,0,.2,1);
-            border-radius: 16px 16px 0 0;
-            overflow: hidden;
-            box-shadow: 0 -8px 40px rgba(0,0,0,0.60);
-            background: #0f1824;
-            overscroll-behavior: contain;
-          }
-          .webgis-panel-mobile.open { transform: translateY(0); }
-
-          .mobile-drag-handle {
-            position: absolute; top: 8px; left: 50%;
-            transform: translateX(-50%);
-            width: 36px; height: 4px;
-            background: rgba(56,189,248,0.18);
-            border-radius: 2px; z-index: 10;
-            cursor: grab;
-          }
-
-          /* Backdrop sits below navbar — zIndex 499 */
-          .webgis-mobile-backdrop {
-            position: fixed;
-            /* Top at navbar bottom so it doesn't cover navbar */
-            top: 70px;
-            left: 0; right: 0; bottom: 0;
-            z-index: 499;
-            background: rgba(0,0,0,0.45);
-            opacity: 0; pointer-events: none;
-            transition: opacity .3s;
-          }
-          .webgis-mobile-backdrop.visible {
-            opacity: 1; pointer-events: auto;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .webgis-panel-mobile { height: 80vh; max-height: 80vh; }
-        }
-
-        /* Landscape phone */
-        @media (max-width: 768px) and (orientation: landscape) {
-          .webgis-panel-mobile {
-            height: 90vh; max-height: 90vh;
-            left: auto; right: 0;
-            /* Start BELOW navbar */
-            top: 70px; bottom: 0;
-            width: 340px; max-width: 340px;
-            transform: translateX(100%);
-            border-radius: 0;
-          }
-          .webgis-panel-mobile.open { transform: translateX(0); }
+        @media (max-width:480px){.wg-mob{height:82vh;max-height:82vh;}}
+        @media (max-width:768px) and (orientation:landscape){
+          .wg-mob{height:92vh;max-height:92vh;left:auto;right:0;top:70px;bottom:0;width:360px;max-width:360px;transform:translateX(100%);border-radius:0;}
+          .wg-mob.open{transform:translateX(0);}
         }
       `}</style>
 
-      {/* ── Toolbar: two separate pills ── */}
-      <div className="webgis-toolbar">
-        {/* Pill 1: Basemap toggle */}
-        <BasemapToggle basemap={basemap} onChange={setBasemap} language={language} />
-        {/* Pill 2: Grid layer toggle */}
-        <GridLayerToggle current={gridLayer} onChange={setGridLayer} language={language} />
+      <div className="wg-toolbar">
+        <BasemapToggle basemap={basemap} onChange={setBasemap} language={language}/>
+        <GridLayerToggle current={gridLayer} onChange={setGridLayer} language={language}/>
       </div>
 
-      <div className="webgis-wrapper"
-        onWheel={e => e.preventDefault()}
-        onTouchMove={e => { if (!panelOpen) e.preventDefault(); }}
-      >
-        {/* Map */}
-        <div className="webgis-map-area">
+      <div className="wg-wrap"
+        onWheel={e=>e.preventDefault()}
+        onTouchMove={e=>{if(!panelOpen)e.preventDefault();}}>
+
+        <div className="wg-map">
           <MapContainer
-            basemap={basemap}
-            gridLayer={gridLayer}
+            basemap={basemap} gridLayer={gridLayer}
             onGridLayerChange={setGridLayer}
             onGridClick={handleGridClick}
             onCoordinateSearch={handleGridClick}
@@ -407,23 +271,20 @@ export const WebGISPage: React.FC = () => {
           />
         </div>
 
-        {/* Desktop side panel */}
-        <div className={`webgis-panel-desktop ${panelOpen ? "" : "closed"}`} style={{ width: panelOpen ? panelWidth : 0 }}>
-          <div className="webgis-resize-handle" onMouseDown={startResize} />
+        {/* Desktop panel */}
+        <div className={`wg-panel ${panelOpen?"":"closed"}`} style={{width:panelOpen?panelWidth:0}}>
+          <div className="wg-handle" onMouseDown={startResize}/>
           {selectedCoords && (
-            <div style={{ width: "100%", height: "100%", overflow: "hidden" }}>
-              <InfoPanel coordinates={selectedCoords} onClose={handleClosePanel} />
+            <div style={{width:"100%",height:"100%",overflow:"hidden"}}>
+              <InfoPanel coordinates={selectedCoords} onClose={handleClosePanel}/>
             </div>
           )}
         </div>
 
-        {/* Mobile backdrop — below navbar */}
-        <div className={`webgis-mobile-backdrop ${panelOpen ? "visible" : ""}`} onClick={handleClosePanel} />
-
-        {/* Mobile bottom sheet */}
-        <div className={`webgis-panel-mobile ${panelOpen ? "open" : ""}`}>
-          <div className="mobile-drag-handle" />
-          {selectedCoords && <InfoPanel coordinates={selectedCoords} onClose={handleClosePanel} />}
+        <div className={`wg-mob-bg ${panelOpen?"on":""}`} onClick={handleClosePanel}/>
+        <div className={`wg-mob ${panelOpen?"open":""}`}>
+          <div className="wg-mob-handle"/>
+          {selectedCoords && <InfoPanel coordinates={selectedCoords} onClose={handleClosePanel}/>}
         </div>
       </div>
     </>

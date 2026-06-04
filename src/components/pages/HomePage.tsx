@@ -125,7 +125,7 @@ const COPY = {
   en: {
     tagline: "MARINE INFORMATION · KEPULAUAN SERIBU",
     headline: "Know Before\nYou Sail.",
-    subline: "Science-backed tidal prediction and real-time ocean conditions for safe maritime recreation across Searibu Islands.",
+    subline: "Science-backed tidal prediction and real-time ocean conditions for safe maritime recreation across Seribu Islands.",
     heroCta: "Open WebGIS",
     heroGhost: "Check Safety",
     safetyEyebrow: "Activity Safety Check",
