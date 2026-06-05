@@ -258,19 +258,21 @@ const GridLayerToggleInline: React.FC<{current: GridLayer; onChange: (l: GridLay
       </button>
 
       {open && (<>
-        <div style={{position:"fixed",inset:0,zIndex:377}} onClick={() => setOpen(false)}/>
-        <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,background:L_.bg,borderRadius:12,boxShadow:L_.shadow,border:`1.5px solid ${L_.border}`,overflow:"hidden",minWidth:220,zIndex:379}}>
-          <div style={{padding:"8px 12px 7px",borderBottom:`1px solid ${L_.border}`,background:L_.bg2}}>
-            <p style={{fontFamily:SANS,fontSize:9.5,fontWeight:800,letterSpacing:"0.08em",textTransform:"uppercase" as const,color:L_.text4,margin:0}}>
+        <div style={{position:"fixed",inset:0,zIndex:376}} onClick={() => setOpen(false)}/>
+        <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,background:L_.bg,borderRadius:12,boxShadow:L_.shadow,border:`1.5px solid ${L_.border}`,overflow:"hidden",minWidth:230,zIndex:377}}>
+          {/* Header */}
+          <div style={{padding:"8px 14px 7px",borderBottom:`1px solid ${L_.border}`,background:L_.bg2}}>
+            <span style={{fontFamily:SANS,fontSize:9.5,fontWeight:800,letterSpacing:"0.10em",textTransform:"uppercase" as const,color:L_.text4}}>
               {language==="id"?"Model Grid":"Grid Model"}
-            </p>
+            </span>
           </div>
+          {/* Options */}
           {(Object.keys(GRID_CONFIG) as GridLayer[]).map(key => {
             const opt=GRID_CONFIG[key], active=current===key;
             return (
               <button key={key} onClick={() => { onChange(key); setOpen(false); }} style={{
-                width:"100%",display:"flex",alignItems:"center",gap:10,
-                padding:"10px 12px",
+                width:"100%",display:"flex",alignItems:"center",gap:11,
+                padding:"10px 14px",
                 background: active ? L_.blueL : "none",
                 border:"none",cursor:"pointer",
                 textAlign:"left" as const,
@@ -279,14 +281,23 @@ const GridLayerToggleInline: React.FC<{current: GridLayer; onChange: (l: GridLay
               }}
                 onMouseEnter={e=>{if(!active)e.currentTarget.style.background=L_.bg2;}}
                 onMouseLeave={e=>{if(!active)e.currentTarget.style.background="none";}}>
-                <div style={{width:30,height:30,borderRadius:8,flexShrink:0,background:active?`${opt.color}18`:L_.bg2,border:`1.5px solid ${active?opt.color:L_.border}`,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  <div style={{width:11,height:11,borderRadius:3,background:opt.color,opacity:active?1:0.65}}/>
+                <div style={{
+                  width:34,height:34,borderRadius:9,flexShrink:0,
+                  background:active?`${opt.color}18`:L_.bg2,
+                  border:`1.5px solid ${active?opt.color:L_.border}`,
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                }}>
+                  <div style={{width:12,height:12,borderRadius:3,background:opt.color,opacity:active?1:0.65}}/>
                 </div>
                 <div style={{flex:1,minWidth:0}}>
-                  <p style={{fontFamily:SANS,fontSize:12,fontWeight:700,margin:0,lineHeight:1.3,color:active?L_.blue:L_.text1}}>{language==="id"?opt.labelId:opt.labelEn}</p>
-                  <p style={{fontFamily:SANS,fontSize:10,margin:0,color:L_.text4}}>{language==="id"?opt.tipId:opt.tipEn}</p>
+                  <p style={{fontFamily:SANS,fontSize:13,fontWeight:700,margin:0,lineHeight:1.3,color:active?L_.blue:L_.text1}}>
+                    {language==="id"?opt.labelId:opt.labelEn}
+                  </p>
+                  <p style={{fontFamily:SANS,fontSize:10.5,margin:0,color:L_.text4}}>
+                    {language==="id"?opt.tipId:opt.tipEn}
+                  </p>
                 </div>
-                {active && <div style={{width:6,height:6,borderRadius:"50%",background:L_.blue,flexShrink:0}}/>}
+                {active && <div style={{width:7,height:7,borderRadius:"50%",background:L_.blue,flexShrink:0}}/>}
               </button>
             );
           })}
@@ -296,9 +307,7 @@ const GridLayerToggleInline: React.FC<{current: GridLayer; onChange: (l: GridLay
   );
 };
 
-/* ══════════════════════════════════════════════════════════
-   BottomSearchBar — white pill
-══════════════════════════════════════════════════════════ */
+/* ── BottomSearchBar ── */
 const BottomSearchBar: React.FC<{
   language: string;
   onIslandSelect: (island: Island) => void;
@@ -337,16 +346,13 @@ const BottomSearchBar: React.FC<{
 
   return (
     <div style={{position:"relative",width:"100%"}}>
-      {/* Dropdown */}
       {showDropdown && (
         <div style={{
           position:"absolute",bottom:"100%",left:0,right:0,marginBottom:6,
           background:L_.bg,border:`1.5px solid ${L_.blue}`,
-          borderRadius:12,overflow:"hidden",
-          boxShadow:L_.shadow,zIndex:2100,
+          borderRadius:12,overflow:"hidden",boxShadow:L_.shadow,zIndex:2100,
         }}
-          onWheel={e=>e.stopPropagation()}
-          onTouchMove={e=>e.stopPropagation()}>
+          onWheel={e=>e.stopPropagation()} onTouchMove={e=>e.stopPropagation()}>
           {results.map((isl,idx) => (
             <button key={isl.id} onMouseDown={() => handleSelect(isl)} style={{
               width:"100%",display:"flex",alignItems:"center",gap:10,
@@ -354,8 +360,8 @@ const BottomSearchBar: React.FC<{
               borderBottom:idx<results.length-1?`1px solid ${L_.border}`:"none",
               cursor:"pointer",textAlign:"left" as const,transition:"background 0.12s",
             }}
-              onMouseEnter={e => (e.currentTarget.style.background=L_.bg2)}
-              onMouseLeave={e => (e.currentTarget.style.background="none")}>
+              onMouseEnter={e=>(e.currentTarget.style.background=L_.bg2)}
+              onMouseLeave={e=>(e.currentTarget.style.background="none")}>
               <div style={{width:30,height:30,borderRadius:8,background:L_.blueL,border:`1px solid rgba(26,59,191,0.20)`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                 <MapPin size={13} style={{color:L_.blue}}/>
               </div>
@@ -370,7 +376,6 @@ const BottomSearchBar: React.FC<{
         </div>
       )}
 
-      {/* Search bar pill */}
       <div style={{
         display:"flex",alignItems:"center",gap:6,
         background:L_.bg,
@@ -382,31 +387,26 @@ const BottomSearchBar: React.FC<{
         overscrollBehavior:"contain" as const,
         touchAction:"manipulation" as const,
       }}
-        onWheel={e=>e.stopPropagation()}
-        onTouchMove={e=>e.stopPropagation()}>
+        onWheel={e=>e.stopPropagation()} onTouchMove={e=>e.stopPropagation()}>
         <Search size={15} style={{color:focused?L_.blue:L_.text4,flexShrink:0,transition:"color 0.18s"}}/>
         <input
-          ref={inputRef}
-          type="text" value={query}
-          onChange={e => setQuery(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setTimeout(() => setFocused(false), 160)}
+          ref={inputRef} type="text" value={query}
+          onChange={e=>setQuery(e.target.value)}
+          onFocus={()=>setFocused(true)}
+          onBlur={()=>setTimeout(()=>setFocused(false),160)}
           placeholder={language==="id"?"Cari pulau...":"Search island..."}
           style={{flex:1,border:"none",outline:"none",background:"transparent",fontSize:13,fontWeight:500,fontFamily:SANS,color:L_.text1,minWidth:0}}
         />
         {query && (
-          <button onClick={() => setQuery("")} style={{background:"none",border:"none",cursor:"pointer",color:L_.text4,padding:4,display:"flex",flexShrink:0}}>
+          <button onClick={()=>setQuery("")} style={{background:"none",border:"none",cursor:"pointer",color:L_.text4,padding:4,display:"flex",flexShrink:0}}>
             <X size={13}/>
           </button>
         )}
-        {/* Locate button */}
         <button onClick={handleMyLocation} disabled={locating}
           title={language==="id"?"Lokasi saya":"My location"}
           style={{
-            width:36,height:36,borderRadius:10,
-            border:`1.5px solid ${L_.border}`,
-            background: L_.bg2,
-            cursor:locating?"wait":"pointer",
+            width:36,height:36,borderRadius:10,border:`1.5px solid ${L_.border}`,
+            background:L_.bg2,cursor:locating?"wait":"pointer",
             display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,
             transition:"all 0.18s",
           }}
@@ -437,6 +437,15 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   const islandMarkersRef  = useRef<L.Marker[]>([]);
   const portMarkersRef    = useRef<L.Marker[]>([]);
   const luwesMarkerRef    = useRef<L.Marker | null>(null);
+  // ── Ref untuk melacak sel grid yang sedang aktif/dipilih ─────────────────
+  const selectedLayerRef  = useRef<L.Path | null>(null);
+  // ── Ref untuk onGridClick — JANGAN masukkan ke dependency array grid ──────
+  // Tanpa ini: setiap panel dibuka/tutup → onGridClick referensi baru
+  // → grid layer rebuild → fitBounds terpanggil lagi → zoom reset.
+  const onGridClickRef    = useRef(onGridClick);
+  useEffect(() => { onGridClickRef.current = onGridClick; }, [onGridClick]);
+  // ── Flag fitBounds per gridLayer: hanya sekali saat layer pertama dimuat ──
+  const hasInitialFitRef  = useRef<Partial<Record<GridLayer, boolean>>>({});
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(()=>{
@@ -500,38 +509,117 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     marker.addTo(mapRef.current!);luwesMarkerRef.current=marker;
   },[buildLuwes]);
 
-  /* Grid layer */
+  /* Grid layer ─────────────────────────────────────────────────────────────
+   * Dependency array: [gridLayer, language] SAJA.
+   * onGridClick TIDAK masuk deps — disimpan di onGridClickRef agar tidak
+   * menyebabkan rebuild layer setiap panel dibuka/tutup.
+   * fitBounds hanya berjalan SEKALI per gridLayer via hasInitialFitRef.
+   * ────────────────────────────────────────────────────────────────────── */
   useEffect(()=>{
     if(!mapRef.current) return;
     let active=true;
+
+    // Reset sel terpilih saat tipe layer grid berganti
+    selectedLayerRef.current=null;
+
     if(geoJsonLayerRef.current){mapRef.current.removeLayer(geoJsonLayerRef.current);geoJsonLayerRef.current=null;}
     const cfg=GRID_CONFIG[gridLayer];
     const tip=language==="id"?cfg.tipId:cfg.tipEn;
+
     fetch(cfg.file).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}).then(data=>{
       if(!mapRef.current||!active) return;
       if(geoJsonLayerRef.current)mapRef.current.removeLayer(geoJsonLayerRef.current);
+
       const layer=L.geoJSON(data,{
         style:{color:cfg.color,weight:1.5,opacity:0.7,fillColor:cfg.fillColor,fillOpacity:0.12},
         onEachFeature:(_f,fl)=>{
-          fl.bindTooltip(`<div style="font-family:${SANS};font-size:11px;color:${cfg.color};font-weight:700;padding:2px 4px;">${tip}</div>`,{sticky:true,opacity:1,className:"grid-tooltip"});
+          fl.bindTooltip(
+            `<div style="font-family:${SANS};font-size:11px;color:${cfg.color};font-weight:700;padding:2px 4px;">${tip}</div>`,
+            {sticky:true,opacity:1,className:"grid-tooltip"}
+          );
+
           fl.on("click",()=>{
+            // Gunakan ref — bukan closure — sehingga layer tidak perlu rebuild
             const center=(fl as any).getBounds().getCenter();
-            if(onGridClick)onGridClick({lat:center.lat,lon:center.lng});
-            layer.eachLayer((l:any)=>(l as L.Path).setStyle({color:cfg.color,weight:1.5,fillOpacity:0.12}));
-            (fl as L.Path).setStyle({color:"#1a3bbf",weight:2.5,fillOpacity:0.30});
+            onGridClickRef.current?.({lat:center.lat,lon:center.lng});
+
+            // Reset highlight sel sebelumnya ke style default grid
+            if(selectedLayerRef.current && selectedLayerRef.current!==(fl as L.Path)){
+              selectedLayerRef.current.setStyle({
+                color:       cfg.color,
+                weight:      1.5,
+                opacity:     0.7,
+                fillColor:   cfg.fillColor,
+                fillOpacity: 0.12,
+              });
+            }
+            // Highlight mencolok: warna fill = warna model itu sendiri tapi opacity tinggi
+            // Border putih tebal agar sel aktif mudah dikenali di basemap gelap maupun terang
+            (fl as L.Path).setStyle({
+              color:       "#ffffff",   // border putih — kontras di semua basemap
+              weight:      3,
+              opacity:     1,
+              fillColor:   cfg.fillColor, // tetap warna model (biru/kuning/hijau)
+              fillOpacity: 0.70,          // jauh lebih solid dari default 0.12
+            });
+            selectedLayerRef.current=fl as L.Path;
+            // ── TIDAK ada fitBounds / setView / flyTo di sini ──
+            // Zoom & center peta sama sekali tidak berubah saat klik
           });
-          fl.on("mouseover",()=>{if((fl as L.Path).options.fillOpacity!==0.30)(fl as L.Path).setStyle({fillOpacity:0.24,weight:2});});
-          fl.on("mouseout",()=>{if((fl as L.Path).options.fillOpacity!==0.30)(fl as L.Path).setStyle({fillOpacity:0.12,weight:1.5});});
+
+          fl.on("mouseover",()=>{
+            if((fl as L.Path)!==selectedLayerRef.current)
+              (fl as L.Path).setStyle({
+                color:       "#ffffff",
+                weight:      2,
+                opacity:     0.9,
+                fillColor:   cfg.fillColor,
+                fillOpacity: 0.35,
+              });
+          });
+          fl.on("mouseout",()=>{
+            if((fl as L.Path)!==selectedLayerRef.current)
+              (fl as L.Path).setStyle({
+                color:       cfg.color,
+                weight:      1.5,
+                opacity:     0.7,
+                fillColor:   cfg.fillColor,
+                fillOpacity: 0.12,
+              });
+          });
         },
       }).addTo(mapRef.current);
+
       geoJsonLayerRef.current=layer;
-      const validBounds=L.latLngBounds([]);
-      layer.eachLayer((l:any)=>{if(typeof l.getBounds==="function"){const b=l.getBounds();if(b.isValid()&&b.getSouth()>-10&&b.getNorth()<0&&b.getWest()>100&&b.getEast()<120)validBounds.extend(b);}});
-      if(validBounds.isValid())mapRef.current.fitBounds(validBounds,{padding:[30,30],maxZoom:13});
-      else mapRef.current.setView([-5.65,106.60],11);
+
+      // ── fitBounds hanya sekali saat gridLayer pertama kali dimuat ────────
+      // Flag per-key (gridLayer) memastikan tidak terpanggil ulang walau
+      // komponen re-render karena panel buka/tutup atau state lain berubah.
+      if(!hasInitialFitRef.current[gridLayer]){
+        const validBounds=L.latLngBounds([]);
+        layer.eachLayer((l:any)=>{
+          if(typeof l.getBounds==="function"){
+            const b=l.getBounds();
+            if(b.isValid()&&b.getSouth()>-10&&b.getNorth()<0&&b.getWest()>100&&b.getEast()<120)
+              validBounds.extend(b);
+          }
+        });
+        if(validBounds.isValid()){
+          mapRef.current.fitBounds(validBounds,{padding:[30,30],maxZoom:13});
+        }
+        hasInitialFitRef.current[gridLayer]=true;
+      }
     }).catch(err=>{if(active)console.warn(`[Searibu] Failed to load ${cfg.file}:`,err);});
-    return()=>{active=false;if(geoJsonLayerRef.current&&mapRef.current){mapRef.current.removeLayer(geoJsonLayerRef.current);geoJsonLayerRef.current=null;}};
-  },[gridLayer,language,onGridClick]);
+
+    return()=>{
+      active=false;
+      if(geoJsonLayerRef.current&&mapRef.current){
+        mapRef.current.removeLayer(geoJsonLayerRef.current);
+        geoJsonLayerRef.current=null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[gridLayer,language]);
 
   const flyToIsland=useCallback((island:Island)=>{
     if(!mapRef.current) return;
@@ -589,17 +677,14 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
         /* ── Leaflet zoom control ── */
         .leaflet-control-zoom {
-          border:none !important;
-          box-shadow:${L_.shadow} !important;
+          border:none !important; box-shadow:${L_.shadow} !important;
           margin-top:12px !important; margin-right:12px !important;
           border-radius:10px !important; overflow:hidden !important;
           border:1.5px solid ${L_.border} !important;
         }
         .leaflet-control-zoom a {
-          font-family:${SANS} !important;
-          background:${L_.bg} !important;
-          color:${L_.text2} !important;
-          border:none !important;
+          font-family:${SANS} !important; background:${L_.bg} !important;
+          color:${L_.text2} !important; border:none !important;
           border-bottom:1px solid ${L_.border} !important;
           width:34px !important; height:34px !important;
           line-height:34px !important; font-size:18px !important; font-weight:400 !important;
@@ -610,74 +695,51 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
         /* ── Attribution ── */
         .leaflet-control-attribution {
-          background:rgba(255,255,255,0.92) !important;
-          color:${L_.text4} !important; font-size:10px !important;
-          font-family:${SANS} !important; border-radius:6px 0 0 0 !important;
-          padding:2px 8px !important;
+          background:rgba(255,255,255,0.92) !important; color:${L_.text4} !important;
+          font-size:10px !important; font-family:${SANS} !important;
+          border-radius:6px 0 0 0 !important; padding:2px 8px !important;
         }
         .leaflet-control-attribution a { color:${L_.blue} !important; }
 
         /* ── Scale ── */
         .leaflet-control-scale-line {
-          background:rgba(255,255,255,0.92) !important;
-          border-color:${L_.borderS} !important;
-          color:${L_.text4} !important; font-size:10px !important;
-          font-family:${SANS} !important;
+          background:rgba(255,255,255,0.92) !important; border-color:${L_.borderS} !important;
+          color:${L_.text4} !important; font-size:10px !important; font-family:${SANS} !important;
         }
 
-        /* ── Grid toggle btn (used inside MapContainer) ── */
+        /* ── Grid toggle btn ── */
         .wg-grid-btn {
-          display:flex; align-items:center; gap:6px;
-          padding:6px 10px; border-radius:7px;
-          border:1.5px solid ${L_.border};
-          background:${L_.bg};
-          cursor:pointer; font-family:${SANS}; font-size:11px; font-weight:600;
-          white-space:nowrap; transition:all 0.15s;
-          color:${L_.text1};
-          box-shadow:${L_.shadowSm};
+          display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:7px;
+          border:1.5px solid ${L_.border}; background:${L_.bg}; cursor:pointer;
+          font-family:${SANS}; font-size:11px; font-weight:600; white-space:nowrap;
+          transition:all 0.15s; color:${L_.text1}; box-shadow:${L_.shadowSm};
         }
-        .wg-grid-btn:hover,.wg-grid-btn.open {
-          background:${L_.blueL}; border-color:${L_.blue}; color:${L_.blue};
-        }
+        .wg-grid-btn:hover,.wg-grid-btn.open { background:${L_.blueL}; border-color:${L_.blue}; color:${L_.blue}; }
 
         @keyframes wg-spin { to { transform:rotate(360deg); } }
-
         @media (max-width:480px) { .leaflet-control-zoom { display:none !important; } }
       `}</style>
 
       <div ref={mapContainerRef} style={{position:"absolute",inset:0}}
         onWheel={e=>e.stopPropagation()}/>
 
-      {/* Legend — bottom left, white */}
+      {/* Legend — bottom left */}
       <div style={{
-        position:"absolute",
-        bottom: isMobile ? 80 : 20,
-        left:12,
-        zIndex:1001,
-        overscrollBehavior:"contain",
-        touchAction:"none",
+        position:"absolute", bottom: isMobile ? 80 : 20, left:12, zIndex:1001,
+        overscrollBehavior:"contain", touchAction:"none",
         display: isMobile && panelOpen ? "none" : "block",
       }}
-        onWheel={e=>e.stopPropagation()}
-        onTouchMove={e=>e.stopPropagation()}>
+        onWheel={e=>e.stopPropagation()} onTouchMove={e=>e.stopPropagation()}>
         <LegendPanel language={language} activeGrid={gridLayer} defaultCollapsed={isMobile}/>
       </div>
 
-      {/* Search bar — bottom center, white */}
+      {/* Search bar — bottom center */}
       <div style={{
-        position:"absolute",
-        bottom:16,
-        left:"50%",
-        transform:"translateX(-50%)",
-        zIndex:1000,
-        width:"calc(100% - 32px)",
-        maxWidth:420,
-        boxSizing:"border-box" as const,
-        overscrollBehavior:"contain",
-        touchAction:"manipulation",
+        position:"absolute", bottom:16, left:"50%", transform:"translateX(-50%)",
+        zIndex:1000, width:"calc(100% - 32px)", maxWidth:420,
+        boxSizing:"border-box" as const, overscrollBehavior:"contain", touchAction:"manipulation",
       }}
-        onWheel={e=>e.stopPropagation()}
-        onTouchMove={e=>e.stopPropagation()}>
+        onWheel={e=>e.stopPropagation()} onTouchMove={e=>e.stopPropagation()}>
         <BottomSearchBar
           language={language}
           onIslandSelect={flyToIsland}

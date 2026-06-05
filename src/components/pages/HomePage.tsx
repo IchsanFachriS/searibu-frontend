@@ -488,7 +488,7 @@ export const HomePage: React.FC<HomePageProps> = () => {
         .hero-inner { display: grid; grid-template-columns: 1fr 36%; min-height: 100vh; }
         @media (max-width:900px) { .hero-inner { grid-template-columns: 1fr; } .hero-side { display: none !important; } }
 
-        /* Safety Layout - Pastikan kontainer utama aman di mobile */
+        /* Safety Layout */
         .safety-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; width: 100%; }
         @media (max-width:1024px){ .safety-layout { gap: 40px; } }
         @media (max-width:860px) { .safety-layout { grid-template-columns: 1fr; gap: 32px; } }
@@ -537,12 +537,12 @@ export const HomePage: React.FC<HomePageProps> = () => {
         .hero-ctas { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
         @media (max-width:360px){ .hero-ctas { flex-direction:column; align-items:stretch; gap:10px; } .hero-ctas button { width:100%; justify-content:center; } }
 
-        /* Condition metrics — Dioptimalkan agar tidak pecah di layar kecil */
+        /* Condition metrics */
         .condition-metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; width: 100%; }
         @media (max-width:580px){ .condition-metrics { grid-template-columns:repeat(2,1fr); } }
         @media (max-width:360px){ .condition-metrics { grid-template-columns:1fr; } }
 
-        /* Activity grid — Berubah menjadi 1 kolom penuh di mobile (< 520px) agar teks dan pill aman */
+        /* Activity grid */
         .activity-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; width: 100%; }
         @media (max-width:520px){ .activity-grid { grid-template-columns:1fr; } }
 
@@ -601,23 +601,23 @@ export const HomePage: React.FC<HomePageProps> = () => {
               {/* Divider */}
               <div style={{ width: 48, height: 1, background: "rgba(245,240,232,0.15)", marginBottom: 32, ...fadeUp(4, 115) }} />
 
-              {/* CTAs */}
+              {/* ── CTAs — Check Safety (amber, kiri) · Open WebGIS (ghost, kanan) ── */}
               <div className="hero-ctas" style={{ ...fadeUp(5, 140) }}>
                 <button
-                  onClick={() => onNavigate?.("webgis")}
+                  onClick={scrollToSafety}
                   style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "14px 28px", background: AMBER, color: DARK1, border: "none", fontFamily: FONT, fontSize: 13, fontWeight: 700, letterSpacing: "0.02em", borderRadius: 9, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 4px 16px rgba(245,193,24,0.40)" }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = AMBER2; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(245,193,24,0.50)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = AMBER; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(245,193,24,0.40)"; }}
                 >
-                  {c.heroCta} <ArrowRight size={14} />
+                  <Shield size={14} /> {c.heroGhost}
                 </button>
                 <button
-                  onClick={scrollToSafety}
+                  onClick={() => onNavigate?.("webgis")}
                   style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", background: "transparent", color: "rgba(245,240,232,0.75)", border: "1.5px solid rgba(245,240,232,0.22)", fontFamily: FONT, fontSize: 13, fontWeight: 600, letterSpacing: "0.02em", borderRadius: 9, cursor: "pointer", transition: "all 0.2s" }}
                   onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(245,240,232,0.55)"; e.currentTarget.style.color = OFF_WHITE; e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(245,240,232,0.22)"; e.currentTarget.style.color = "rgba(245,240,232,0.75)"; e.currentTarget.style.background = "transparent"; }}
                 >
-                  <Shield size={13} /> {c.heroGhost}
+                  {c.heroCta} <ArrowRight size={13} />
                 </button>
               </div>
             </div>
@@ -632,7 +632,7 @@ export const HomePage: React.FC<HomePageProps> = () => {
             {/* Row 1 right */}
             <img src="/img/foto-2.jpg" alt="" />
             <img src="/img/foto-3.jpg" alt="" />
-            {/* Row 2 right — fills the previously empty space */}
+            {/* Row 2 right */}
             <img src="/img/foto-4.jpg" alt="" />
             <img src="/img/foto-5.jpg" alt="" style={{ objectPosition: "center 40%" }} />
           </div>
