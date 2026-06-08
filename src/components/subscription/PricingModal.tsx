@@ -19,24 +19,24 @@ import { useSubContext } from "../../context/SubscriptionContext";
 
 const FONT = "'Inter', system-ui, sans-serif";
 const MONO = "'Inter', monospace";
-const API  = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:5000";
+const API = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:5000";
 
 /* ── Design tokens ────────────────────────────────────────────────── */
 const M = {
-  bg:      "#0f1824",
+  bg: "#0f1824",
   surface: "#162030",
-  card:    "#1a2840",
-  border:  "#1e3044",
+  card: "#1a2840",
+  border: "#1e3044",
   border2: "#243548",
-  amber:   "#f5c518",
-  amberD:  "#d4a814",
-  sky:     "#38bdf8",
-  text1:   "#f0f6ff",
-  text2:   "#8ba3be",
-  text3:   "#4a6580",
-  green:   "#4ade80",
-  red:     "#f87171",
-  DARK1:   "#0f1824",
+  amber: "#f5c518",
+  amberD: "#d4a814",
+  sky: "#38bdf8",
+  text1: "#f0f6ff",
+  text2: "#8ba3be",
+  text3: "#4a6580",
+  green: "#4ade80",
+  red: "#f87171",
+  DARK1: "#0f1824",
 };
 
 /* ── Responsive hook ──────────────────────────────────────────────── */
@@ -56,7 +56,7 @@ function useWidth() {
 const COPY = {
   en: {
     title: "Choose your plan",
-    sub:   "Accurate tidal, weather & marine data for Kepulauan Seribu",
+    sub: "Accurate tidal, weather & marine data for Kepulauan Seribu",
     tabPricing: "Plans", tabStatus: "My subscription",
     demoBadge: "Demo Mode",
     freeName: "Free", monthlyName: "Pro Monthly", annualName: "Pro Annual",
@@ -69,17 +69,17 @@ const COPY = {
     currentPlan: "Current plan", upgrade: "Upgrade",
     features: {
       free: [
-        { on: true,  label: "3-day tidal forecast" },
-        { on: true,  label: "Basic tidal chart" },
-        { on: true,  label: "Current weather data" },
-        { on: true,  label: "Activity guide (today)" },
+        { on: true, label: "3-day tidal forecast" },
+        { on: true, label: "Basic tidal chart" },
+        { on: true, label: "Current weather data" },
+        { on: true, label: "Activity guide (today)" },
         { on: false, label: "S-104 HDF5 export" },
-        { on: false, label: "14-day extended forecast" },
+        { on: false, label: "10-day extended forecast" },
         { on: false, label: "Hourly weather table" },
         { on: false, label: "Luwes overlay chart" },
       ],
       pro: [
-        { on: true, label: "14-day tidal forecast" },
+        { on: true, label: "10-day tidal forecast" },
         { on: true, label: "Full interactive tidal chart" },
         { on: true, label: "Hourly weather table" },
         { on: true, label: "Full activity guide (all dates)" },
@@ -91,7 +91,7 @@ const COPY = {
     },
     planLabel: "Plan", expiresLabel: "Renews",
     proFeatures: "Pro features included",
-    featExport: "S-104 HDF5 export", featForecast: "14-day forecast",
+    featExport: "S-104 HDF5 export", featForecast: "10-day forecast",
     featActivity: "Full activity guide", featLuwes: "Luwes overlay",
     upgradeModal: {
       title: "Upgrade to Pro", sub: "Select a billing period to continue",
@@ -106,7 +106,7 @@ const COPY = {
   },
   id: {
     title: "Pilih paket Anda",
-    sub:   "Data pasut, cuaca & kelautan akurat untuk Kepulauan Seribu",
+    sub: "Data pasut, cuaca & kelautan akurat untuk Kepulauan Seribu",
     tabPricing: "Paket", tabStatus: "Langganan saya",
     demoBadge: "Mode Demo",
     freeName: "Gratis", monthlyName: "Pro Bulanan", annualName: "Pro Tahunan",
@@ -119,17 +119,17 @@ const COPY = {
     currentPlan: "Paket saat ini", upgrade: "Upgrade",
     features: {
       free: [
-        { on: true,  label: "Prakiraan pasut 3 hari" },
-        { on: true,  label: "Grafik pasut dasar" },
-        { on: true,  label: "Data cuaca saat ini" },
-        { on: true,  label: "Panduan aktivitas (hari ini)" },
+        { on: true, label: "Prakiraan pasut 3 hari" },
+        { on: true, label: "Grafik pasut dasar" },
+        { on: true, label: "Data cuaca saat ini" },
+        { on: true, label: "Panduan aktivitas (hari ini)" },
         { on: false, label: "Ekspor S-104 HDF5" },
-        { on: false, label: "Prakiraan 14 hari" },
+        { on: false, label: "Prakiraan 10 hari" },
         { on: false, label: "Tabel cuaca per jam" },
         { on: false, label: "Grafik overlay Luwes" },
       ],
       pro: [
-        { on: true, label: "Prakiraan pasut 14 hari" },
+        { on: true, label: "Prakiraan pasut 10 hari" },
         { on: true, label: "Grafik pasut interaktif penuh" },
         { on: true, label: "Tabel cuaca per jam" },
         { on: true, label: "Panduan aktivitas penuh (semua tanggal)" },
@@ -141,7 +141,7 @@ const COPY = {
     },
     planLabel: "Paket", expiresLabel: "Perpanjang",
     proFeatures: "Fitur Pro yang disertakan",
-    featExport: "Ekspor S-104 HDF5", featForecast: "Prakiraan 14 hari",
+    featExport: "Ekspor S-104 HDF5", featForecast: "Prakiraan 10 hari",
     featActivity: "Panduan aktivitas penuh", featLuwes: "Overlay Luwes",
     upgradeModal: {
       title: "Upgrade ke Pro", sub: "Pilih periode tagihan untuk melanjutkan",
@@ -207,7 +207,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
     boxShadow: featured ? `0 0 32px rgba(245,193,24,0.07)` : "none",
     height: "100%",
   }}>
-    
+
     {/* POPULAR badge */}
     {featured && !compact && (
       <div style={{
@@ -291,9 +291,9 @@ const MobilePlanTabs: React.FC<{
   const [active, setActive] = useState<PlanTab>("monthly");
 
   const tabs: { key: PlanTab; label: string }[] = [
-    { key: "free",    label: l.planTabFree },
+    { key: "free", label: l.planTabFree },
     { key: "monthly", label: l.planTabMonthly },
-    { key: "annual",  label: l.planTabAnnual },
+    { key: "annual", label: l.planTabAnnual },
   ];
 
   const cardProps: Record<PlanTab, PlanCardProps> = {
@@ -446,7 +446,7 @@ const StatusTab: React.FC<{
             {[
               { icon: <Download size={13} />, label: l.featExport },
               { icon: <Calendar size={13} />, label: l.featForecast },
-              { icon: <Shield size={13} />,   label: l.featActivity },
+              { icon: <Shield size={13} />, label: l.featActivity },
               { icon: <BarChart2 size={13} />, label: l.featLuwes },
             ].map(({ icon, label }) => (
               <div key={label} style={{ display: "flex", alignItems: "center", gap: 8, background: M.surface, border: "1px solid rgba(74,222,128,0.18)", borderRadius: 8, padding: "8px 10px" }}>
@@ -484,7 +484,7 @@ const UpgradeModal: React.FC<{
   const um = l.upgradeModal;
   const plans = [
     { id: "pro_monthly" as const, name: l.monthlyName, price: `${l.monthlyPrice}${l.perMonth}` },
-    { id: "pro_annual"  as const, name: l.annualName,  price: `${l.annualPrice}${l.perYear}`, save: l.save },
+    { id: "pro_annual" as const, name: l.annualName, price: `${l.annualPrice}${l.perYear}`, save: l.save },
   ];
 
   return (
@@ -590,16 +590,16 @@ interface Props {
 export const PricingModal: React.FC<Props> = ({
   open, onClose, language = "en", initialTab = "pricing",
 }) => {
-  const l   = COPY[language];
+  const l = COPY[language];
   const { sub, isPro, user, refresh } = useSubContext();
-  const vw  = useWidth();
+  const vw = useWidth();
   const wide = vw >= 680; // threshold: 3-col vs mobile tabs
 
-  const [tab,          setTab]          = useState<"pricing" | "status">(initialTab);
-  const [showUpgrade,  setShowUpgrade]  = useState(false);
+  const [tab, setTab] = useState<"pricing" | "status">(initialTab);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<"pro_monthly" | "pro_annual">("pro_monthly");
-  const [payState,     setPayState]     = useState<DummyPayState>("idle");
-  const [payError,     setPayError]     = useState<string | null>(null);
+  const [payState, setPayState] = useState<DummyPayState>("idle");
+  const [payError, setPayError] = useState<string | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -626,7 +626,7 @@ export const PricingModal: React.FC<Props> = ({
     if (!user?.email) return;
     setPayState("loading"); setPayError(null);
     try {
-      const res  = await fetch(`${API}/api/create-payment`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan: selectedPlan, email: user.email }) });
+      const res = await fetch(`${API}/api/create-payment`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan: selectedPlan, email: user.email }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Activation failed");
       setPayState("success");
@@ -637,9 +637,9 @@ export const PricingModal: React.FC<Props> = ({
   if (!open) return null;
 
   const planName =
-    sub.plan === "free"        ? l.freeName    :
-    sub.plan === "pro_monthly" ? l.monthlyName :
-    l.annualName;
+    sub.plan === "free" ? l.freeName :
+      sub.plan === "pro_monthly" ? l.monthlyName :
+        l.annualName;
 
   const openUpgrade = (plan: "pro_monthly" | "pro_annual") => {
     setSelectedPlan(plan); setShowUpgrade(true);
@@ -791,7 +791,7 @@ export const PricingModal: React.FC<Props> = ({
                       {[
                         { icon: <Download size={13} />, label: l.featExport },
                         { icon: <Calendar size={13} />, label: l.featForecast },
-                        { icon: <Shield size={13} />,   label: l.featActivity },
+                        { icon: <Shield size={13} />, label: l.featActivity },
                         { icon: <BarChart2 size={13} />, label: l.featLuwes },
                       ].map(({ icon, label }) => (
                         <div key={label} style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 12px", borderRadius: 9, background: M.surface, border: `1px solid ${M.border}` }}>

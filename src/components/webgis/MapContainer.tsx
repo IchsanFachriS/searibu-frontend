@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Search, X, MapPin, ChevronDown, ChevronUp, Locate, Layers } from "lucide-react";
+import { Search, X, MapPin, ChevronDown, ChevronUp, Locate, Layers, AlertTriangle } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import type { BasemapType } from "../../types";
 import type { GridLayer } from "../pages/WebGISPage";
@@ -33,10 +33,23 @@ const L_ = {
   shadowSm:"0 2px 6px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
 };
 
-/* Marker accent colors — kept vibrant for map visibility */
+/* Marker accent colors */
 const ISLAND_COLOR = "#0ea5e9";
 const LUWES_COLOR  = "#ef4444";
 const PORT_COLOR   = "#475569";
+
+/* ── Kepulauan Seribu service area boundary ── */
+const SERIBU_BOUNDS = {
+  lonMin: 106.0, lonMax: 107.0,
+  latMin: -6.3,  latMax: -5.0,
+};
+
+function isInSeribuBounds(lat: number, lon: number): boolean {
+  return (
+    lon >= SERIBU_BOUNDS.lonMin && lon <= SERIBU_BOUNDS.lonMax &&
+    lat >= SERIBU_BOUNDS.latMin && lat <= SERIBU_BOUNDS.latMax
+  );
+}
 
 /* ── Grid config ── */
 interface GridConfig {
@@ -44,7 +57,7 @@ interface GridConfig {
   labelEn: string; labelId: string; tipEn: string; tipId: string;
 }
 const GRID_CONFIG: Record<GridLayer, GridConfig> = {
-  tpxo:  { file:"/GRID_TPXO_SERIBU.geojson",       color:"#3b82f6", fillColor:"#3b82f6", labelEn:"TPXO9",        labelId:"TPXO9",        tipEn:"Click for tide & weather",      tipId:"Klik untuk pasut & cuaca"      },
+  tpxo:  { file:"/GRID_TPXO_SERIBU.geojson",       color:"#3b82f6", fillColor:"#3b82f6", labelEn:"TPXO10",        labelId:"TPXO10",        tipEn:"Click for tide & weather",      tipId:"Klik untuk pasut & cuaca"      },
   ecmwf: { file:"/GRID_ECMWF_SERIBU.geojson",       color:"#f59e0b", fillColor:"#f59e0b", labelEn:"ECMWF IFS",    labelId:"ECMWF IFS",    tipEn:"Click for weather forecast",    tipId:"Klik untuk prakiraan cuaca"    },
   smoc:  { file:"/GRID_SMOC-MFWAM_SERIBU.geojson",  color:"#10b981", fillColor:"#10b981", labelEn:"SMOC / MFWAM", labelId:"SMOC / MFWAM", tipEn:"Click for wave & current data", tipId:"Klik untuk gelombang & arus"  },
 };
@@ -161,7 +174,7 @@ function buildLuwesPopup(language: string): string {
 <style>@keyframes luwes-pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}</style>`;
 }
 
-/* ── Icon factories (unchanged) ── */
+/* ── Icon factories ── */
 function createIslandIcon(): L.DivIcon {
   const size = 26;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size+8}" viewBox="0 0 ${size} ${size+8}"><defs><filter id="isl-glow"><feGaussianBlur stdDeviation="2" result="blur"/><feComposite in="SourceGraphic" in2="blur" operator="over"/></filter></defs><circle cx="${size/2}" cy="${size/2}" r="${size/2-2}" fill="${ISLAND_COLOR}" stroke="#fff" stroke-width="2.5" filter="url(#isl-glow)" opacity="0.95"/><circle cx="${size/2}" cy="${size/2}" r="${size/2-6}" fill="rgba(255,255,255,0.25)"/><line x1="${size/2}" y1="${size-2}" x2="${size/2}" y2="${size+6}" stroke="${ISLAND_COLOR}" stroke-width="2" stroke-linecap="round"/></svg>`.trim();
@@ -260,13 +273,11 @@ const GridLayerToggleInline: React.FC<{current: GridLayer; onChange: (l: GridLay
       {open && (<>
         <div style={{position:"fixed",inset:0,zIndex:376}} onClick={() => setOpen(false)}/>
         <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,background:L_.bg,borderRadius:12,boxShadow:L_.shadow,border:`1.5px solid ${L_.border}`,overflow:"hidden",minWidth:230,zIndex:377}}>
-          {/* Header */}
           <div style={{padding:"8px 14px 7px",borderBottom:`1px solid ${L_.border}`,background:L_.bg2}}>
             <span style={{fontFamily:SANS,fontSize:9.5,fontWeight:800,letterSpacing:"0.10em",textTransform:"uppercase" as const,color:L_.text4}}>
               {language==="id"?"Model Grid":"Grid Model"}
             </span>
           </div>
-          {/* Options */}
           {(Object.keys(GRID_CONFIG) as GridLayer[]).map(key => {
             const opt=GRID_CONFIG[key], active=current===key;
             return (
@@ -315,10 +326,18 @@ const BottomSearchBar: React.FC<{
   panelOpen: boolean;
   isMobile: boolean;
 }> = ({language, onIslandSelect, onCoordinateSearch, panelOpen, isMobile}) => {
-  const [query,   setQuery]   = useState("");
-  const [focused, setFocused] = useState(false);
-  const [locating,setLocating]= useState(false);
+  const [query,       setQuery]       = useState("");
+  const [focused,     setFocused]     = useState(false);
+  const [locating,    setLocating]    = useState(false);
+  const [outOfBounds, setOutOfBounds] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-dismiss out-of-bounds toast after 4 s
+  useEffect(() => {
+    if (!outOfBounds) return;
+    const t = setTimeout(() => setOutOfBounds(false), 4000);
+    return () => clearTimeout(t);
+  }, [outOfBounds]);
 
   const results = query.trim().length >= 1
     ? ISLANDS.filter(isl => {
@@ -332,11 +351,21 @@ const BottomSearchBar: React.FC<{
     setQuery(""); setFocused(false); inputRef.current?.blur();
     onIslandSelect(island);
   };
+
   const handleMyLocation = () => {
     if (!navigator.geolocation) return;
     setLocating(true);
+    setOutOfBounds(false);
     navigator.geolocation.getCurrentPosition(
-      pos => { setLocating(false); onCoordinateSearch(pos.coords.latitude, pos.coords.longitude); },
+      pos => {
+        setLocating(false);
+        const { latitude: lat, longitude: lon } = pos.coords;
+        if (!isInSeribuBounds(lat, lon)) {
+          setOutOfBounds(true);
+          return;
+        }
+        onCoordinateSearch(lat, lon);
+      },
       () => setLocating(false),
       {timeout:8000, maximumAge:30000}
     );
@@ -344,8 +373,48 @@ const BottomSearchBar: React.FC<{
 
   if (isMobile && panelOpen) return null;
 
+  const outOfBoundsMsg = language === "id"
+    ? "Lokasi Anda di luar area layanan Kepulauan Seribu"
+    : "Your location is outside the Kepulauan Seribu service area";
+
   return (
     <div style={{position:"relative",width:"100%"}}>
+
+      {/* ── Out-of-bounds toast ── */}
+      {outOfBounds && (
+        <div style={{
+          position:"absolute", bottom:"calc(100% + 10px)", left:0, right:0,
+          display:"flex", alignItems:"center", gap:10,
+          padding:"10px 14px",
+          background:"#fff",
+          border:"1.5px solid #fecdd3",
+          borderRadius:12,
+          boxShadow:"0 8px 24px rgba(0,0,0,0.12)",
+          zIndex:2200,
+          animation:"wg-fadein 0.2s ease",
+        }}>
+          <div style={{
+            width:30, height:30, borderRadius:"50%", flexShrink:0,
+            background:"#fee2e2",
+            display:"flex", alignItems:"center", justifyContent:"center",
+          }}>
+            <AlertTriangle size={14} style={{color:"#dc2626"}}/>
+          </div>
+          <p style={{
+            fontFamily:SANS, fontSize:12, fontWeight:600,
+            color:"#991b1b", margin:0, flex:1, lineHeight:1.45,
+          }}>
+            {outOfBoundsMsg}
+          </p>
+          <button
+            onClick={() => setOutOfBounds(false)}
+            style={{background:"none",border:"none",cursor:"pointer",color:"#9a9a9a",padding:2,flexShrink:0,display:"flex"}}
+          >
+            <X size={13}/>
+          </button>
+        </div>
+      )}
+
       {showDropdown && (
         <div style={{
           position:"absolute",bottom:"100%",left:0,right:0,marginBottom:6,
@@ -437,14 +506,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   const islandMarkersRef  = useRef<L.Marker[]>([]);
   const portMarkersRef    = useRef<L.Marker[]>([]);
   const luwesMarkerRef    = useRef<L.Marker | null>(null);
-  // ── Ref untuk melacak sel grid yang sedang aktif/dipilih ─────────────────
   const selectedLayerRef  = useRef<L.Path | null>(null);
-  // ── Ref untuk onGridClick — JANGAN masukkan ke dependency array grid ──────
-  // Tanpa ini: setiap panel dibuka/tutup → onGridClick referensi baru
-  // → grid layer rebuild → fitBounds terpanggil lagi → zoom reset.
   const onGridClickRef    = useRef(onGridClick);
   useEffect(() => { onGridClickRef.current = onGridClick; }, [onGridClick]);
-  // ── Flag fitBounds per gridLayer: hanya sekali saat layer pertama dimuat ──
   const hasInitialFitRef  = useRef<Partial<Record<GridLayer, boolean>>>({});
   const [isMobile, setIsMobile] = useState(false);
 
@@ -509,19 +573,11 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     marker.addTo(mapRef.current!);luwesMarkerRef.current=marker;
   },[buildLuwes]);
 
-  /* Grid layer ─────────────────────────────────────────────────────────────
-   * Dependency array: [gridLayer, language] SAJA.
-   * onGridClick TIDAK masuk deps — disimpan di onGridClickRef agar tidak
-   * menyebabkan rebuild layer setiap panel dibuka/tutup.
-   * fitBounds hanya berjalan SEKALI per gridLayer via hasInitialFitRef.
-   * ────────────────────────────────────────────────────────────────────── */
+  /* Grid layer */
   useEffect(()=>{
     if(!mapRef.current) return;
     let active=true;
-
-    // Reset sel terpilih saat tipe layer grid berganti
     selectedLayerRef.current=null;
-
     if(geoJsonLayerRef.current){mapRef.current.removeLayer(geoJsonLayerRef.current);geoJsonLayerRef.current=null;}
     const cfg=GRID_CONFIG[gridLayer];
     const tip=language==="id"?cfg.tipId:cfg.tipEn;
@@ -539,11 +595,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           );
 
           fl.on("click",()=>{
-            // Gunakan ref — bukan closure — sehingga layer tidak perlu rebuild
             const center=(fl as any).getBounds().getCenter();
             onGridClickRef.current?.({lat:center.lat,lon:center.lng});
 
-            // Reset highlight sel sebelumnya ke style default grid
             if(selectedLayerRef.current && selectedLayerRef.current!==(fl as L.Path)){
               selectedLayerRef.current.setStyle({
                 color:       cfg.color,
@@ -553,18 +607,14 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                 fillOpacity: 0.12,
               });
             }
-            // Highlight mencolok: warna fill = warna model itu sendiri tapi opacity tinggi
-            // Border putih tebal agar sel aktif mudah dikenali di basemap gelap maupun terang
             (fl as L.Path).setStyle({
-              color:       "#ffffff",   // border putih — kontras di semua basemap
+              color:       "#ffffff",
               weight:      3,
               opacity:     1,
-              fillColor:   cfg.fillColor, // tetap warna model (biru/kuning/hijau)
-              fillOpacity: 0.70,          // jauh lebih solid dari default 0.12
+              fillColor:   cfg.fillColor,
+              fillOpacity: 0.70,
             });
             selectedLayerRef.current=fl as L.Path;
-            // ── TIDAK ada fitBounds / setView / flyTo di sini ──
-            // Zoom & center peta sama sekali tidak berubah saat klik
           });
 
           fl.on("mouseover",()=>{
@@ -592,9 +642,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
       geoJsonLayerRef.current=layer;
 
-      // ── fitBounds hanya sekali saat gridLayer pertama kali dimuat ────────
-      // Flag per-key (gridLayer) memastikan tidak terpanggil ulang walau
-      // komponen re-render karena panel buka/tutup atau state lain berubah.
       if(!hasInitialFitRef.current[gridLayer]){
         const validBounds=L.latLngBounds([]);
         layer.eachLayer((l:any)=>{
@@ -629,6 +676,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
   const flyToCoords=useCallback((lat:number,lon:number)=>{
     if(!mapRef.current) return;
+    // Boundary guard — do nothing if outside Seribu service area
+    if(!isInSeribuBounds(lat,lon)) return;
     mapRef.current.flyTo([lat,lon],13,{duration:1.1,easeLinearity:0.3});
     if(onCoordinateSearch)onCoordinateSearch({lat,lon});
     if(onGridClick)onGridClick({lat,lon});
@@ -716,7 +765,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         }
         .wg-grid-btn:hover,.wg-grid-btn.open { background:${L_.blueL}; border-color:${L_.blue}; color:${L_.blue}; }
 
-        @keyframes wg-spin { to { transform:rotate(360deg); } }
+        @keyframes wg-spin    { to { transform:rotate(360deg); } }
+        @keyframes wg-fadein  { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
         @media (max-width:480px) { .leaflet-control-zoom { display:none !important; } }
       `}</style>
 
