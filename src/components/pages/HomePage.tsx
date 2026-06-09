@@ -1,16 +1,17 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext";
+import { useSubContext } from "../../context/SubscriptionContext";
+import { PricingModal } from "../subscription/PricingModal";
 import {
   ArrowRight, Waves, Wind, Navigation, BarChart2, Map, Shield,
   Anchor, Fish, Camera, Sun, Leaf, Flag, Users, Ship, Zap,
   CheckCircle, AlertTriangle, XCircle, RefreshCw, ChevronDown,
-  ChevronRight,
+  ChevronRight, Lock,
 } from "lucide-react";
 
-/* ── Design tokens — extracted palette ────────────────────────────────── */
+/* ── Design tokens ────────────────────────────────────────────────────── */
 const FONT     = "'Inter', system-ui, -apple-system, sans-serif";
-
 const DARK1    = "#2b2b2b";
 const DARK2    = "#3a3a3a";
 const OFF_WHITE= "#f5f0e8";
@@ -31,7 +32,9 @@ const TEXT2    = "#3d3d3d";
 const TEXT3    = "#6b6b6b";
 const MUTED    = "#9a9a9a";
 
-interface HomePageProps {}
+/* ── Tier config ── */
+const FWD_DAYS = 10;  // semua user: maks 10 hari ke depan
+// past: unlimited untuk semua tier (tidak ada minDate)
 
 const ISLANDS = [
   { id: "bidadari",    nameId: "Pulau Bidadari",    nameEn: "Bidadari Island",    lat: -6.035347, lon: 106.746234 },
@@ -55,10 +58,15 @@ function addDaysISO(iso: string, days: number): string {
 function kmhToMs(v: number) { return v / 3.6; }
 
 async function fetchMeteoData(lat: number, lon: number, dateStr: string) {
-  const start = addDaysISO(todayWIB(), -12); const end = addDaysISO(todayWIB(), 5);
+  // Fetch a wide window so we can cover any past/future date selected
+  const today = todayWIB();
+  // For past dates, we need to fetch from that date; open-meteo supports ~3 months back
+  const startFetch = dateStr < today ? dateStr : addDaysISO(today, -2);
+  const endFetch   = addDaysISO(today, FWD_DAYS + 2);
+
   const [wxRes, marRes] = await Promise.all([
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=wind_speed_10m,weather_code&timezone=auto&start_date=${start}&end_date=${end}`),
-    fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,ocean_current_velocity&timezone=auto&start_date=${start}&end_date=${end}`),
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=wind_speed_10m,weather_code&timezone=auto&start_date=${startFetch}&end_date=${endFetch}`),
+    fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,ocean_current_velocity&timezone=auto&start_date=${startFetch}&end_date=${endFetch}`),
   ]);
   const wx  = wxRes.ok  ? await wxRes.json()  : null;
   const mar = marRes.ok ? await marRes.json() : null;
@@ -139,7 +147,13 @@ const COPY = {
     errorMsg: "Could not load weather data. Please try again.",
     safe: "Safe", caution: "Caution", danger: "Avoid",
     wind: "Wind", wave: "Wave Ht.", current: "Current", weather: "Weather",
-    rangeTip: "Data: past 10 days · 3 days ahead",
+    // Updated range tips
+    
+    // Upgrade prompt
+    upgradeTitle: "Pro Plan Required",
+    upgradeBody: `Free plan: analysis limited to past 10 days and 3 days ahead. Upgrade to Pro for full historical access up to ${FWD_DAYS} days ahead.`,
+    upgradeBtn: "Sign In or Upgrade to Pro",
+
     webgisSplitEyebrow: "Searibu WebGIS",
     webgisSplitHead: "Interactive map of tides & weather.",
     webgisSplitBody: "The WebGIS displays spatial grids, the observation tidal station, and island markers. Click any grid cell to access full hourly tidal and weather data.",
@@ -148,7 +162,7 @@ const COPY = {
     featHead: "One platform. Every condition.",
     features: [
       { num: "01", title: "Tidal Prediction",    body: "Hourly astronomical tides using 15 harmonic constituents.", icon: "waves" },
-      { num: "02", title: "Tidal Observation ",body: "Real-time water levels observation from the tidal station.", icon: "chart" },
+      { num: "02", title: "Tidal Observation",   body: "Real-time water levels observation from the tidal station.", icon: "chart" },
       { num: "03", title: "Real-time Marine Forecast", body: "Wind, wave height, and current velocity updated hourly", icon: "wind" },
       { num: "04", title: "Interactive WebGIS Atlas",  body: "Leaflet map with spatial grids and island markers", icon: "map" },
       { num: "05", title: "Activity Safety Ratings",   body: "Science-based thresholds for 11 marine activities.", icon: "shield" },
@@ -176,7 +190,10 @@ const COPY = {
     errorMsg: "Gagal memuat data cuaca. Silakan coba lagi.",
     safe: "Aman", caution: "Waspada", danger: "Hindari",
     wind: "Angin", wave: "Gel.", current: "Arus", weather: "Cuaca",
-    rangeTip: "Data: 10 hari lalu · 3 hari ke depan",
+    upgradeTitle: "Diperlukan Paket Pro",
+    upgradeBody: `Paket Gratis: analisis terbatas 10 hari lalu dan 3 hari ke depan. Upgrade ke Pro untuk akses historis penuh hingga ${FWD_DAYS} hari ke depan.`,
+    upgradeBtn: "Masuk atau Upgrade ke Pro",
+
     webgisSplitEyebrow: "WebGIS Searibu",
     webgisSplitHead: "Peta interaktif pasut & cuaca.",
     webgisSplitBody: "WebGIS menampilkan grid spasial, stasiun observasi pasang surut, dan titik penanda pulau. Klik sel grid mana pun untuk mengakses data pasut dan cuaca per jam lengkap.",
@@ -185,11 +202,11 @@ const COPY = {
     featHead: "Satu platform. Semua kondisi.",
     features: [
       { num: "01", title: "Prediksi Pasut",          body: "Prediksi pasut astronomis per jam menggunakan 15 konstituen harmonik", icon: "waves" },
-      { num: "02", title: "Observasi Pasut",        body: "Muka air real-time dari stasiun observasi", icon: "chart" },
-      { num: "03", title: "Prakiraan Laut Real-time",      body: "Angin, tinggi gelombang, dan kecepatan arus diperbarui per jam", icon: "wind" },
-      { num: "04", title: "WebGIS Interaktif",             body: "Peta dengan grid spasial dan penanda pulau", icon: "map" },
-      { num: "05", title: "Penilaian Keamanan Aktivitas",  body: "Ambang batas ilmiah untuk 11 aktivitas wisata bahari.", icon: "shield" },
-      { num: "06", title: "Ekspor HDF5 IHO S-104",         body: "Unduh data muka air prediksi astronomis dan observasi sebagai file HDF5 berstandar IHO S-104.", icon: "nav" },
+      { num: "02", title: "Observasi Pasut",          body: "Muka air real-time dari stasiun observasi", icon: "chart" },
+      { num: "03", title: "Prakiraan Laut Real-time", body: "Angin, tinggi gelombang, dan kecepatan arus diperbarui per jam", icon: "wind" },
+      { num: "04", title: "WebGIS Interaktif",        body: "Peta dengan grid spasial dan penanda pulau", icon: "map" },
+      { num: "05", title: "Penilaian Keamanan Aktivitas", body: "Ambang batas ilmiah untuk 11 aktivitas wisata bahari.", icon: "shield" },
+      { num: "06", title: "Ekspor HDF5 IHO S-104",   body: "Unduh data muka air prediksi astronomis dan observasi sebagai file HDF5 berstandar IHO S-104.", icon: "nav" },
     ],
     stdEyebrow: "Standar Teknis",
     stdBody: "Searibu mengimplementasikan IHO S-100 Universal Hydrographic Data Model dan S-104 Water Level Information for Surface Navigation",
@@ -198,12 +215,102 @@ const COPY = {
   },
 };
 
-/* ── Safety Section ───────────────────────────────────────────────────── */
+/* ── UpgradePrompt — shown when free user picks date beyond their limit ── */
+const UpgradePrompt: React.FC<{
+  language: "en"|"id";
+  onUpgrade: () => void;
+  onSignIn: () => void;
+  isLoggedIn: boolean;
+}> = ({ language, onUpgrade, onSignIn, isLoggedIn }) => {
+  const c = COPY[language];
+  return (
+    <div style={{
+      border: `1.5px solid rgba(245,193,24,0.40)`,
+      borderRadius: 12,
+      background: "linear-gradient(135deg, rgba(245,193,24,0.06) 0%, rgba(26,59,191,0.04) 100%)",
+      padding: "28px 24px",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      textAlign: "center",
+      gap: 14,
+    }}>
+      {/* Icon */}
+      <div style={{
+        width: 52, height: 52, borderRadius: "50%",
+        background: "rgba(245,193,24,0.12)",
+        border: "1.5px solid rgba(245,193,24,0.30)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <Lock size={20} style={{ color: AMBER }} />
+      </div>
+
+      {/* Title + body */}
+      <div>
+        <p style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: TEXT1, margin: "0 0 7px" }}>
+          {c.upgradeTitle}
+        </p>
+        <p style={{ fontFamily: FONT, fontSize: 12.5, color: TEXT3, lineHeight: 1.65, margin: "0 0 5px" }}>
+          {c.upgradeBody}
+        </p>
+        <p style={{ fontFamily: FONT, fontSize: 12, color: MUTED, lineHeight: 1.6, margin: 0 }}>
+          {c.upgradeBody}
+        </p>
+      </div>
+
+      {/* CTAs */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 280 }}>
+        <button
+          onClick={onUpgrade}
+          style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+            padding: "11px 24px", borderRadius: 9, border: "none",
+            background: AMBER, color: DARK1,
+            fontFamily: FONT, fontSize: 13, fontWeight: 700,
+            cursor: "pointer", transition: "all 0.18s",
+            boxShadow: "0 4px 14px rgba(245,193,24,0.35)",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = AMBER2; e.currentTarget.style.transform = "translateY(-1px)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = AMBER; e.currentTarget.style.transform = "none"; }}
+        >
+          <Zap size={13} fill={DARK1} />
+          {language === "id" ? "Upgrade ke Pro" : "Upgrade to Pro"}
+        </button>
+        {/* Only show Sign In button when user is not logged in */}
+        {!isLoggedIn && (
+          <button
+            onClick={onSignIn}
+            style={{
+              display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+              padding: "10px 24px", borderRadius: 9,
+              border: `1.5px solid ${BLUE_D}`,
+              background: "transparent", color: BLUE_D,
+              fontFamily: FONT, fontSize: 13, fontWeight: 600,
+              cursor: "pointer", transition: "all 0.18s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = BLUE_D; (e.currentTarget as HTMLElement).style.color = "#fff"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = BLUE_D; }}
+          >
+            {language === "id" ? "Masuk ke Akun" : "Sign In"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ── Safety Section ── */
 const SafetySection: React.FC<{ language: "en"|"id"; onNavigate?: (p: string) => void }> = ({ language, onNavigate }) => {
   const c = COPY[language];
-  const today = todayWIB();
-  const minDate = addDaysISO(today, -10);
-  const maxDate = addDaysISO(today, 3);
+  const { isPro, isAdmin, user } = useSubContext();
+  const [showPricing,  setShowPricing]  = useState(false);
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
+
+  const today      = todayWIB();
+  // No minDate restriction — unlimited past
+  // No artificial max on the picker — let user pick any future date
+  // showUpgradePrompt handles the upgrade prompt logic
+  const maxDate = addDaysISO(today, FWD_DAYS);
 
   const [selIsland,  setSelIsland]  = useState("");
   const [selDate,    setSelDate]    = useState(today);
@@ -213,6 +320,22 @@ const SafetySection: React.FC<{ language: "en"|"id"; onNavigate?: (p: string) =>
   const [conditions, setConditions] = useState<{avgWave:number|null;avgCurrentMs:number|null;avgWindMs:number|null;wCode:number}|null>(null);
   const [dropOpen,   setDropOpen]   = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
+
+  // Free/guest tier limits for analyse (date picker itself has no restriction beyond max)
+  const FREE_HIST_DAYS = 10;  // free: 10 hari ke belakang
+  const FREE_FWD_DAYS  = 3;   // free: 3 hari ke depan
+  // Whether the selected date is outside free-tier analyse range
+  const isOutsideFreeTier = (() => {
+    if (!selDate) return false;
+    const diffDays = Math.round(
+      (new Date(selDate + "T12:00:00Z").getTime() - new Date(today + "T12:00:00Z").getTime())
+      / 86400000
+    );
+    // Outside = beyond 3 days ahead OR before 10 days ago
+    return diffDays > FREE_FWD_DAYS || diffDays < -FREE_HIST_DAYS;
+  })();
+  // Show upgrade prompt when free/guest AND date is outside their range
+  const showUpgradePrompt = !isPro && !isAdmin && isOutsideFreeTier;
 
   useEffect(() => {
     const h = (e: MouseEvent) => { if (dropRef.current && !dropRef.current.contains(e.target as Node)) setDropOpen(false); };
@@ -230,11 +353,20 @@ const SafetySection: React.FC<{ language: "en"|"id"; onNavigate?: (p: string) =>
       setActivities(computeActivities(cond.avgWave, cond.avgCurrentMs, cond.avgWindMs, cond.wCode, language));
     } catch { setError(c.errorMsg); }
     finally { setLoading(false); }
-  }, [selIsland, selDate, language, c.errorMsg]);
+  }, [selIsland, selDate, language, c.errorMsg, showUpgradePrompt]);
 
   useEffect(() => {
     if (conditions) setActivities(computeActivities(conditions.avgWave, conditions.avgCurrentMs, conditions.avgWindMs, conditions.wCode, language));
   }, [language]);
+
+  // Reset activities when date moves outside free tier range
+  useEffect(() => {
+    if (showUpgradePrompt) {
+      setActivities(null);
+      setConditions(null);
+      setError(null);
+    }
+  }, [showUpgradePrompt]);
 
   const selectedIsland = ISLANDS.find(i => i.id === selIsland);
   const safeCnt    = activities?.filter(a => a.status === "safe").length    ?? 0;
@@ -253,7 +385,7 @@ const SafetySection: React.FC<{ language: "en"|"id"; onNavigate?: (p: string) =>
       </div>
 
       <div className="safety-layout">
-        {/* LEFT */}
+        {/* LEFT — controls */}
         <div>
           <h2 style={{ fontFamily: FONT, fontSize: "clamp(1.9rem,3.2vw,2.8rem)", fontWeight: 800, color: TEXT1, margin: "0 0 16px", lineHeight: 1.1, letterSpacing: "-0.03em" }}>
             {c.safetyHead}
@@ -302,145 +434,191 @@ const SafetySection: React.FC<{ language: "en"|"id"; onNavigate?: (p: string) =>
               </div>
             </div>
 
-            {/* Date */}
+            {/* Date — no min (unlimited past), max = today + 10 days for all users */}
             <div>
               <label style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, letterSpacing: "0.10em", textTransform: "uppercase" as const, color: TEXT3, display: "block", marginBottom: 8 }}>
                 {c.dateLabel}
               </label>
               <input
-                type="date" value={selDate} min={minDate} max={maxDate}
+                type="date"
+                value={selDate}
+                max={maxDate}
+                /* no min — unlimited past */
                 onChange={e => setSelDate(e.target.value)}
-                style={{ width: "100%", padding: "11px 14px", borderRadius: 9, border: `1.5px solid ${BORDER}`, background: "#fff", fontFamily: FONT, fontSize: 14, color: TEXT1, cursor: "pointer", outline: "none", boxSizing: "border-box" as const, transition: "border-color 0.18s, box-shadow 0.18s", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = BLUE_D; e.currentTarget.style.boxShadow = `0 0 0 3px rgba(26,59,191,0.08)`; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.boxShadow = "0 1px 2px rgba(0,0,0,0.04)"; }}
+                style={{
+                  width: "100%", padding: "11px 14px", borderRadius: 9,
+                  border: `1.5px solid ${BORDER}`,
+                  background: "#fff",
+                  fontFamily: FONT, fontSize: 14, color: TEXT1,
+                  cursor: "pointer", outline: "none",
+                  boxSizing: "border-box" as const,
+                  transition: "border-color 0.18s, box-shadow 0.18s",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.04)"
+                }}
+                onFocus={e => { e.currentTarget.style.borderColor = BLUE_D; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(26,59,191,0.08)"; }}
+                onBlur={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.boxShadow = "0 1px 2px rgba(0,0,0,0.04)"; }}
               />
-              <p style={{ fontFamily: FONT, fontSize: 11, color: MUTED, marginTop: 6 }}>{c.rangeTip}</p>
             </div>
 
-            {/* Analyse button */}
-            <button
-              onClick={handleCheck}
-              disabled={!selIsland || loading}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                padding: "13px 24px", borderRadius: 9, border: "none",
-                background: selIsland && !loading ? BLUE_D : "#e4ddd4",
-                color: selIsland && !loading ? "#fff" : MUTED,
-                fontFamily: FONT, fontSize: 13, fontWeight: 600, letterSpacing: "0.02em",
-                cursor: selIsland && !loading ? "pointer" : "not-allowed",
-                transition: "all 0.18s", boxShadow: selIsland && !loading ? "0 4px 14px rgba(26,59,191,0.28)" : "none",
-              }}
-              onMouseEnter={(e) => { if (selIsland && !loading) { e.currentTarget.style.background = "#142d99"; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 18px rgba(26,59,191,0.36)"; } }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = selIsland && !loading ? BLUE_D : "#e4ddd4"; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = selIsland && !loading ? "0 4px 14px rgba(26,59,191,0.28)" : "none"; }}
-            >
-              {loading
-                ? <><div style={{ width: 13, height: 13, border: "2px solid rgba(255,255,255,0.4)", borderTop: "2px solid #fff", borderRadius: "50%", animation: "hp-spin 0.7s linear infinite" }} />{c.checking}</>
-                : <><Shield size={14} />{c.checkBtn}</>
-              }
-            </button>
+            {/* Analyse button — disabled if beyond tier */}
+            {!showUpgradePrompt && (
+              <button
+                onClick={handleCheck}
+                disabled={!selIsland || loading}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  padding: "13px 24px", borderRadius: 9, border: "none",
+                  background: selIsland && !loading ? BLUE_D : "#e4ddd4",
+                  color: selIsland && !loading ? "#fff" : MUTED,
+                  fontFamily: FONT, fontSize: 13, fontWeight: 600, letterSpacing: "0.02em",
+                  cursor: selIsland && !loading ? "pointer" : "not-allowed",
+                  transition: "all 0.18s", boxShadow: selIsland && !loading ? "0 4px 14px rgba(26,59,191,0.28)" : "none",
+                }}
+                onMouseEnter={(e) => { if (selIsland && !loading) { e.currentTarget.style.background = "#142d99"; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 18px rgba(26,59,191,0.36)"; } }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = selIsland && !loading ? BLUE_D : "#e4ddd4"; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = selIsland && !loading ? "0 4px 14px rgba(26,59,191,0.28)" : "none"; }}
+              >
+                {loading
+                  ? <><div style={{ width: 13, height: 13, border: "2px solid rgba(255,255,255,0.4)", borderTop: "2px solid #fff", borderRadius: "50%", animation: "hp-spin 0.7s linear infinite" }} />{c.checking}</>
+                  : <><Shield size={14} />{c.checkBtn}</>
+                }
+              </button>
+            )}
+
+            {/* When date is beyond free tier — show upgrade nudge in the controls area too */}
+            {showUpgradePrompt && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "10px 14px", borderRadius: 9,
+                background: "rgba(245,193,24,0.08)",
+                border: "1.5px solid rgba(245,193,24,0.30)",
+              }}>
+                <Lock size={13} style={{ color: AMBER, flexShrink: 0 }} />
+                <span style={{ fontFamily: FONT, fontSize: 12, color: "#78350f", fontWeight: 600, flex: 1, lineHeight: 1.5 }}>
+                  {c.upgradeBody}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* RIGHT — results */}
+        {/* RIGHT — results or upgrade prompt */}
         <div>
-          {!activities && !loading && !error && (
-            <div style={{ border: `1.5px dashed ${BORDER}`, borderRadius: 12, padding: "56px 24px", textAlign: "center", background: "#faf8f5" }}>
-              <Shield size={28} style={{ color: "#d6cfc5", margin: "0 auto 14px", display: "block" }} />
-              <p style={{ fontFamily: FONT, fontSize: 14, color: MUTED, margin: 0 }}>{c.noData}</p>
-            </div>
+          {/* Upgrade prompt — shown when date exceeds free limit */}
+          {showUpgradePrompt && (
+            <UpgradePrompt
+              language={language}
+              onUpgrade={() => setShowPricing(true)}
+              isLoggedIn={!!user}
+              onSignIn={() => {
+                window.dispatchEvent(new CustomEvent("searibu:open-signin"));
+              }}
+            />
           )}
 
-          {error && (
-            <div style={{ padding: "12px 16px", background: "#fff1f2", borderRadius: 9, border: "1px solid #fecdd3", marginBottom: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <XCircle size={14} style={{ color: "#dc2626", flexShrink: 0 }} />
-                <span style={{ fontFamily: FONT, fontSize: 13, color: "#991b1b" }}>{error}</span>
-                <button onClick={handleCheck} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT, fontSize: 12, color: "#dc2626", fontWeight: 600 }}><RefreshCw size={11} />{language === "id" ? "Coba lagi" : "Retry"}</button>
+          {/* Normal states — only show when date is within tier */}
+          {!showUpgradePrompt && (<>
+            {!activities && !loading && !error && (
+              <div style={{ border: `1.5px dashed ${BORDER}`, borderRadius: 12, padding: "56px 24px", textAlign: "center", background: "#faf8f5" }}>
+                <Shield size={28} style={{ color: "#d6cfc5", margin: "0 auto 14px", display: "block" }} />
+                <p style={{ fontFamily: FONT, fontSize: 14, color: MUTED, margin: 0 }}>{c.noData}</p>
               </div>
-            </div>
-          )}
+            )}
 
-          {activities && !loading && (
-            <div>
-              {/* Header */}
-              <div style={{ paddingBottom: 14, marginBottom: 14, borderBottom: `2px solid ${AMBER}` }}>
-                <p style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: TEXT1, margin: "0 0 10px" }}>
-                  {selectedIsland ? (language === "id" ? selectedIsland.nameId : selectedIsland.nameEn) : ""} — {selDateFmt}
-                </p>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const }}>
-                  {[
-                    { label: c.safe,    count: safeCnt,    bg: "#dcfce7", color: "#15803d" },
-                    { label: c.caution, count: cautionCnt, bg: "#fef9c3", color: "#854d0e" },
-                    { label: c.danger,  count: dangerCnt,  bg: "#fee2e2", color: "#991b1b" },
-                  ].map(s => (
-                    <span key={s.label} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" as const, color: s.color, background: s.bg, padding: "4px 11px", borderRadius: 99 }}>
-                      {s.count} {s.label}
-                    </span>
-                  ))}
+            {error && (
+              <div style={{ padding: "12px 16px", background: "#fff1f2", borderRadius: 9, border: "1px solid #fecdd3", marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <XCircle size={14} style={{ color: "#dc2626", flexShrink: 0 }} />
+                  <span style={{ fontFamily: FONT, fontSize: 13, color: "#991b1b" }}>{error}</span>
+                  <button onClick={handleCheck} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", fontFamily: FONT, fontSize: 12, color: "#dc2626", fontWeight: 600 }}><RefreshCw size={11} />{language === "id" ? "Coba lagi" : "Retry"}</button>
                 </div>
               </div>
+            )}
 
-              {/* Condition metrics */}
-              {conditions && (
-                <div className="condition-metrics" style={{ marginBottom: 12 }}>
-                  {[
-                    { label: c.wind,    value: conditions.avgWindMs    != null ? conditions.avgWindMs.toFixed(1)    + " m/s" : "—" },
-                    { label: c.wave,    value: conditions.avgWave      != null ? conditions.avgWave.toFixed(2)      + " m"   : "—" },
-                    { label: c.current, value: conditions.avgCurrentMs != null ? conditions.avgCurrentMs.toFixed(2) + " m/s" : "—" },
-                    { label: c.weather, value: wmoLabel(conditions.wCode, language) },
-                  ].map(item => (
-                    <div key={item.label} style={{ padding: "10px 10px", background: "#faf8f5", borderRadius: 8, border: `1px solid ${BORDER}`, textAlign: "center" as const }}>
-                      <p style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: "0.10em", textTransform: "uppercase" as const, color: MUTED, margin: "0 0 4px" }}>{item.label}</p>
-                      <p style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: TEXT1, margin: 0 }}>{item.value}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Activity grid */}
-              <div className="activity-grid">
-                {activities.map(act => {
-                  const cfg = SC[act.status];
-                  const Ico = act.status === "safe" ? CheckCircle : act.status === "caution" ? AlertTriangle : XCircle;
-                  return (
-                    <div key={act.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 11px", background: "#fff", borderRadius: 8, border: `1px solid ${BORDER}` }}>
-                      <span style={{ color: cfg.dot, flexShrink: 0 }}>{act.icon}</span>
-                      <span style={{ fontFamily: FONT, fontSize: 12, color: TEXT2, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
-                        {language === "id" ? act.labelId : act.labelEn}
+            {activities && !loading && (
+              <div>
+                {/* Header */}
+                <div style={{ paddingBottom: 14, marginBottom: 14, borderBottom: `2px solid ${AMBER}` }}>
+                  <p style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: TEXT1, margin: "0 0 10px" }}>
+                    {selectedIsland ? (language === "id" ? selectedIsland.nameId : selectedIsland.nameEn) : ""} — {selDateFmt}
+                  </p>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const }}>
+                    {[
+                      { label: c.safe,    count: safeCnt,    bg: "#dcfce7", color: "#15803d" },
+                      { label: c.caution, count: cautionCnt, bg: "#fef9c3", color: "#854d0e" },
+                      { label: c.danger,  count: dangerCnt,  bg: "#fee2e2", color: "#991b1b" },
+                    ].map(s => (
+                      <span key={s.label} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" as const, color: s.color, background: s.bg, padding: "4px 11px", borderRadius: 99 }}>
+                        {s.count} {s.label}
                       </span>
-                      <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0, background: cfg.pill, padding: "2px 7px", borderRadius: 99 }}>
-                        <Ico size={9} style={{ color: cfg.dot }} />
-                        <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" as const, color: cfg.text, whiteSpace: "nowrap" as const }}>
-                          {language === "id" ? (act.status === "safe" ? "Aman" : act.status === "caution" ? "Waspada" : "Hindari") : (act.status === "safe" ? "Safe" : act.status === "caution" ? "Caution" : "Avoid")}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    ))}
+                  </div>
+                </div>
 
-              <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
-                <button
-                  onClick={() => onNavigate?.("webgis")}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "10px 20px", borderRadius: 8, border: `1.5px solid ${BLUE_D}`, background: "transparent", color: BLUE_D, fontFamily: FONT, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.18s" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = BLUE_D; (e.currentTarget as HTMLElement).style.color = "#fff"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = BLUE_D; }}
-                >
-                  {language === "id" ? "Detail di WebGIS" : "View in WebGIS"} <ChevronRight size={12} />
-                </button>
+                {/* Condition metrics */}
+                {conditions && (
+                  <div className="condition-metrics" style={{ marginBottom: 12 }}>
+                    {[
+                      { label: c.wind,    value: conditions.avgWindMs    != null ? conditions.avgWindMs.toFixed(1)    + " m/s" : "—" },
+                      { label: c.wave,    value: conditions.avgWave      != null ? conditions.avgWave.toFixed(2)      + " m"   : "—" },
+                      { label: c.current, value: conditions.avgCurrentMs != null ? conditions.avgCurrentMs.toFixed(2) + " m/s" : "—" },
+                      { label: c.weather, value: wmoLabel(conditions.wCode, language) },
+                    ].map(item => (
+                      <div key={item.label} style={{ padding: "10px 10px", background: "#faf8f5", borderRadius: 8, border: `1px solid ${BORDER}`, textAlign: "center" as const }}>
+                        <p style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: "0.10em", textTransform: "uppercase" as const, color: MUTED, margin: "0 0 4px" }}>{item.label}</p>
+                        <p style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: TEXT1, margin: 0 }}>{item.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Activity grid */}
+                <div className="activity-grid">
+                  {activities.map(act => {
+                    const cfg = SC[act.status];
+                    const Ico = act.status === "safe" ? CheckCircle : act.status === "caution" ? AlertTriangle : XCircle;
+                    return (
+                      <div key={act.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 11px", background: "#fff", borderRadius: 8, border: `1px solid ${BORDER}` }}>
+                        <span style={{ color: cfg.dot, flexShrink: 0 }}>{act.icon}</span>
+                        <span style={{ fontFamily: FONT, fontSize: 12, color: TEXT2, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+                          {language === "id" ? act.labelId : act.labelEn}
+                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0, background: cfg.pill, padding: "2px 7px", borderRadius: 99 }}>
+                          <Ico size={9} style={{ color: cfg.dot }} />
+                          <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" as const, color: cfg.text, whiteSpace: "nowrap" as const }}>
+                            {language === "id" ? (act.status === "safe" ? "Aman" : act.status === "caution" ? "Waspada" : "Hindari") : (act.status === "safe" ? "Safe" : act.status === "caution" ? "Caution" : "Avoid")}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    onClick={() => onNavigate?.("webgis")}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "10px 20px", borderRadius: 8, border: `1.5px solid ${BLUE_D}`, background: "transparent", color: BLUE_D, fontFamily: FONT, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.18s" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = BLUE_D; (e.currentTarget as HTMLElement).style.color = "#fff"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = BLUE_D; }}
+                  >
+                    {language === "id" ? "Detail di WebGIS" : "View in WebGIS"} <ChevronRight size={12} />
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </>)}
         </div>
       </div>
+
+      <PricingModal open={showPricing} onClose={() => setShowPricing(false)} language={language} initialTab="pricing" />
     </div>
   );
 };
 
-/* ── HomePage ─────────────────────────────────────────────────────────── */
-export const HomePage: React.FC<HomePageProps> = () => {
+/* ── HomePage ── */
+export const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const onNavigate = (page: string) => navigate(page === "home" ? "/" : `/${page}`);  const { language } = useLanguage();
+  const onNavigate = (page: string) => navigate(page === "home" ? "/" : `/${page}`);
+  const { language } = useLanguage();
   const c    = COPY[language as "en"|"id"];
   const lang = language as "en"|"id";
 
@@ -483,36 +661,19 @@ export const HomePage: React.FC<HomePageProps> = () => {
         @media (max-width:1024px){ .hp-section { padding: 64px 32px; } }
         @media (max-width:768px) { .hp-section { padding: 40px 20px; } }
         @media (max-width:480px) { .hp-section { padding: 32px 16px; } }
-
-        /* Hero */
         .hero-inner { display: grid; grid-template-columns: 1fr 36%; min-height: 100vh; }
         @media (max-width:900px) { .hero-inner { grid-template-columns: 1fr; } .hero-side { display: none !important; } }
-
-        /* Safety Layout */
         .safety-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; width: 100%; }
         @media (max-width:1024px){ .safety-layout { gap: 40px; } }
         @media (max-width:860px) { .safety-layout { grid-template-columns: 1fr; gap: 32px; } }
-
-        /* WebGIS split */
         .split-grid { display: grid; grid-template-columns: 1fr 1fr; }
         @media (max-width:768px) { .split-grid { grid-template-columns: 1fr; } }
-
-        /* Features */
         .feat-list { display: grid; grid-template-columns: repeat(3,1fr); }
         @media (max-width:960px){ .feat-list { grid-template-columns: 1fr 1fr; } }
         @media (max-width:560px){ .feat-list { grid-template-columns: 1fr; } }
-
-        /* Standards */
         .std-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: start; }
         @media (max-width:900px){ .std-layout { grid-template-columns: 1fr; gap: 40px; } }
-
-        /* Photo strip */
-        .photo-strip {
-          display: grid;
-          grid-template-columns: 2fr 1fr 1fr;
-          grid-template-rows: 210px 210px;
-          gap: 3px;
-        }
+        .photo-strip { display: grid; grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 210px 210px; gap: 3px; }
         .photo-strip-main { grid-column: 1; grid-row: 1 / 3; min-height: 0; }
         .photo-strip img { width: 100%; height: 100%; object-fit: cover; display: block; }
         @media (max-width: 1100px) { .photo-strip { grid-template-rows: 180px 180px; } }
@@ -524,28 +685,17 @@ export const HomePage: React.FC<HomePageProps> = () => {
           .photo-strip { grid-template-columns: 1fr; grid-template-rows: repeat(5, 180px); }
           .photo-strip-main { grid-column: 1; grid-row: auto; }
         }
-
-        /* Stats bar */
         .stats-bar { max-width:1200px; margin:0 auto; padding:20px 48px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
         @media (max-width:768px){ .stats-bar { padding:14px 20px; justify-content:center; } }
-
-        /* Footer */
         .footer-inner { max-width:1360px; margin:0 auto; padding:28px 48px 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
         @media (max-width:768px){ .footer-inner { padding:22px 20px; flex-direction:column; align-items:flex-start; gap:8px; } }
-
-        /* Hero CTAs */
         .hero-ctas { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
         @media (max-width:360px){ .hero-ctas { flex-direction:column; align-items:stretch; gap:10px; } .hero-ctas button { width:100%; justify-content:center; } }
-
-        /* Condition metrics */
         .condition-metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; width: 100%; }
         @media (max-width:580px){ .condition-metrics { grid-template-columns:repeat(2,1fr); } }
         @media (max-width:360px){ .condition-metrics { grid-template-columns:1fr; } }
-
-        /* Activity grid */
         .activity-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; width: 100%; }
         @media (max-width:520px){ .activity-grid { grid-template-columns:1fr; } }
-
         @keyframes hp-spin { to { transform:rotate(360deg); } }
       `}</style>
 
@@ -553,70 +703,35 @@ export const HomePage: React.FC<HomePageProps> = () => {
 
         {/* ═══ HERO ═════════════════════════════════════════════════════ */}
         <section style={{ position: "relative", width: "100%", overflow: "hidden", background: DARK1 }}>
-          {/* Amber top rule */}
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: AMBER, zIndex: 10 }} />
-
-          {/* Background image */}
           <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
             <img src="/img/background.jpg" alt="Kepulauan Seribu" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 40%", opacity: 0.45 }} />
           </div>
-
-          {/* Gradient overlay */}
           <div style={{ position: "absolute", inset: 0, zIndex: 2, background: `linear-gradient(110deg, rgba(26,26,26,0.96) 0%, rgba(26,26,26,0.82) 42%, rgba(26,26,26,0.18) 100%)` }} />
-
-          {/* Bottom fade */}
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 100, zIndex: 3, background: `linear-gradient(to top, ${BG}, transparent)` }} />
 
           <div className="hero-inner" style={{ position: "relative", zIndex: 5 }}>
             <div style={{ padding: "clamp(100px,12vw,140px) clamp(24px,6vw,80px) 80px", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-
-              {/* Tagline */}
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28, ...fadeUp(2) }}>
                 <div style={{ width: 32, height: 2, background: AMBER, flexShrink: 0 }} />
-                <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: "0.20em", textTransform: "uppercase" as const, color: AMBER }}>
-                  {c.tagline}
-                </span>
+                <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: "0.20em", textTransform: "uppercase" as const, color: AMBER }}>{c.tagline}</span>
               </div>
-
-              {/* Headline */}
-              <h1 style={{
-                fontFamily: FONT,
-                fontSize: "clamp(2.8rem,7vw,6.2rem)",
-                fontWeight: 800,
-                color: OFF_WHITE,
-                lineHeight: 0.98,
-                letterSpacing: "-0.04em",
-                margin: "0 0 24px",
-                whiteSpace: "pre-line",
-                ...fadeUp(3, 60),
-              }}>
+              <h1 style={{ fontFamily: FONT, fontSize: "clamp(2.8rem,7vw,6.2rem)", fontWeight: 800, color: OFF_WHITE, lineHeight: 0.98, letterSpacing: "-0.04em", margin: "0 0 24px", whiteSpace: "pre-line", ...fadeUp(3, 60) }}>
                 {c.headline}
               </h1>
-
-              {/* Subline */}
               <p style={{ fontFamily: FONT, fontSize: "clamp(14px,1.5vw,17px)", lineHeight: 1.72, color: "rgba(245,240,232,0.60)", maxWidth: 480, margin: "0 0 40px", fontWeight: 400, ...fadeUp(4, 100) }}>
                 {c.subline}
               </p>
-
-              {/* Divider */}
               <div style={{ width: 48, height: 1, background: "rgba(245,240,232,0.15)", marginBottom: 32, ...fadeUp(4, 115) }} />
-
-              {/* ── CTAs — Check Safety (amber, kiri) · Open WebGIS (ghost, kanan) ── */}
               <div className="hero-ctas" style={{ ...fadeUp(5, 140) }}>
-                <button
-                  onClick={scrollToSafety}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "14px 28px", background: AMBER, color: DARK1, border: "none", fontFamily: FONT, fontSize: 13, fontWeight: 700, letterSpacing: "0.02em", borderRadius: 9, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 4px 16px rgba(245,193,24,0.40)" }}
+                <button onClick={scrollToSafety} style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "14px 28px", background: AMBER, color: DARK1, border: "none", fontFamily: FONT, fontSize: 13, fontWeight: 700, letterSpacing: "0.02em", borderRadius: 9, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 4px 16px rgba(245,193,24,0.40)" }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = AMBER2; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(245,193,24,0.50)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = AMBER; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(245,193,24,0.40)"; }}
-                >
+                  onMouseLeave={(e) => { e.currentTarget.style.background = AMBER; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(245,193,24,0.40)"; }}>
                   <Shield size={14} /> {c.heroGhost}
                 </button>
-                <button
-                  onClick={() => onNavigate?.("webgis")}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", background: "transparent", color: "rgba(245,240,232,0.75)", border: "1.5px solid rgba(245,240,232,0.22)", fontFamily: FONT, fontSize: 13, fontWeight: 600, letterSpacing: "0.02em", borderRadius: 9, cursor: "pointer", transition: "all 0.2s" }}
+                <button onClick={() => onNavigate?.("webgis")} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", background: "transparent", color: "rgba(245,240,232,0.75)", border: "1.5px solid rgba(245,240,232,0.22)", fontFamily: FONT, fontSize: 13, fontWeight: 600, letterSpacing: "0.02em", borderRadius: 9, cursor: "pointer", transition: "all 0.2s" }}
                   onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(245,240,232,0.55)"; e.currentTarget.style.color = OFF_WHITE; e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(245,240,232,0.22)"; e.currentTarget.style.color = "rgba(245,240,232,0.75)"; e.currentTarget.style.background = "transparent"; }}
-                >
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(245,240,232,0.22)"; e.currentTarget.style.color = "rgba(245,240,232,0.75)"; e.currentTarget.style.background = "transparent"; }}>
                   {c.heroCta} <ArrowRight size={13} />
                 </button>
               </div>
@@ -627,21 +742,16 @@ export const HomePage: React.FC<HomePageProps> = () => {
         {/* ═══ PHOTO STRIP ══════════════════════════════════════════════ */}
         <section style={{ background: DARK1, padding: "3px 0 0" }}>
           <div className="photo-strip">
-            {/* Main left — spans both rows */}
             <img src="/img/foto-1.jpg" alt="Searibu" className="photo-strip-main" />
-            {/* Row 1 right */}
             <img src="/img/foto-2.jpg" alt="" />
             <img src="/img/foto-3.jpg" alt="" />
-            {/* Row 2 right */}
             <img src="/img/foto-4.jpg" alt="" />
             <img src="/img/foto-5.jpg" alt="" style={{ objectPosition: "center 40%" }} />
           </div>
-
-          {/* Stats */}
           <div className="stats-bar">
             {[
               { n: "110",  label: lang === "id" ? "Pulau"            : "Islands" },
-              { n: "~45km", label: lang === "id" ? "Dari Jakarta"     : "From Jakarta" },
+              { n: "~45km", label: lang === "id" ? "Dari Jakarta"    : "From Jakarta" },
               { n: "400k", label: lang === "id" ? "Pengunjung/tahun" : "Visitors/year" },
             ].map(item => (
               <div key={item.n} style={{ textAlign: "center", padding: "8px 20px" }}>
@@ -664,21 +774,15 @@ export const HomePage: React.FC<HomePageProps> = () => {
           <div className="split-grid">
             <img src="/img/foto-5.jpg" alt="WebGIS" style={{ width:"100%", minHeight:340, objectFit:"cover", display:"block", aspectRatio:"4/3" }} />
             <div style={{ padding: "clamp(40px,6vw,80px)", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-              {/* Section label */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
                 <div style={{ width: 3, height: 20, background: AMBER, borderRadius: 2 }} />
                 <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" as const, color: TEXT3 }}>{c.webgisSplitEyebrow}</span>
               </div>
-              <h2 style={{ fontFamily: FONT, fontSize: "clamp(1.6rem,3vw,2.5rem)", fontWeight: 800, color: TEXT1, lineHeight: 1.1, letterSpacing: "-0.03em", margin: "0 0 16px" }}>
-                {c.webgisSplitHead}
-              </h2>
+              <h2 style={{ fontFamily: FONT, fontSize: "clamp(1.6rem,3vw,2.5rem)", fontWeight: 800, color: TEXT1, lineHeight: 1.1, letterSpacing: "-0.03em", margin: "0 0 16px" }}>{c.webgisSplitHead}</h2>
               <p style={{ fontFamily: FONT, fontSize: 15, lineHeight: 1.75, color: TEXT3, maxWidth: 380, marginBottom: 28 }}>{c.webgisSplitBody}</p>
-              <button
-                onClick={() => onNavigate?.("webgis")}
-                style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 9, padding: "12px 24px", background: BLUE_D, color: "#fff", border: "none", fontFamily: FONT, fontSize: 13, fontWeight: 600, borderRadius: 9, cursor: "pointer", transition: "all 0.18s", boxShadow: "0 4px 14px rgba(26,59,191,0.28)" }}
+              <button onClick={() => onNavigate?.("webgis")} style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 9, padding: "12px 24px", background: BLUE_D, color: "#fff", border: "none", fontFamily: FONT, fontSize: 13, fontWeight: 600, borderRadius: 9, cursor: "pointer", transition: "all 0.18s", boxShadow: "0 4px 14px rgba(26,59,191,0.28)" }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = "#142d99"; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(26,59,191,0.36)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = BLUE_D; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(26,59,191,0.28)"; }}
-              >
+                onMouseLeave={(e) => { e.currentTarget.style.background = BLUE_D; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(26,59,191,0.28)"; }}>
                 {c.webgisBtn} <ChevronRight size={13} />
               </button>
             </div>
@@ -688,28 +792,20 @@ export const HomePage: React.FC<HomePageProps> = () => {
         {/* ═══ FEATURES ═════════════════════════════════════════════════ */}
         <section className="hp-section" style={{ background: BG }}>
           <div style={{ maxWidth: 1200, margin: "0 auto" }} ref={feat.ref}>
-            {/* Header */}
             <div style={{ borderBottom: `2px solid ${DARK1}`, paddingBottom: 28, marginBottom: 0, display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 16, ...revealUp(feat.inView) }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                   <div style={{ width: 3, height: 22, background: AMBER, borderRadius: 2 }} />
                   <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase" as const, color: TEXT3 }}>{c.featEyebrow}</span>
                 </div>
-                <h2 style={{ fontFamily: FONT, fontSize: "clamp(1.8rem,3.2vw,2.8rem)", fontWeight: 800, color: TEXT1, lineHeight: 1.1, letterSpacing: "-0.03em", margin: 0 }}>
-                  {c.featHead}
-                </h2>
+                <h2 style={{ fontFamily: FONT, fontSize: "clamp(1.8rem,3.2vw,2.8rem)", fontWeight: 800, color: TEXT1, lineHeight: 1.1, letterSpacing: "-0.03em", margin: 0 }}>{c.featHead}</h2>
               </div>
             </div>
-
-            {/* Cards */}
             <div className="feat-list" style={{ ...revealUp(feat.inView, 120) }}>
               {c.features.map((f, i) => (
-                <div
-                  key={i}
-                  style={{ padding: "32px 28px", borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, transition: "background 0.18s", cursor: "default" }}
+                <div key={i} style={{ padding: "32px 28px", borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, transition: "background 0.18s", cursor: "default" }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = SURFACE)}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                >
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
                     <span style={{ fontFamily: FONT, fontSize: 36, fontWeight: 800, color: BORDER, lineHeight: 1, letterSpacing: "-0.06em" }}>{f.num}</span>
                     <div style={{ width: 40, height: 40, background: BLUE_L, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -726,9 +822,7 @@ export const HomePage: React.FC<HomePageProps> = () => {
 
         {/* ═══ STANDARDS ════════════════════════════════════════════════ */}
         <section className="hp-section" style={{ background: DARK1, position: "relative", overflow: "hidden" }}>
-          {/* Subtle dot texture */}
           <div style={{ position: "absolute", inset: 0, backgroundImage: `radial-gradient(rgba(245,193,24,0.06) 1px, transparent 1px)`, backgroundSize: "28px 28px", pointerEvents: "none" }} />
-
           <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 2 }} ref={std.ref}>
             <div className="std-layout" style={revealUp(std.inView)}>
               <div>
@@ -737,12 +831,9 @@ export const HomePage: React.FC<HomePageProps> = () => {
                   <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase" as const, color: "rgba(245,193,24,0.80)" }}>{c.stdEyebrow}</span>
                 </div>
                 <p style={{ fontFamily: FONT, fontSize: 15, lineHeight: 1.80, color: "rgba(245,240,232,0.55)", marginBottom: 36, maxWidth: 440 }}>{c.stdBody}</p>
-                <button
-                  onClick={() => onNavigate?.("webgis")}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "13px 26px", background: AMBER, color: DARK1, border: "none", fontFamily: FONT, fontSize: 13, fontWeight: 700, borderRadius: 9, cursor: "pointer", transition: "all 0.18s", boxShadow: "0 4px 16px rgba(245,193,24,0.35)" }}
+                <button onClick={() => onNavigate?.("webgis")} style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "13px 26px", background: AMBER, color: DARK1, border: "none", fontFamily: FONT, fontSize: 13, fontWeight: 700, borderRadius: 9, cursor: "pointer", transition: "all 0.18s", boxShadow: "0 4px 16px rgba(245,193,24,0.35)" }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = AMBER2; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = AMBER; e.currentTarget.style.transform = "none"; }}
-                >
+                  onMouseLeave={(e) => { e.currentTarget.style.background = AMBER; e.currentTarget.style.transform = "none"; }}>
                   {c.stdCta} <ArrowRight size={13} />
                 </button>
               </div>

@@ -415,6 +415,11 @@ export const Navbar: React.FC = () => {
   useEffect(() => { const onScroll = () => setScrolled(window.scrollY > 8); window.addEventListener("scroll", onScroll, { passive: true }); return () => window.removeEventListener("scroll", onScroll); }, []);
   useEffect(() => { const check = () => setIsMobile(window.innerWidth <= 768); check(); window.addEventListener("resize", check); return () => window.removeEventListener("resize", check); }, []);
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
+  useEffect(() => {
+    const handler = () => setModal("signin");
+    window.addEventListener("searibu:open-signin", handler);
+    return () => window.removeEventListener("searibu:open-signin", handler);
+  }, []);
   const handleSuccess = (user: AuthUser, msg: string) => { setCurrentUser(user); setModal(null); setToast({ message: msg, userName: user.full_name }); };
   const goTo = (key: string) => navigate(NAV_ROUTES[key] ?? "/");
   const navLabels = NAV_LABELS[language as "en" | "id"]; const onHome = activePage === "home"; const glass = !isMobile && onHome && !scrolled;

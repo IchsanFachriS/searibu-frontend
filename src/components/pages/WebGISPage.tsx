@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { MapContainer }  from "../webgis/MapContainer";
 import { InfoPanel }     from "../webgis/InfoPanel";
 import { useLanguage }   from "../../context/LanguageContext";
-import { Layers, Map, Satellite } from "lucide-react";
+import { Layers, Map, Satellite, LayoutGrid } from "lucide-react";
 import type { BasemapType } from "../../types";
 
-export type GridLayer = "tpxo" | "ecmwf" | "smoc";
+// "none" = no grid overlay (default)
+export type GridLayer = "none" | "tpxo" | "ecmwf" | "smoc";
 
 interface GridOption {
   key: GridLayer; color: string;
@@ -14,12 +15,13 @@ interface GridOption {
 }
 
 const GRID_OPTIONS: GridOption[] = [
-  { key:"tpxo",  color:"#1a3bbf", labelEn:"TPXO10 Atlas", labelId:"TPXO10 Atlas", descEn:"Tidal prediction",        descId:"Prediksi pasut"          },
-  { key:"ecmwf", color:"#b45309", labelEn:"ECMWF IFS",    labelId:"ECMWF IFS",    descEn:"Weather forecast (~9 km)", descId:"Prakiraan cuaca (~9 km)" },
-  { key:"smoc",  color:"#0f766e", labelEn:"SMOC / MFWAM", labelId:"SMOC / MFWAM", descEn:"Wave & current (0.083°)",  descId:"Gelombang & arus (0,083°)"},
+  { key:"none",  color:"#9a9a9a", labelEn:"No Grid",       labelId:"Tanpa Grid",    descEn:"Click location for data", descId:"Klik lokasi untuk data" },
+  { key:"tpxo",  color:"#1a3bbf", labelEn:"TPXO10 Atlas",  labelId:"TPXO10 Atlas",  descEn:"Tidal prediction grid",        descId:"Grid prediksi pasut"           },
+  { key:"ecmwf", color:"#b45309", labelEn:"ECMWF IFS",     labelId:"ECMWF IFS",     descEn:"Weather forecast (~9 km)",     descId:"Prakiraan cuaca (~9 km)"       },
+  { key:"smoc",  color:"#0f766e", labelEn:"SMOC / MFWAM",  labelId:"SMOC / MFWAM",  descEn:"Wave & current (0.083°)",      descId:"Gelombang & arus (0,083°)"     },
 ];
 
-/* ── Design tokens — light/white, sesuai index.css ── */
+/* ── Design tokens ── */
 const FONT = "'Inter', system-ui, -apple-system, sans-serif";
 const L = {
   bg:      "#ffffff",
@@ -37,8 +39,8 @@ const L = {
   shadowSm:"0 2px 6px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05)",
 };
 
-/* Grid color — map dot indicator uses saturated version of each model color */
 const GRID_MAP_COLOR: Record<GridLayer, string> = {
+  none:  "#9a9a9a",
   tpxo:  "#38bdf8",
   ecmwf: "#f59e0b",
   smoc:  "#34d399",
@@ -47,7 +49,7 @@ const GRID_MAP_COLOR: Record<GridLayer, string> = {
 interface Coords { lat: number; lon: number }
 
 /* ══════════════════════════════════════════════════════════
-   BasemapToggle — white pill
+   BasemapToggle
 ══════════════════════════════════════════════════════════ */
 const BasemapToggle: React.FC<{
   basemap: BasemapType;
@@ -91,7 +93,7 @@ const BasemapToggle: React.FC<{
 );
 
 /* ══════════════════════════════════════════════════════════
-   GridLayerToggle — white pill with dropdown
+   GridLayerToggle — includes "None" option
 ══════════════════════════════════════════════════════════ */
 const GridLayerToggle: React.FC<{
   current: GridLayer;
@@ -101,6 +103,7 @@ const GridLayerToggle: React.FC<{
   const [open, setOpen] = useState(false);
   const cfg  = GRID_OPTIONS.find(o => o.key === current)!;
   const dotC = GRID_MAP_COLOR[current];
+  const isNone = current === "none";
 
   return (
     <div style={{position:"relative"}}
@@ -120,14 +123,17 @@ const GridLayerToggle: React.FC<{
         onMouseEnter={e => { if (!open) { e.currentTarget.style.borderColor=L.blue; e.currentTarget.style.background=L.blueL; }}}
         onMouseLeave={e => { if (!open) { e.currentTarget.style.borderColor=L.border; e.currentTarget.style.background=L.bg; }}}
       >
-        {/* Color dot — uses saturated map color */}
-        <div style={{
-          width:8, height:8, borderRadius:"50%",
-          background: dotC, flexShrink:0,
-          boxShadow: `0 0 0 2px ${dotC}30`,
-        }}/>
+        {/* Dot / icon */}
+        {isNone
+          ? <LayoutGrid size={12} style={{color:L.text4, flexShrink:0}}/>
+          : <div style={{
+              width:8, height:8, borderRadius:"50%",
+              background: dotC, flexShrink:0,
+              boxShadow: `0 0 0 2px ${dotC}30`,
+            }}/>
+        }
         <div>
-          <div style={{fontSize:11, fontWeight:700, color: open?L.blue:L.text1, lineHeight:1.2, whiteSpace:"nowrap"}}>
+          <div style={{fontSize:11, fontWeight:700, color: open?L.blue:(isNone?L.text3:L.text1), lineHeight:1.2, whiteSpace:"nowrap"}}>
             {language==="id" ? cfg.labelId : cfg.labelEn}
           </div>
           <div style={{fontSize:9, color:L.text4, lineHeight:1.1, whiteSpace:"nowrap"}}>
@@ -144,24 +150,25 @@ const GridLayerToggle: React.FC<{
           background: L.bg,
           border: `1.5px solid ${L.border}`,
           borderRadius:12, overflow:"hidden",
-          minWidth:230, zIndex:377,
+          minWidth:240, zIndex:377,
           boxShadow: L.shadow,
         }}>
           {/* Header */}
           <div style={{padding:"8px 14px 7px", borderBottom:`1px solid ${L.border}`, background:L.bg2}}>
             <span style={{fontFamily:FONT, fontSize:9.5, fontWeight:800, letterSpacing:"0.10em", textTransform:"uppercase" as const, color:L.text4}}>
-              {language==="id"?"Model Grid":"Grid Model"}
+              {language==="id"?"Overlay Grid":"Grid Overlay"}
             </span>
           </div>
           {/* Options */}
           {GRID_OPTIONS.map(opt => {
             const active = current === opt.key;
             const mc = GRID_MAP_COLOR[opt.key];
+            const isNoneOpt = opt.key === "none";
             return (
               <button key={opt.key} onClick={() => { onChange(opt.key); setOpen(false); }} style={{
                 width:"100%", display:"flex", alignItems:"center", gap:11,
                 padding:"10px 14px",
-                background: active ? L.blueL : "none",
+                background: active ? (isNoneOpt ? "rgba(0,0,0,0.04)" : L.blueL) : "none",
                 border:"none", cursor:"pointer",
                 textAlign:"left" as const,
                 borderBottom: `1px solid ${L.border}`,
@@ -173,14 +180,22 @@ const GridLayerToggle: React.FC<{
                 {/* Icon */}
                 <div style={{
                   width:34, height:34, borderRadius:9, flexShrink:0,
-                  background: active ? `${mc}18` : L.bg2,
-                  border: `1.5px solid ${active ? mc : L.border}`,
+                  background: active
+                    ? (isNoneOpt ? "rgba(0,0,0,0.06)" : `${mc}18`)
+                    : L.bg2,
+                  border: `1.5px solid ${active
+                    ? (isNoneOpt ? "#ccc5bb" : mc)
+                    : L.border}`,
                   display:"flex", alignItems:"center", justifyContent:"center",
                 }}>
-                  <div style={{width:12, height:12, borderRadius:3, background:mc, opacity:active?1:0.65}}/>
+                  {isNoneOpt
+                    ? <LayoutGrid size={14} style={{color: active ? L.text2 : L.text4}}/>
+                    : <div style={{width:12, height:12, borderRadius:3, background:mc, opacity:active?1:0.65}}/>
+                  }
                 </div>
                 <div style={{flex:1, minWidth:0}}>
-                  <p style={{fontFamily:FONT, fontSize:13, fontWeight:700, margin:0, lineHeight:1.3, color:active?L.blue:L.text1}}>
+                  <p style={{fontFamily:FONT, fontSize:13, fontWeight:700, margin:0, lineHeight:1.3,
+                    color:active ? (isNoneOpt ? L.text1 : L.blue) : L.text1}}>
                     {language==="id"?opt.labelId:opt.labelEn}
                   </p>
                   <p style={{fontFamily:FONT, fontSize:10.5, margin:0, color:L.text4}}>
@@ -188,7 +203,9 @@ const GridLayerToggle: React.FC<{
                   </p>
                 </div>
                 {active && (
-                  <div style={{width:7,height:7,borderRadius:"50%",background:L.blue,flexShrink:0}}/>
+                  <div style={{width:7,height:7,borderRadius:"50%",
+                    background: isNoneOpt ? L.text3 : L.blue,
+                    flexShrink:0}}/>
                 )}
               </button>
             );
@@ -205,7 +222,8 @@ export const WebGISPage: React.FC = () => {
   const [basemap,        setBasemap]        = useState<BasemapType>("satellite");
   const [panelOpen,      setPanelOpen]      = useState(false);
   const [selectedCoords, setSelectedCoords] = useState<Coords | null>(null);
-  const [gridLayer,      setGridLayer]      = useState<GridLayer>("tpxo");
+  // Default = "none" → tidak ada grid overlay
+  const [gridLayer,      setGridLayer]      = useState<GridLayer>("none");
   const [panelWidth,     setPanelWidth]     = useState(480);
   const isResizing = useRef(false);
 

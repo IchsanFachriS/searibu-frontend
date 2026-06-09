@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Search, X, MapPin, ChevronDown, ChevronUp, Locate, Layers, AlertTriangle } from "lucide-react";
+import { Search, X, MapPin, ChevronDown, ChevronUp, Locate, Layers, AlertTriangle, Info } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import type { BasemapType } from "../../types";
 import type { GridLayer } from "../pages/WebGISPage";
@@ -13,7 +13,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl:     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
 });
 
-/* ── Design tokens — light/white, index.css palette ── */
+/* ── Design tokens ── */
 const SANS = "'Inter', system-ui, -apple-system, sans-serif";
 const L_ = {
   bg:      "#ffffff",
@@ -33,7 +33,6 @@ const L_ = {
   shadowSm:"0 2px 6px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
 };
 
-/* Marker accent colors */
 const ISLAND_COLOR = "#0ea5e9";
 const LUWES_COLOR  = "#ef4444";
 const PORT_COLOR   = "#475569";
@@ -51,15 +50,15 @@ function isInSeribuBounds(lat: number, lon: number): boolean {
   );
 }
 
-/* ── Grid config ── */
+/* ── Grid config (excludes "none") ── */
 interface GridConfig {
   file: string; color: string; fillColor: string;
-  labelEn: string; labelId: string; tipEn: string; tipId: string;
+  labelEn: string; labelId: string;
 }
-const GRID_CONFIG: Record<GridLayer, GridConfig> = {
-  tpxo:  { file:"/GRID_TPXO_SERIBU.geojson",       color:"#3b82f6", fillColor:"#3b82f6", labelEn:"TPXO10",        labelId:"TPXO10",        tipEn:"Click for tide & weather",      tipId:"Klik untuk pasut & cuaca"      },
-  ecmwf: { file:"/GRID_ECMWF_SERIBU.geojson",       color:"#f59e0b", fillColor:"#f59e0b", labelEn:"ECMWF IFS",    labelId:"ECMWF IFS",    tipEn:"Click for weather forecast",    tipId:"Klik untuk prakiraan cuaca"    },
-  smoc:  { file:"/GRID_SMOC-MFWAM_SERIBU.geojson",  color:"#10b981", fillColor:"#10b981", labelEn:"SMOC / MFWAM", labelId:"SMOC / MFWAM", tipEn:"Click for wave & current data", tipId:"Klik untuk gelombang & arus"  },
+const GRID_CONFIG: Partial<Record<GridLayer, GridConfig>> = {
+  tpxo:  { file:"/GRID_TPXO_SERIBU.geojson",       color:"#3b82f6", fillColor:"#3b82f6", labelEn:"TPXO10",        labelId:"TPXO10"},
+  ecmwf: { file:"/GRID_ECMWF_SERIBU.geojson",       color:"#f59e0b", fillColor:"#f59e0b", labelEn:"ECMWF IFS",    labelId:"ECMWF IFS"},
+  smoc:  { file:"/GRID_SMOC-MFWAM_SERIBU.geojson",  color:"#10b981", fillColor:"#10b981", labelEn:"SMOC / MFWAM", labelId:"SMOC / MFWAM"}
 };
 
 interface Island {
@@ -106,12 +105,13 @@ const BASEMAPS = {
 };
 
 /* ══════════════════════════════════════════════════════════
-   Popup HTML builders — light theme
+   Popup HTML builders
 ══════════════════════════════════════════════════════════ */
 function buildIslandPopup(island: Island, language: string): string {
   const title  = language==="id" ? island.name   : island.nameEn;
   const desc   = language==="id" ? island.descId : island.descEn;
   const facLbl = language==="id" ? "Fasilitas"   : "Facilities";
+  const dataLbl = language==="id" ? "Klik untuk data kelautan →" : "Click to view marine data →";
   const pills  = island.facilities.map(f =>
     `<span style="display:inline-block;padding:3px 10px;border-radius:99px;background:${L_.blueL};border:1px solid rgba(26,59,191,0.20);color:${L_.blue};font-size:11px;font-weight:600;margin:3px 3px 0 0;font-family:${SANS};line-height:1.4;white-space:nowrap;">${f}</span>`
   ).join("");
@@ -126,7 +126,11 @@ function buildIslandPopup(island: Island, language: string): string {
   <div style="padding:14px 16px 16px;">
     <p style="font-size:12.5px;color:${L_.text2};line-height:1.65;margin:0 0 12px;">${desc}</p>
     <p style="font-size:9.5px;color:${L_.text4};font-weight:800;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 7px;">${facLbl}</p>
-    <div style="display:flex;flex-wrap:wrap;">${pills}</div>
+    <div style="display:flex;flex-wrap:wrap;margin-bottom:14px;">${pills}</div>
+    <div style="display:flex;align-items:center;gap:7px;padding:9px 12px;background:linear-gradient(135deg,rgba(26,59,191,0.07),rgba(79,212,232,0.07));border:1px solid rgba(26,59,191,0.18);border-radius:9px;cursor:pointer;" class="island-data-cta">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${L_.blue}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0"/><path d="M12 8v4l3 3"/></svg>
+      <span style="font-size:11.5px;font-weight:700;color:${L_.blue};">${dataLbl}</span>
+    </div>
   </div>
 </div>`;
 }
@@ -152,6 +156,7 @@ function buildLuwesPopup(language: string): string {
   const desc   = language==="id" ? LUWES_STATION.descId  : LUWES_STATION.descEn;
   const badge  = language==="id" ? "Stasiun Pasut"       : "Tide Station";
   const coords = `${Math.abs(LUWES_STATION.lat).toFixed(4)}°S · ${LUWES_STATION.lon.toFixed(4)}°E`;
+  const dataLbl = language==="id" ? "Klik untuk data pasut real-time →" : "Click to view real-time tidal data →";
   return `
 <div style="font-family:${SANS};background:${L_.bg};border-radius:14px;overflow:hidden;width:275px;max-width:calc(100vw - 48px);box-shadow:0 12px 32px rgba(0,0,0,0.14);">
   <div style="background:${L_.bg2};padding:14px 16px 12px;position:relative;border-bottom:1px solid ${L_.border};">
@@ -165,9 +170,13 @@ function buildLuwesPopup(language: string): string {
   </div>
   <div style="padding:14px 16px 16px;">
     <p style="font-size:12.5px;color:${L_.text2};line-height:1.65;margin:0 0 12px;">${desc}</p>
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#dcfce7;border:1px solid rgba(21,128,61,0.20);border-radius:9px;">
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#dcfce7;border:1px solid rgba(21,128,61,0.20);border-radius:9px;margin-bottom:10px;">
       <span style="display:block;width:7px;height:7px;border-radius:50%;background:#16a34a;box-shadow:0 0 6px #16a34a;flex-shrink:0;animation:luwes-pulse 2s ease-in-out infinite;"></span>
       <span style="font-size:11px;font-weight:700;color:#15803d;">${language==="id"?"Telemetri real-time aktif":"Real-time telemetry active"}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:7px;padding:9px 12px;background:linear-gradient(135deg,rgba(239,68,68,0.07),rgba(248,113,113,0.05));border:1px solid rgba(239,68,68,0.18);border-radius:9px;cursor:pointer;" class="luwes-data-cta">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${LUWES_COLOR}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0"/><path d="M12 8v4l3 3"/></svg>
+      <span style="font-size:11.5px;font-weight:700;color:${LUWES_COLOR};">${dataLbl}</span>
     </div>
   </div>
 </div>
@@ -190,16 +199,16 @@ function createPortIcon(): L.DivIcon {
 }
 
 /* ══════════════════════════════════════════════════════════
-   LegendPanel — white card
+   LegendPanel
 ══════════════════════════════════════════════════════════ */
 const LegendPanel: React.FC<{language: string; activeGrid: GridLayer; defaultCollapsed?: boolean}> = ({language, activeGrid, defaultCollapsed=false}) => {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
-  const gc = GRID_CONFIG[activeGrid];
+  const gc = activeGrid !== "none" ? GRID_CONFIG[activeGrid] : null;
   const items = [
     { dot: <svg width="11" height="13" viewBox="0 0 26 34"><circle cx="13" cy="13" r="11" fill={ISLAND_COLOR} stroke="#fff" strokeWidth="2" opacity="0.95"/><circle cx="13" cy="13" r="6" fill="rgba(255,255,255,0.25)"/><line x1="13" y1="24" x2="13" y2="32" stroke={ISLAND_COLOR} strokeWidth="2" strokeLinecap="round"/></svg>, label: language==="id"?"Pulau Wisata":"Tourism Island" },
     { dot: <svg width="11" height="12" viewBox="0 0 24 28"><path d="M12 2L22 8L22 20L12 26L2 20L2 8Z" fill={PORT_COLOR} stroke="rgba(255,255,255,0.7)" strokeWidth="1.5"/><text x="12" y="17" textAnchor="middle" fill="#e2e8f0" fontFamily="sans-serif" fontSize="9" fontWeight="800">P</text></svg>, label: language==="id"?"Pelabuhan":"Port" },
     { dot: <svg width="11" height="13" viewBox="0 0 26 32"><polygon points="13,2 23,7.5 23,20.5 13,26 3,20.5 3,7.5" fill={LUWES_COLOR} stroke="rgba(255,255,255,0.85)" strokeWidth="1.5"/><text x="13" y="17.5" textAnchor="middle" fill="#fff" fontFamily="sans-serif" fontSize="10" fontWeight="800">T</text></svg>, label: language==="id"?"Sta. Pasut":"Tide Station" },
-    { dot: <div style={{width:11,height:11,borderRadius:2,background:`${gc.fillColor}28`,border:`1.5px solid ${gc.color}`}}/>, label: language==="id"?`Grid ${gc.labelId}`:`${gc.labelEn} Grid` },
+    ...(gc ? [{ dot: <div style={{width:11,height:11,borderRadius:2,background:`${gc.fillColor}28`,border:`1.5px solid ${gc.color}`}}/>, label: language==="id"?`Grid ${gc.labelId}`:`${gc.labelEn} Grid` }] : []),
   ];
   return (
     <div style={{
@@ -207,8 +216,8 @@ const LegendPanel: React.FC<{language: string; activeGrid: GridLayer; defaultCol
       border: `1.5px solid ${L_.border}`,
       borderRadius:10, overflow:"hidden",
       boxShadow: L_.shadow,
-      width: collapsed ? "auto" : 162,
-      minWidth: collapsed ? 0 : 162,
+      width: collapsed ? "auto" : 192,
+      minWidth: collapsed ? 0 : 192,
     }}>
       <button onClick={() => setCollapsed(c=>!c)} style={{
         width:"100%", display:"flex", alignItems:"center",
@@ -248,77 +257,83 @@ const LegendPanel: React.FC<{language: string; activeGrid: GridLayer; defaultCol
 };
 
 /* ══════════════════════════════════════════════════════════
-   GridLayerToggle inline (inside map) — white card
+   Out-of-Bounds Toast
 ══════════════════════════════════════════════════════════ */
-const GridLayerToggleInline: React.FC<{current: GridLayer; onChange: (l: GridLayer) => void; language: string}> = ({current, onChange, language}) => {
-  const [open, setOpen] = useState(false);
-  const cfg = GRID_CONFIG[current];
-  const label = language==="id" ? cfg.labelId : cfg.labelEn;
+interface OOBToastProps {
+  visible: boolean;
+  reason: "location" | "map_click" | "search";
+  language: string;
+  onClose: () => void;
+}
+const OutOfBoundsToast: React.FC<OOBToastProps> = ({ visible, reason, language, onClose }) => {
+  useEffect(() => {
+    if (!visible) return;
+    const t = setTimeout(onClose, 5000);
+    return () => clearTimeout(t);
+  }, [visible, onClose]);
+
+  if (!visible) return null;
+
+  const msgs = {
+    location: {
+      en: "Your location is outside the Kepulauan Seribu service area. The platform covers lon 106°–107°E, lat 5°–6.3°S.",
+      id: "Lokasi Anda di luar area layanan Kepulauan Seribu. Platform mencakup lon 106°–107°BT, lat 5°–6,3°LS.",
+    },
+    map_click: {
+      en: "Selected point is outside the Kepulauan Seribu service area. Please click within the archipelago.",
+      id: "Titik yang dipilih di luar area layanan Kepulauan Seribu. Silakan klik di dalam area kepulauan.",
+    },
+    search: {
+      en: "This location is outside the Kepulauan Seribu service area. Only islands within the archipelago are supported.",
+      id: "Lokasi ini di luar area layanan Kepulauan Seribu. Hanya pulau-pulau dalam kepulauan yang didukung.",
+    },
+  };
+  const msg = msgs[reason][language as "en" | "id"];
 
   return (
-    <div style={{position:"relative"}}>
+    <div style={{
+      position:"absolute",
+      bottom:"calc(100% + 10px)",
+      left:0,
+      right:0,
+      display:"flex",
+      alignItems:"flex-start",
+      gap:10,
+      padding:"12px 14px",
+      background:"#fff",
+      border:"1.5px solid #fecdd3",
+      borderRadius:12,
+      boxShadow:"0 8px 28px rgba(0,0,0,0.14)",
+      zIndex:2200,
+      animation:"wg-fadein 0.22s ease",
+    }}>
+      <div style={{
+        width:32, height:32, borderRadius:"50%", flexShrink:0,
+        background:"#fee2e2",
+        display:"flex", alignItems:"center", justifyContent:"center",
+        marginTop:1,
+      }}>
+        <AlertTriangle size={14} style={{color:"#dc2626"}}/>
+      </div>
+      <div style={{flex:1}}>
+        <p style={{fontFamily:SANS,fontSize:11,fontWeight:800,color:"#991b1b",margin:"0 0 3px",letterSpacing:"0.02em"}}>
+          {language==="id"?"Lokasi di Luar Area":"Location Out of Service Area"}
+        </p>
+        <p style={{fontFamily:SANS,fontSize:11.5,fontWeight:500,color:"#7f1d1d",margin:0,lineHeight:1.5}}>{msg}</p>
+      </div>
       <button
-        className={`wg-grid-btn${open?" open":""}`}
-        onClick={() => setOpen(o=>!o)}
-        title={language==="id"?"Pilih layer grid":"Select grid layer"}
+        onClick={onClose}
+        style={{background:"none",border:"none",cursor:"pointer",color:"#9a9a9a",padding:"2px",flexShrink:0,display:"flex",marginTop:2}}
       >
-        <div style={{width:8,height:8,borderRadius:2,background:cfg.color,flexShrink:0}}/>
-        <div style={{textAlign:"left" as const,lineHeight:1.25}}>
-          <div style={{fontFamily:SANS,fontSize:11,fontWeight:700,color:open?L_.blue:L_.text1}}>{label}</div>
-          <div style={{fontFamily:SANS,fontSize:9,fontWeight:400,color:L_.text4}}>{language==="id"?cfg.tipId:cfg.tipEn}</div>
-        </div>
-        <Layers size={11} style={{color:open?L_.blue:L_.text4,flexShrink:0,marginLeft:1,transition:"color .15s"}}/>
+        <X size={14}/>
       </button>
-
-      {open && (<>
-        <div style={{position:"fixed",inset:0,zIndex:376}} onClick={() => setOpen(false)}/>
-        <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,background:L_.bg,borderRadius:12,boxShadow:L_.shadow,border:`1.5px solid ${L_.border}`,overflow:"hidden",minWidth:230,zIndex:377}}>
-          <div style={{padding:"8px 14px 7px",borderBottom:`1px solid ${L_.border}`,background:L_.bg2}}>
-            <span style={{fontFamily:SANS,fontSize:9.5,fontWeight:800,letterSpacing:"0.10em",textTransform:"uppercase" as const,color:L_.text4}}>
-              {language==="id"?"Model Grid":"Grid Model"}
-            </span>
-          </div>
-          {(Object.keys(GRID_CONFIG) as GridLayer[]).map(key => {
-            const opt=GRID_CONFIG[key], active=current===key;
-            return (
-              <button key={key} onClick={() => { onChange(key); setOpen(false); }} style={{
-                width:"100%",display:"flex",alignItems:"center",gap:11,
-                padding:"10px 14px",
-                background: active ? L_.blueL : "none",
-                border:"none",cursor:"pointer",
-                textAlign:"left" as const,
-                borderBottom:`1px solid ${L_.border}`,
-                transition:"background 0.12s",
-              }}
-                onMouseEnter={e=>{if(!active)e.currentTarget.style.background=L_.bg2;}}
-                onMouseLeave={e=>{if(!active)e.currentTarget.style.background="none";}}>
-                <div style={{
-                  width:34,height:34,borderRadius:9,flexShrink:0,
-                  background:active?`${opt.color}18`:L_.bg2,
-                  border:`1.5px solid ${active?opt.color:L_.border}`,
-                  display:"flex",alignItems:"center",justifyContent:"center",
-                }}>
-                  <div style={{width:12,height:12,borderRadius:3,background:opt.color,opacity:active?1:0.65}}/>
-                </div>
-                <div style={{flex:1,minWidth:0}}>
-                  <p style={{fontFamily:SANS,fontSize:13,fontWeight:700,margin:0,lineHeight:1.3,color:active?L_.blue:L_.text1}}>
-                    {language==="id"?opt.labelId:opt.labelEn}
-                  </p>
-                  <p style={{fontFamily:SANS,fontSize:10.5,margin:0,color:L_.text4}}>
-                    {language==="id"?opt.tipId:opt.tipEn}
-                  </p>
-                </div>
-                {active && <div style={{width:7,height:7,borderRadius:"50%",background:L_.blue,flexShrink:0}}/>}
-              </button>
-            );
-          })}
-        </div>
-      </>)}
     </div>
   );
 };
 
-/* ── BottomSearchBar ── */
+/* ══════════════════════════════════════════════════════════
+   BottomSearchBar
+══════════════════════════════════════════════════════════ */
 const BottomSearchBar: React.FC<{
   language: string;
   onIslandSelect: (island: Island) => void;
@@ -329,15 +344,8 @@ const BottomSearchBar: React.FC<{
   const [query,       setQuery]       = useState("");
   const [focused,     setFocused]     = useState(false);
   const [locating,    setLocating]    = useState(false);
-  const [outOfBounds, setOutOfBounds] = useState(false);
+  const [oobToast,    setOobToast]    = useState<{visible:boolean; reason: OOBToastProps["reason"]}>({visible:false, reason:"location"});
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Auto-dismiss out-of-bounds toast after 4 s
-  useEffect(() => {
-    if (!outOfBounds) return;
-    const t = setTimeout(() => setOutOfBounds(false), 4000);
-    return () => clearTimeout(t);
-  }, [outOfBounds]);
 
   const results = query.trim().length >= 1
     ? ISLANDS.filter(isl => {
@@ -355,13 +363,13 @@ const BottomSearchBar: React.FC<{
   const handleMyLocation = () => {
     if (!navigator.geolocation) return;
     setLocating(true);
-    setOutOfBounds(false);
+    setOobToast({visible:false, reason:"location"});
     navigator.geolocation.getCurrentPosition(
       pos => {
         setLocating(false);
         const { latitude: lat, longitude: lon } = pos.coords;
         if (!isInSeribuBounds(lat, lon)) {
-          setOutOfBounds(true);
+          setOobToast({visible:true, reason:"location"});
           return;
         }
         onCoordinateSearch(lat, lon);
@@ -373,47 +381,14 @@ const BottomSearchBar: React.FC<{
 
   if (isMobile && panelOpen) return null;
 
-  const outOfBoundsMsg = language === "id"
-    ? "Lokasi Anda di luar area layanan Kepulauan Seribu"
-    : "Your location is outside the Kepulauan Seribu service area";
-
   return (
     <div style={{position:"relative",width:"100%"}}>
-
-      {/* ── Out-of-bounds toast ── */}
-      {outOfBounds && (
-        <div style={{
-          position:"absolute", bottom:"calc(100% + 10px)", left:0, right:0,
-          display:"flex", alignItems:"center", gap:10,
-          padding:"10px 14px",
-          background:"#fff",
-          border:"1.5px solid #fecdd3",
-          borderRadius:12,
-          boxShadow:"0 8px 24px rgba(0,0,0,0.12)",
-          zIndex:2200,
-          animation:"wg-fadein 0.2s ease",
-        }}>
-          <div style={{
-            width:30, height:30, borderRadius:"50%", flexShrink:0,
-            background:"#fee2e2",
-            display:"flex", alignItems:"center", justifyContent:"center",
-          }}>
-            <AlertTriangle size={14} style={{color:"#dc2626"}}/>
-          </div>
-          <p style={{
-            fontFamily:SANS, fontSize:12, fontWeight:600,
-            color:"#991b1b", margin:0, flex:1, lineHeight:1.45,
-          }}>
-            {outOfBoundsMsg}
-          </p>
-          <button
-            onClick={() => setOutOfBounds(false)}
-            style={{background:"none",border:"none",cursor:"pointer",color:"#9a9a9a",padding:2,flexShrink:0,display:"flex"}}
-          >
-            <X size={13}/>
-          </button>
-        </div>
-      )}
+      <OutOfBoundsToast
+        visible={oobToast.visible}
+        reason={oobToast.reason}
+        language={language}
+        onClose={() => setOobToast(o => ({...o, visible:false}))}
+      />
 
       {showDropdown && (
         <div style={{
@@ -508,9 +483,14 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   const luwesMarkerRef    = useRef<L.Marker | null>(null);
   const selectedLayerRef  = useRef<L.Path | null>(null);
   const onGridClickRef    = useRef(onGridClick);
+  const [isMobile, setIsMobile] = useState(false);
+  // OOB toast state for map-level events (map click outside bounds)
+  const [mapOobToast, setMapOobToast] = useState<{visible:boolean; reason: OOBToastProps["reason"]}>({visible:false, reason:"map_click"});
+  // Hover cursor tooltip
+  const [hoverTooltip, setHoverTooltip] = useState<{visible:boolean; x:number; y:number; inBounds:boolean}>({visible:false,x:0,y:0,inBounds:true});
+
   useEffect(() => { onGridClickRef.current = onGridClick; }, [onGridClick]);
   const hasInitialFitRef  = useRef<Partial<Record<GridLayer, boolean>>>({});
-  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(()=>{
     const check=()=>setIsMobile(window.innerWidth<=768);
@@ -526,6 +506,33 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     mapRef.current=map;
     L.control.zoom({position:"topright"}).addTo(map);
     L.control.scale({position:"bottomright",imperial:false}).addTo(map);
+
+    /* ── Hover: custom cursor + tooltip ── */
+    map.on("mousemove", (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      const inBounds = isInSeribuBounds(lat, lng);
+      const containerPoint = map.latLngToContainerPoint(e.latlng);
+      setHoverTooltip({ visible: true, x: containerPoint.x, y: containerPoint.y, inBounds });
+      const container = map.getContainer();
+      container.style.cursor = inBounds ? "crosshair" : "not-allowed";
+    });
+
+    map.on("mouseout", () => {
+      setHoverTooltip(t => ({ ...t, visible: false }));
+      const container = map.getContainer();
+      container.style.cursor = "";
+    });
+
+    /* ── Direct map click → open InfoPanel ── */
+    map.on("click", (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      if (!isInSeribuBounds(lat, lng)) {
+        setMapOobToast({ visible: true, reason: "map_click" });
+        return;
+      }
+      onGridClickRef.current?.({ lat, lon: lng });
+    });
+
     return()=>{if(mapRef.current){mapRef.current.remove();mapRef.current=null;}};
   },[]);
 
@@ -536,7 +543,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     tileLayerRef.current=L.tileLayer(BASEMAPS[basemap].url,{attribution:BASEMAPS[basemap].attribution,maxZoom:19}).addTo(mapRef.current);
   },[basemap]);
 
-  /* Island markers */
+  /* Island markers — click directly opens InfoPanel */
   const buildIsland=useCallback((island:Island)=>buildIslandPopup(island,language),[language]);
   useEffect(()=>{
     if(!mapRef.current) return;
@@ -545,6 +552,26 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       const marker=L.marker([island.lat,island.lon],{icon:createIslandIcon(),zIndexOffset:500});
       marker.bindPopup(buildIsland(island),{maxWidth:290,minWidth:270,className:"seribu-popup"});
       marker.bindTooltip(island.name,{permanent:false,direction:"top",offset:[0,-7],className:"seribu-tooltip",opacity:1});
+
+      // Clicking marker OR the CTA inside popup → open InfoPanel
+      marker.on("click", (e: L.LeafletMouseEvent) => {
+        L.DomEvent.stopPropagation(e);
+        onGridClickRef.current?.({lat:island.lat,lon:island.lon});
+      });
+
+      // Also wire the CTA button inside popup after it opens
+      marker.on("popupopen", () => {
+        setTimeout(() => {
+          const cta = document.querySelector(".island-data-cta");
+          if (cta) {
+            (cta as HTMLElement).onclick = () => {
+              marker.closePopup();
+              onGridClickRef.current?.({lat:island.lat,lon:island.lon});
+            };
+          }
+        }, 50);
+      });
+
       marker.addTo(mapRef.current!);islandMarkersRef.current.push(marker);
     });
   },[buildIsland]);
@@ -562,7 +589,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     });
   },[buildPort]);
 
-  /* Luwes marker */
+  /* Luwes marker — click opens InfoPanel at station coords */
   const buildLuwes=useCallback(()=>buildLuwesPopup(language),[language]);
   useEffect(()=>{
     if(!mapRef.current) return;
@@ -570,17 +597,39 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     const marker=L.marker([LUWES_STATION.lat,LUWES_STATION.lon],{icon:createLuwesIcon(),zIndexOffset:700});
     marker.bindPopup(buildLuwes(),{maxWidth:295,minWidth:275,className:"seribu-popup"});
     marker.bindTooltip(language==="id"?LUWES_STATION.name:LUWES_STATION.nameEn,{permanent:false,direction:"top",offset:[0,-9],className:"seribu-tooltip",opacity:1});
+
+    marker.on("click", (e: L.LeafletMouseEvent) => {
+      L.DomEvent.stopPropagation(e);
+      onGridClickRef.current?.({lat:LUWES_STATION.lat,lon:LUWES_STATION.lon});
+    });
+
+    marker.on("popupopen", () => {
+      setTimeout(() => {
+        const cta = document.querySelector(".luwes-data-cta");
+        if (cta) {
+          (cta as HTMLElement).onclick = () => {
+            marker.closePopup();
+            onGridClickRef.current?.({lat:LUWES_STATION.lat,lon:LUWES_STATION.lon});
+          };
+        }
+      }, 50);
+    });
+
     marker.addTo(mapRef.current!);luwesMarkerRef.current=marker;
   },[buildLuwes]);
 
-  /* Grid layer */
+  /* Grid layer — skip render when "none" */
   useEffect(()=>{
     if(!mapRef.current) return;
     let active=true;
     selectedLayerRef.current=null;
     if(geoJsonLayerRef.current){mapRef.current.removeLayer(geoJsonLayerRef.current);geoJsonLayerRef.current=null;}
+
+    // If "none" selected — just clear and return
+    if(gridLayer==="none") return;
+
     const cfg=GRID_CONFIG[gridLayer];
-    const tip=language==="id"?cfg.tipId:cfg.tipEn;
+    if(!cfg) return;
 
     fetch(cfg.file).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}).then(data=>{
       if(!mapRef.current||!active) return;
@@ -589,14 +638,18 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       const layer=L.geoJSON(data,{
         style:{color:cfg.color,weight:1.5,opacity:0.7,fillColor:cfg.fillColor,fillOpacity:0.12},
         onEachFeature:(_f,fl)=>{
-          fl.bindTooltip(
-            `<div style="font-family:${SANS};font-size:11px;color:${cfg.color};font-weight:700;padding:2px 4px;">${tip}</div>`,
-            {sticky:true,opacity:1,className:"grid-tooltip"}
-          );
 
           fl.on("click",()=>{
             const center=(fl as any).getBounds().getCenter();
-            onGridClickRef.current?.({lat:center.lat,lon:center.lng});
+            const {lat, lng} = center;
+
+            // Out-of-bounds check for grid clicks
+            if(!isInSeribuBounds(lat, lng)){
+              setMapOobToast({visible:true, reason:"map_click"});
+              return;
+            }
+
+            onGridClickRef.current?.({lat, lon:lng});
 
             if(selectedLayerRef.current && selectedLayerRef.current!==(fl as L.Path)){
               selectedLayerRef.current.setStyle({
@@ -676,17 +729,23 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
   const flyToCoords=useCallback((lat:number,lon:number)=>{
     if(!mapRef.current) return;
-    // Boundary guard — do nothing if outside Seribu service area
     if(!isInSeribuBounds(lat,lon)) return;
     mapRef.current.flyTo([lat,lon],13,{duration:1.1,easeLinearity:0.3});
     if(onCoordinateSearch)onCoordinateSearch({lat,lon});
     if(onGridClick)onGridClick({lat,lon});
   },[onCoordinateSearch,onGridClick]);
 
+  // OOB toast dismiss auto-timer
+  useEffect(() => {
+    if (!mapOobToast.visible) return;
+    const t = setTimeout(() => setMapOobToast(o => ({...o, visible:false})), 5000);
+    return () => clearTimeout(t);
+  }, [mapOobToast.visible]);
+
   return (
     <>
       <style>{`
-        /* ── Popup — white/light ── */
+        /* ── Popup ── */
         .seribu-popup .leaflet-popup-content-wrapper {
           padding:0 !important; border-radius:14px !important; overflow:hidden !important;
           background:${L_.bg} !important;
@@ -705,7 +764,11 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         }
         .seribu-popup .leaflet-popup-close-button:hover { color:${L_.blue} !important; background:${L_.blueL} !important; }
 
-        /* ── Tooltip — white ── */
+        /* CTA hover inside popup */
+        .island-data-cta:hover { background:linear-gradient(135deg,rgba(26,59,191,0.13),rgba(79,212,232,0.13)) !important; }
+        .luwes-data-cta:hover  { background:linear-gradient(135deg,rgba(239,68,68,0.13),rgba(248,113,113,0.09)) !important; }
+
+        /* ── Tooltip ── */
         .seribu-tooltip {
           background:${L_.bg} !important; border:1.5px solid ${L_.border} !important;
           color:${L_.text1} !important; font-family:${SANS} !important;
@@ -715,7 +778,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         }
         .seribu-tooltip::before { display:none !important; }
 
-        /* ── Grid tooltip — light ── */
+        /* ── Grid tooltip ── */
         .grid-tooltip {
           background:rgba(255,255,255,0.97) !important;
           border:1.5px solid ${L_.border} !important;
@@ -724,7 +787,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         }
         .grid-tooltip::before { display:none !important; }
 
-        /* ── Leaflet zoom control ── */
+        /* ── Leaflet zoom ── */
         .leaflet-control-zoom {
           border:none !important; box-shadow:${L_.shadow} !important;
           margin-top:12px !important; margin-right:12px !important;
@@ -742,15 +805,13 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         .leaflet-control-zoom a:hover { background:${L_.blueL} !important; color:${L_.blue} !important; }
         .leaflet-control-zoom-out { border-bottom:none !important; }
 
-        /* ── Attribution ── */
+        /* ── Attribution / Scale ── */
         .leaflet-control-attribution {
           background:rgba(255,255,255,0.92) !important; color:${L_.text4} !important;
           font-size:10px !important; font-family:${SANS} !important;
           border-radius:6px 0 0 0 !important; padding:2px 8px !important;
         }
         .leaflet-control-attribution a { color:${L_.blue} !important; }
-
-        /* ── Scale ── */
         .leaflet-control-scale-line {
           background:rgba(255,255,255,0.92) !important; border-color:${L_.borderS} !important;
           color:${L_.text4} !important; font-size:10px !important; font-family:${SANS} !important;
@@ -765,13 +826,126 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         }
         .wg-grid-btn:hover,.wg-grid-btn.open { background:${L_.blueL}; border-color:${L_.blue}; color:${L_.blue}; }
 
+        /* ── OOB toast (map-level) ── */
+        .seribu-oob-toast {
+          position:absolute;
+          bottom:80px;
+          left:50%;
+          transform:translateX(-50%);
+          z-index:2000;
+          width:calc(100% - 48px);
+          max-width:420px;
+          display:flex;
+          align-items:flex-start;
+          gap:10px;
+          padding:12px 14px;
+          background:#fff;
+          border:1.5px solid #fecdd3;
+          border-radius:12px;
+          box-shadow:0 8px 28px rgba(0,0,0,0.14);
+          animation:wg-fadein 0.2s ease;
+          pointer-events:all;
+        }
+
         @keyframes wg-spin    { to { transform:rotate(360deg); } }
-        @keyframes wg-fadein  { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes wg-fadein  { from { opacity:0; transform:translateY(6px) translateX(-50%); } to { opacity:1; transform:translateY(0) translateX(-50%); } }
         @media (max-width:480px) { .leaflet-control-zoom { display:none !important; } }
+
+        /* ── Cursor overrides ── */
+        /* markers always pointer */
+        .leaflet-marker-icon { cursor: pointer !important; }
+        /* map tiles — cursor set dynamically via JS, but ensure no override */
+        .leaflet-container .leaflet-tile-pane { cursor: inherit; }
+        /* hide default leaflet cursor tooltip if any */
+        .leaflet-container { cursor: crosshair; }
       `}</style>
 
       <div ref={mapContainerRef} style={{position:"absolute",inset:0}}
         onWheel={e=>e.stopPropagation()}/>
+
+      {/* ── Hover cursor tooltip ── */}
+      {hoverTooltip.visible && !isMobile && (
+        <div style={{
+          position:"absolute",
+          left: hoverTooltip.x + 16,
+          top:  hoverTooltip.y - 36,
+          zIndex:2500,
+          pointerEvents:"none",
+          display:"flex",
+          alignItems:"center",
+          gap:6,
+          padding:"6px 11px",
+          borderRadius:8,
+          background: hoverTooltip.inBounds
+            ? "rgba(26,59,191,0.92)"
+            : "rgba(185,28,28,0.90)",
+          backdropFilter:"blur(6px)",
+          WebkitBackdropFilter:"blur(6px)",
+          boxShadow:"0 4px 14px rgba(0,0,0,0.22)",
+          whiteSpace:"nowrap",
+          transform:"translateY(0)",
+          transition:"opacity 0.12s",
+        }}>
+          {hoverTooltip.inBounds ? (
+            <>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span style={{fontFamily:SANS, fontSize:11, fontWeight:700, color:"#fff", letterSpacing:"0.02em"}}>
+                {language==="id" ? "Klik untuk informasi kelautan" : "Click for marine information"}
+              </span>
+            </>
+          ) : (
+            <>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                stroke="#fca5a5" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <span style={{fontFamily:SANS, fontSize:11, fontWeight:700, color:"#fca5a5", letterSpacing:"0.02em"}}>
+                {language==="id" ? "Di luar area layanan" : "Outside service area"}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Map-level OOB toast (for grid clicks & map interactions) ── */}
+      {mapOobToast.visible && (
+        <div className="seribu-oob-toast" style={{
+          // Override animation since we use a fixed position here
+          animation:"none",
+          bottom:80, left:"50%", transform:"translateX(-50%)",
+        }}>
+          <div style={{
+            width:32, height:32, borderRadius:"50%", flexShrink:0,
+            background:"#fee2e2",
+            display:"flex", alignItems:"center", justifyContent:"center",
+          }}>
+            <AlertTriangle size={14} style={{color:"#dc2626"}}/>
+          </div>
+          <div style={{flex:1}}>
+            <p style={{fontFamily:SANS,fontSize:11,fontWeight:800,color:"#991b1b",margin:"0 0 3px",letterSpacing:"0.02em"}}>
+              {language==="id"?"Lokasi di Luar Area Layanan":"Location Outside Service Area"}
+            </p>
+            <p style={{fontFamily:SANS,fontSize:11.5,fontWeight:500,color:"#7f1d1d",margin:0,lineHeight:1.5}}>
+              {language==="id"
+                ? "Titik yang dipilih di luar area Kepulauan Seribu (106°–107°BT, 5°–6,3°LS). Klik pada area kepulauan atau pilih pulau dari pencarian."
+                : "Selected point is outside Kepulauan Seribu (106°–107°E, 5°–6.3°S). Click within the archipelago or pick an island from search."}
+            </p>
+          </div>
+          <button
+            onClick={() => setMapOobToast(o => ({...o,visible:false}))}
+            style={{background:"none",border:"none",cursor:"pointer",color:"#9a9a9a",padding:"2px",flexShrink:0,display:"flex",marginTop:2}}
+          >
+            <X size={14}/>
+          </button>
+        </div>
+      )}
 
       {/* Legend — bottom left */}
       <div style={{
