@@ -1,7 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://searibu.vercel.app/</loc><priority>1.0</priority></url>
-  <url><loc>https://searibu.vercel.app/webgis</loc><priority>0.9</priority></url>
-  <url><loc>https://searibu.vercel.app/about</loc><priority>0.7</priority></url>
-  <url><loc>https://searibu.vercel.app/guide</loc><priority>0.7</priority></url>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+
+  <!-- Beranda -->
+  <url>
+    <loc>https://searibu.vercel.app/</loc>
+    <lastmod>2026-01-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://searibu.vercel.app/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://searibu.vercel.app/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://searibu.vercel.app/"/>
+  </url>
+
+  <!-- WebGIS -->
+  <url>
+    <loc>https://searibu.vercel.app/webgis</loc>
+    <lastmod>2026-01-15</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://searibu.vercel.app/webgis"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://searibu.vercel.app/webgis"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://searibu.vercel.app/webgis"/>
+  </url>
+
+  <!-- Tentang -->
+  <url>
+    <loc>https://searibu.vercel.app/about</loc>
+    <lastmod>2026-01-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://searibu.vercel.app/about"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://searibu.vercel.app/about"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://searibu.vercel.app/about"/>
+  </url>
+
+  <!-- Panduan -->
+  <url>
+    <loc>https://searibu.vercel.app/guide</loc>
+    <lastmod>2026-01-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://searibu.vercel.app/guide"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://searibu.vercel.app/guide"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://searibu.vercel.app/guide"/>
+  </url>
+
 </urlset>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext";
 import { Info } from "lucide-react";
+import { useSEO, PAGE_SEO } from "../../hooks/useSEO";
 
 const FONT     = "'Inter', system-ui, -apple-system, sans-serif";
 const DARK1    = "#2b2b2b";
@@ -222,6 +223,8 @@ export const AboutPage: React.FC = () => {
   const missionSection = useInView(0.15);
   const teamSection    = useInView(0.1);
   const supSection     = useInView(0.1);
+  const lang = language as "en" | "id";
+  useSEO(PAGE_SEO.webgis[lang]);
 
   useEffect(() => {
     const t = setTimeout(() => setHeroVisible(true), 80);

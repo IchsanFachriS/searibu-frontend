@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Blokir akses ke aset internal yang tidak perlu diindeks
+Disallow: /src/
+Disallow: /node_modules/
+Disallow: /*.local
+
+# Sitemap
+Sitemap: https://searibu.vercel.app/sitemap.xml

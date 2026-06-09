@@ -4,6 +4,7 @@ import { InfoPanel }     from "../webgis/InfoPanel";
 import { useLanguage }   from "../../context/LanguageContext";
 import { Layers, Map, Satellite, LayoutGrid } from "lucide-react";
 import type { BasemapType } from "../../types";
+import { useSEO, PAGE_SEO } from "../../hooks/useSEO";
 
 // "none" = no grid overlay (default)
 export type GridLayer = "none" | "tpxo" | "ecmwf" | "smoc";
@@ -219,6 +220,7 @@ const GridLayerToggle: React.FC<{
 /* ── WebGISPage ── */
 export const WebGISPage: React.FC = () => {
   const { language } = useLanguage();
+  const lang = language as "en" | "id";
   const [basemap,        setBasemap]        = useState<BasemapType>("satellite");
   const [panelOpen,      setPanelOpen]      = useState(false);
   const [selectedCoords, setSelectedCoords] = useState<Coords | null>(null);
@@ -226,6 +228,7 @@ export const WebGISPage: React.FC = () => {
   const [gridLayer,      setGridLayer]      = useState<GridLayer>("none");
   const [panelWidth,     setPanelWidth]     = useState(480);
   const isResizing = useRef(false);
+  useSEO(PAGE_SEO.webgis[lang]);useSEO(PAGE_SEO.webgis[lang]);
 
   const handleGridClick = (coords: Coords) => { setSelectedCoords(coords); setPanelOpen(true); };
   const handleClosePanel = () => { setPanelOpen(false); setTimeout(()=>setSelectedCoords(null),400); };

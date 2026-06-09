@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import { Download, ChevronDown, ChevronUp } from "lucide-react";
+import { useSEO, PAGE_SEO } from "../../hooks/useSEO";
 
 const FONT     = "'Inter', system-ui, -apple-system, sans-serif";
 const DARK1    = "#2b2b2b";
@@ -472,6 +473,8 @@ export const GuidePage: React.FC = () => {
     const t = setTimeout(() => setHeroVisible(true), 80);
     return () => clearTimeout(t);
   }, []);
+  const lang = language as "en" | "id";
+  useSEO(PAGE_SEO.webgis[lang]);
 
   const sec1 = useInView();
   const sec2 = useInView();

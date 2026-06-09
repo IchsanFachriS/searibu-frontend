@@ -9,6 +9,7 @@ import {
   CheckCircle, AlertTriangle, XCircle, RefreshCw, ChevronDown,
   ChevronRight, Lock,
 } from "lucide-react";
+import { useSEO, PAGE_SEO } from "../../hooks/useSEO";
 
 /* ── Design tokens ────────────────────────────────────────────────────── */
 const FONT     = "'Inter', system-ui, -apple-system, sans-serif";
@@ -620,7 +621,8 @@ export const HomePage: React.FC = () => {
   const onNavigate = (page: string) => navigate(page === "home" ? "/" : `/${page}`);
   const { language } = useLanguage();
   const c    = COPY[language as "en"|"id"];
-  const lang = language as "en"|"id";
+  const lang = language as "en" | "id";
+  useSEO(PAGE_SEO.home[lang]);
 
   const [phase, setPhase] = useState(0);
   useEffect(() => {
@@ -651,6 +653,7 @@ export const HomePage: React.FC = () => {
     map:   <Map   size={17} color={BLUE_D} />, shield: <Shield size={17} color={BLUE_D} />,
     chart: <BarChart2 size={17} color={BLUE_D} />, nav: <Navigation size={17} color={BLUE_D} />,
   };
+  
 
   return (
     <>

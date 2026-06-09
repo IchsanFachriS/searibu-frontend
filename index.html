@@ -1,23 +1,196 @@
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
+
+    <!-- ── Favicons ── -->
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
-    <link rel="icon" type="image/png" href="/logo.png" sizes="32x32" />    
+    <link rel="icon" type="image/png" href="/logo.png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+
+    <!-- ── Viewport ── -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Searibu - Ocean Weather Information System</title>
+
+    <!-- ── Primary SEO ── -->
+    <title>Searibu — Sistem Informasi Kelautan Kepulauan Seribu</title>
+    <meta name="description" content="Searibu menyediakan prediksi pasang surut TPXO10, prakiraan cuaca laut real-time, dan cek keamanan aktivitas bahari untuk 110+ pulau di Kepulauan Seribu. Didukung model TPXO10-atlas-v2 dan standar IHO S-104." />
+    <meta name="keywords" content="kepulauan seribu, pasang surut, prediksi pasut, cuaca laut, wisata bahari, snorkeling, diving, TPXO, S-104, WebGIS, oceanografi, kelautan jakarta" />
+    <meta name="author" content="Tim Searibu — Institut Teknologi Bandung" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+
+    <!-- ── Canonical ── -->
+    <link rel="canonical" href="https://searibu.vercel.app/" />
+
+    <!-- ── hreflang — bilingual EN/ID ── -->
+    <link rel="alternate" hreflang="id" href="https://searibu.vercel.app/" />
+    <link rel="alternate" hreflang="en" href="https://searibu.vercel.app/" />
+    <link rel="alternate" hreflang="x-default" href="https://searibu.vercel.app/" />
+
+    <!-- ── Open Graph (Facebook, WhatsApp, LinkedIn) ── -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Searibu" />
+    <meta property="og:title" content="Searibu — Sistem Informasi Kelautan Kepulauan Seribu" />
+    <meta property="og:description" content="Prediksi pasut TPXO10, prakiraan cuaca laut real-time, dan cek keamanan 11 aktivitas bahari untuk 110+ pulau di Kepulauan Seribu, Jakarta." />
+    <meta property="og:url" content="https://searibu.vercel.app/" />
+    <meta property="og:image" content="https://searibu.vercel.app/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Searibu — Peta WebGIS prediksi pasut dan cuaca laut Kepulauan Seribu" />
+    <meta property="og:locale" content="id_ID" />
+    <meta property="og:locale:alternate" content="en_US" />
+
+    <!-- ── Twitter Card ── -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Searibu — Sistem Informasi Kelautan Kepulauan Seribu" />
+    <meta name="twitter:description" content="Prediksi pasut TPXO10, prakiraan cuaca laut real-time, dan cek keamanan 11 aktivitas bahari untuk 110+ pulau di Kepulauan Seribu." />
+    <meta name="twitter:image" content="https://searibu.vercel.app/og-image.jpg" />
+    <meta name="twitter:image:alt" content="Searibu WebGIS — peta interaktif kelautan Kepulauan Seribu" />
+
+    <!-- ── Geo Meta ── -->
+    <meta name="geo.region" content="ID-JK" />
+    <meta name="geo.placename" content="Kepulauan Seribu, Jakarta, Indonesia" />
+    <meta name="geo.position" content="-5.7;106.6" />
+    <meta name="ICBM" content="-5.7, 106.6" />
+
+    <!-- ── Mobile / PWA ── -->
+    <meta name="theme-color" content="#f5c518" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Searibu" />
+
+    <!-- ── Preconnect ── -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://api.open-meteo.com" />
+    <link rel="dns-prefetch" href="https://marine-api.open-meteo.com" />
+    <link rel="dns-prefetch" href="https://tpxo-luwes-api-production.up.railway.app" />
+
+    <!-- ── Font loading — display=swap untuk avoid FOIT ── -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900&display=swap"
       rel="stylesheet"
     />
-    <meta name="description" content="Sistem informasi kelautan untuk wisata bahari di Kepulauan Seribu. Prediksi pasut TPXO9, cuaca laut real-time, dan cek keamanan aktivitas." />
-    <meta name="robots" content="index, follow" />
-    <meta property="og:title" content="Searibu - Ocean Weather Information System" />
-    <meta property="og:description" content="Prediksi pasut, cuaca laut, dan keamanan aktivitas bahari di Kepulauan Seribu." />
-    <meta property="og:url" content="https://searibu.vercel.app" />
-    <meta property="og:type" content="website" />
+
+    <!-- ── Structured Data: WebApplication ── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Searibu",
+      "alternateName": "Sistem Informasi Kelautan Kepulauan Seribu",
+      "url": "https://searibu.vercel.app",
+      "description": "Platform WebGIS kelautan yang menyediakan prediksi pasang surut berbasis TPXO10-atlas-v2, prakiraan cuaca laut real-time, dan penilaian keamanan aktivitas bahari untuk Kepulauan Seribu, Jakarta.",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Web browser",
+      "inLanguage": ["id", "en"],
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "Gratis",
+          "price": "0",
+          "priceCurrency": "IDR",
+          "description": "Prediksi pasut dasar, prakiraan 3 hari, dan cek keamanan aktivitas."
+        },
+        {
+          "@type": "Offer",
+          "name": "Pro",
+          "price": "39000",
+          "priceCurrency": "IDR",
+          "description": "Prakiraan 10 hari, ekspor HDF5 IHO S-104, overlay observasi Luwes."
+        }
+      ],
+      "creator": {
+        "@type": "EducationalOrganization",
+        "name": "Institut Teknologi Bandung",
+        "url": "https://www.itb.ac.id"
+      },
+      "spatialCoverage": {
+        "@type": "Place",
+        "name": "Kepulauan Seribu",
+        "geo": {
+          "@type": "GeoShape",
+          "box": "-6.3 106.0 -5.0 107.0"
+        },
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Kepulauan Seribu",
+          "addressRegion": "DKI Jakarta",
+          "addressCountry": "ID"
+        }
+      },
+      "featureList": [
+        "Prediksi pasang surut TPXO10 15 konstituen harmonik",
+        "Prakiraan cuaca laut real-time (angin, gelombang, arus)",
+        "Penilaian keamanan 11 aktivitas bahari",
+        "Observasi pasut real-time stasiun Luwes",
+        "Ekspor data standar IHO S-104 HDF5",
+        "Peta WebGIS interaktif Kepulauan Seribu"
+      ],
+      "screenshot": "https://searibu.vercel.app/og-image.jpg",
+      "softwareVersion": "1.0.0",
+      "datePublished": "2026-01-01",
+      "license": "https://creativecommons.org/licenses/by-nc/4.0/"
+    }
+    </script>
+
+    <!-- ── Structured Data: BreadcrumbList ── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Searibu",
+          "item": "https://searibu.vercel.app/"
+        }
+      ]
+    }
+    </script>
+
+    <!-- ── Structured Data: FAQPage — pertanyaan umum tentang pasut Kepulauan Seribu ── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Bagaimana cara cek prediksi pasang surut Kepulauan Seribu?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Buka halaman WebGIS Searibu, klik titik mana saja pada peta di area Kepulauan Seribu, lalu panel informasi kelautan akan terbuka menampilkan grafik prediksi pasut per jam menggunakan model TPXO10-atlas-v2."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah data pasut Kepulauan Seribu akurat?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Searibu menggunakan model TPXO10-atlas-v2 dengan 15 konstituen harmonik, yang merupakan model pasut astronomis global terkini. Data observasi real-time juga tersedia dari stasiun telemetri Luwes yang terletak di Kepulauan Seribu."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Aktivitas bahari apa saja yang bisa dicek keamanannya di Searibu?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Searibu menyediakan penilaian keamanan untuk 11 aktivitas: snorkeling, scuba diving, freediving, jet ski, SUP/kayak, wisata pulau (island hopping), memancing, konservasi penyu, camping pantai, foto bawah air, dan wisata umum. Setiap aktivitas dinilai berdasarkan kecepatan angin, tinggi gelombang, dan kecepatan arus laut."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Berapa jarak Kepulauan Seribu dari Jakarta?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Kepulauan Seribu berjarak sekitar 45 km dari Jakarta. Akses termudah melalui Pelabuhan Marina Ancol atau Muara Angke menggunakan kapal cepat atau kapal tradisional."
+          }
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
