@@ -7,6 +7,13 @@
  *              so each card has full width and nothing gets squished
  *
  * Portal-mounted → never trapped in any stacking context.
+ *
+ * Payment flow: POST /api/create-payment resolves the user account and
+ * returns a Mayar.id hosted checkout URL. Subscription activation happens
+ * later, asynchronously, via Mayar's webhook — this component never
+ * activates Pro directly. After the checkout tab opens, SubscriptionContext
+ * refreshes automatically on window focus so Pro status reflects once the
+ * webhook has processed the payment.
  */
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
@@ -58,7 +65,7 @@ const COPY = {
     title: "Choose your plan",
     sub: "Accurate tidal, weather & marine data for Kepulauan Seribu",
     tabPricing: "Plans", tabStatus: "My subscription",
-    demoBadge: "Demo Mode",
+    demoBadge: "Secure payment via Mayar.id",
     freeName: "Free", monthlyName: "Pro Monthly", annualName: "Pro Annual",
     freeDesc: "For occasional visitors",
     monthlyDesc: "For regular trip planners",
@@ -95,11 +102,14 @@ const COPY = {
     featActivity: "Full activity guide", featLuwes: "Luwes overlay",
     upgradeModal: {
       title: "Upgrade to Pro", sub: "Select a billing period to continue",
-      cta: "Activate Pro (Demo)", cancel: "Maybe later",
-      processing: "Activating…", successTitle: "Pro activated!",
+      cta: "Continue to Mayar.id Checkout", cancel: "Maybe later",
+      processing: "Opening checkout…", successTitle: "Pro activated!",
       successSub: "Your Pro plan is now active. Enjoy full access.",
-      errorTitle: "Activation failed", retry: "Try again",
-      demoNote: "Demo mode — subscription activates instantly without payment.",
+      errorTitle: "Could not start checkout", retry: "Try again",
+      demoNote: "You'll complete payment securely on Mayar.id. Your Pro plan activates automatically once payment is confirmed.",
+      redirectedTitle: "Complete payment on Mayar.id",
+      redirectedSub: "A new tab opened with the Mayar.id checkout page. Once your payment is confirmed, your Pro plan activates automatically — usually within a minute.",
+      checkLater: "I'll check back later", close: "Close",
     },
     notLoggedIn: "Sign in to upgrade your plan",
     planTabFree: "Free", planTabMonthly: "Monthly", planTabAnnual: "Annual",
@@ -108,7 +118,7 @@ const COPY = {
     title: "Pilih paket Anda",
     sub: "Data pasut, cuaca & kelautan akurat untuk Kepulauan Seribu",
     tabPricing: "Paket", tabStatus: "Langganan saya",
-    demoBadge: "Mode Demo",
+    demoBadge: "Pembayaran aman via Mayar.id",
     freeName: "Gratis", monthlyName: "Pro Bulanan", annualName: "Pro Tahunan",
     freeDesc: "Untuk pengunjung sesekali",
     monthlyDesc: "Untuk perencana perjalanan rutin",
@@ -145,11 +155,14 @@ const COPY = {
     featActivity: "Panduan aktivitas penuh", featLuwes: "Overlay Luwes",
     upgradeModal: {
       title: "Upgrade ke Pro", sub: "Pilih periode tagihan untuk melanjutkan",
-      cta: "Aktifkan Pro (Demo)", cancel: "Mungkin nanti",
-      processing: "Mengaktifkan…", successTitle: "Pro aktif!",
+      cta: "Lanjut ke Checkout Mayar.id", cancel: "Mungkin nanti",
+      processing: "Membuka checkout…", successTitle: "Pro aktif!",
       successSub: "Paket Pro Anda sekarang aktif. Nikmati akses penuh.",
-      errorTitle: "Aktivasi gagal", retry: "Coba lagi",
-      demoNote: "Mode demo — langganan aktif seketika tanpa pembayaran.",
+      errorTitle: "Checkout gagal dimulai", retry: "Coba lagi",
+      demoNote: "Pembayaran akan diselesaikan secara aman di Mayar.id. Paket Pro Anda aktif otomatis setelah pembayaran dikonfirmasi.",
+      redirectedTitle: "Selesaikan pembayaran di Mayar.id",
+      redirectedSub: "Tab baru terbuka dengan halaman checkout Mayar.id. Setelah pembayaran dikonfirmasi, paket Pro Anda akan aktif otomatis — biasanya dalam waktu kurang dari satu menit.",
+      checkLater: "Saya cek nanti", close: "Tutup",
     },
     notLoggedIn: "Masuk untuk upgrade paket",
     planTabFree: "Gratis", planTabMonthly: "Bulanan", planTabAnnual: "Tahunan",
@@ -161,7 +174,7 @@ const fmtDate = (iso: string | null) => {
   return new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
 };
 
-type DummyPayState = "idle" | "loading" | "success" | "error";
+type DummyPayState = "idle" | "loading" | "redirected" | "success" | "error";
 type PlanTab = "free" | "monthly" | "annual";
 
 /* ── FeatureRow ───────────────────────────────────────────────────── */
@@ -508,6 +521,24 @@ const UpgradeModal: React.FC<{
           </div>
         )}
 
+        {payState === "redirected" && (
+          <div style={{ textAlign: "center", padding: "16px 0 20px" }}>
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(56,189,248,0.10)", border: "2px solid rgba(56,189,248,0.30)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px" }}>
+              <Zap size={26} color={M.sky} />
+            </div>
+            <p style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: M.text1, marginBottom: 8 }}>{um.redirectedTitle}</p>
+            <p style={{ fontFamily: FONT, fontSize: 13, color: M.text2, marginBottom: 22, lineHeight: 1.6 }}>{um.redirectedSub}</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button onClick={onDone} style={{ padding: "10px 32px", borderRadius: 9, border: "none", background: M.amber, color: M.DARK1, fontFamily: FONT, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                {um.checkLater}
+              </button>
+              <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: FONT, fontSize: 12, color: M.text3, padding: 6 }}>
+                {um.close}
+              </button>
+            </div>
+          </div>
+        )}
+
         {payState === "error" && (
           <div style={{ textAlign: "center", padding: "8px 0 16px" }}>
             <p style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: M.text1, marginBottom: 6 }}>{um.errorTitle}</p>
@@ -518,7 +549,7 @@ const UpgradeModal: React.FC<{
 
         {(payState === "idle" || payState === "loading") && (
           <>
-            {/* Demo notice */}
+            {/* Payment notice */}
             <div style={{ background: "rgba(245,193,24,0.07)", border: `1px solid rgba(245,193,24,0.25)`, borderRadius: 9, padding: "9px 12px", marginBottom: 18, display: "flex", alignItems: "flex-start", gap: 8 }}>
               <Zap size={13} color={M.amber} style={{ flexShrink: 0, marginTop: 1 }} />
               <p style={{ fontFamily: FONT, fontSize: 11.5, color: M.amber, margin: 0, lineHeight: 1.5, opacity: 0.85 }}>{um.demoNote}</p>
@@ -626,13 +657,23 @@ export const PricingModal: React.FC<Props> = ({
     if (!user?.email) return;
     setPayState("loading"); setPayError(null);
     try {
-      const res = await fetch(`${API}/api/create-payment`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan: selectedPlan, email: user.email }) });
+      const res = await fetch(`${API}/api/create-payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: selectedPlan, email: user.email }),
+      });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Activation failed");
-      setPayState("success");
-      await refresh();
-    } catch (e: any) { setPayState("error"); setPayError(e.message || "Unknown error"); }
-  }, [user?.email, selectedPlan, refresh]);
+      if (!res.ok) throw new Error(data.error || "Failed to start checkout");
+      if (!data.checkout_url) throw new Error("No checkout URL returned");
+      // Open Mayar's hosted checkout in a new tab. Activation happens
+      // asynchronously via the Mayar webhook, not from this response —
+      // SubscriptionContext refreshes automatically when this tab regains focus.
+      window.open(data.checkout_url, "_blank", "noopener,noreferrer");
+      setPayState("redirected");
+    } catch (e: any) {
+      setPayState("error"); setPayError(e.message || "Unknown error");
+    }
+  }, [user?.email, selectedPlan]);
 
   if (!open) return null;
 
@@ -699,7 +740,7 @@ export const PricingModal: React.FC<Props> = ({
                 <h2 style={{ fontFamily: FONT, fontSize: wide ? 18 : 16, fontWeight: 700, color: M.text1, margin: 0, lineHeight: 1.2 }}>
                   {l.title}
                 </h2>
-                {/* Demo badge */}
+                {/* Payment provider badge */}
                 <span style={{
                   display: "inline-flex", alignItems: "center",
                   padding: "2px 9px", borderRadius: 99,
