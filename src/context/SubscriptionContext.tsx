@@ -4,6 +4,11 @@
  * FIX: refresh() sekarang selalu merge is_admin dan role dari /api/profile
  * tanpa conditional check, sehingga update is_admin dari Supabase langsung
  * tercermin setelah sesi berikutnya (atau manual refresh).
+ *
+ * MAYAR.ID INTEGRATION: subscription activation now happens asynchronously
+ * via Mayar's webhook while the user completes payment in a separate tab.
+ * To reflect that update without requiring a manual reload, refresh() is
+ * also triggered when this tab regains focus or becomes visible again.
  */
 
 import React, {
@@ -121,6 +126,21 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
   }, [user?.email]);  // Hapus dependency user.role dan user.is_admin untuk hindari loop
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  // Mayar's webhook updates the subscription asynchronously while the
+  // user is completing payment on Mayar's hosted checkout page in another
+  // tab — refresh when they return to this tab so Pro status reflects
+  // without requiring a manual reload.
+  useEffect(() => {
+    const onFocus = () => refresh();
+    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [refresh]);
 
   const isAdmin      = user?.is_admin === true;
   const isPro        = isAdmin || ((sub.plan === "pro_monthly" || sub.plan === "pro_annual") && sub.status === "active");
