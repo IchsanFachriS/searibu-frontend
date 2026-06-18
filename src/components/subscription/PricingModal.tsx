@@ -109,6 +109,7 @@ const COPY = {
       demoNote: "You'll complete payment securely on Mayar.id. Your Pro plan activates automatically once payment is confirmed.",
       redirectedTitle: "Complete payment on Mayar.id",
       redirectedSub: "A new tab opened with the Mayar.id checkout page. Once your payment is confirmed, your Pro plan activates automatically — usually within a minute.",
+      popupBlockedCta: "Open checkout page",
       checkLater: "I'll check back later", close: "Close",
     },
     notLoggedIn: "Sign in to upgrade your plan",
@@ -162,6 +163,7 @@ const COPY = {
       demoNote: "Pembayaran akan diselesaikan secara aman di Mayar.id. Paket Pro Anda aktif otomatis setelah pembayaran dikonfirmasi.",
       redirectedTitle: "Selesaikan pembayaran di Mayar.id",
       redirectedSub: "Tab baru terbuka dengan halaman checkout Mayar.id. Setelah pembayaran dikonfirmasi, paket Pro Anda akan aktif otomatis — biasanya dalam waktu kurang dari satu menit.",
+      popupBlockedCta: "Buka halaman checkout",
       checkLater: "Saya cek nanti", close: "Tutup",
     },
     notLoggedIn: "Masuk untuk upgrade paket",
@@ -492,8 +494,9 @@ const UpgradeModal: React.FC<{
   selectedPlan: "pro_monthly" | "pro_annual";
   setSelectedPlan: (p: "pro_monthly" | "pro_annual") => void;
   payState: DummyPayState; payError: string | null; user: any;
+  pendingCheckoutUrl: string | null;
   onActivate: () => void; onClose: () => void; onDone: () => void;
-}> = ({ language, l, selectedPlan, setSelectedPlan, payState, payError, user, onActivate, onClose, onDone }) => {
+}> = ({ language, l, selectedPlan, setSelectedPlan, payState, payError, user, pendingCheckoutUrl, onActivate, onClose, onDone }) => {
   const um = l.upgradeModal;
   const plans = [
     { id: "pro_monthly" as const, name: l.monthlyName, price: `${l.monthlyPrice}${l.perMonth}` },
@@ -528,6 +531,16 @@ const UpgradeModal: React.FC<{
             </div>
             <p style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: M.text1, marginBottom: 8 }}>{um.redirectedTitle}</p>
             <p style={{ fontFamily: FONT, fontSize: 13, color: M.text2, marginBottom: 22, lineHeight: 1.6 }}>{um.redirectedSub}</p>
+            {pendingCheckoutUrl && (
+              <a
+                href={pendingCheckoutUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: "inline-block", marginBottom: 14, padding: "10px 24px", borderRadius: 9, background: M.sky, color: M.DARK1, fontFamily: FONT, fontSize: 13, fontWeight: 700, textDecoration: "none" }}
+              >
+                {um.popupBlockedCta}
+              </a>
+            )}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <button onClick={onDone} style={{ padding: "10px 32px", borderRadius: 9, border: "none", background: M.amber, color: M.DARK1, fontFamily: FONT, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
                 {um.checkLater}
@@ -631,10 +644,11 @@ export const PricingModal: React.FC<Props> = ({
   const [selectedPlan, setSelectedPlan] = useState<"pro_monthly" | "pro_annual">("pro_monthly");
   const [payState, setPayState] = useState<DummyPayState>("idle");
   const [payError, setPayError] = useState<string | null>(null);
+  const [pendingCheckoutUrl, setPendingCheckoutUrl] = useState<string | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (open) { setTab(initialTab); setPayState("idle"); setPayError(null); setShowUpgrade(false); }
+    if (open) { setTab(initialTab); setPayState("idle"); setPayError(null); setShowUpgrade(false); setPendingCheckoutUrl(null); }
   }, [open, initialTab]);
 
   useEffect(() => {
@@ -655,7 +669,25 @@ export const PricingModal: React.FC<Props> = ({
 
   const handleUpgrade = useCallback(async () => {
     if (!user?.email) return;
-    setPayState("loading"); setPayError(null);
+    setPayState("loading"); setPayError(null); setPendingCheckoutUrl(null);
+
+    // Open the destination tab synchronously, as the very first action in
+    // this click handler — before any `await` — so browsers (Safari/iOS in
+    // particular) still recognise it as a direct result of the user's click
+    // and don't block it as an unsolicited popup. We navigate this
+    // already-open tab to the real checkout URL once we have it below.
+    // (Deliberately not using "noopener" here: that would make window.open
+    // return null, leaving us no reference to navigate later. Instead we
+    // null out .opener manually for the same hardening, while it's still
+    // same-origin "about:blank".)
+    let checkoutTab: Window | null = null;
+    try {
+      checkoutTab = window.open("", "_blank");
+      if (checkoutTab) {
+        try { (checkoutTab as any).opener = null; } catch { /* best-effort only */ }
+      }
+    } catch { /* some browsers/extensions may throw; fall back below */ }
+
     try {
       const res = await fetch(`${API}/api/create-payment`, {
         method: "POST",
@@ -665,12 +697,22 @@ export const PricingModal: React.FC<Props> = ({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to start checkout");
       if (!data.checkout_url) throw new Error("No checkout URL returned");
-      // Open Mayar's hosted checkout in a new tab. Activation happens
-      // asynchronously via the Mayar webhook, not from this response —
-      // SubscriptionContext refreshes automatically when this tab regains focus.
-      window.open(data.checkout_url, "_blank", "noopener,noreferrer");
+
+      // Navigate the pre-opened tab to Mayar's hosted checkout. Activation
+      // happens asynchronously via the Mayar webhook, not from this
+      // response — SubscriptionContext refreshes automatically when this
+      // tab regains focus.
+      if (checkoutTab && !checkoutTab.closed) {
+        checkoutTab.location.href = data.checkout_url;
+      } else {
+        // The pre-opened tab was blocked or closed anyway (rare, but some
+        // aggressive ad/popup blockers still catch this) — show a manual
+        // link in the modal instead of silently failing.
+        setPendingCheckoutUrl(data.checkout_url);
+      }
       setPayState("redirected");
     } catch (e: any) {
+      checkoutTab?.close();
       setPayState("error"); setPayError(e.message || "Unknown error");
     }
   }, [user?.email, selectedPlan]);
@@ -865,8 +907,9 @@ export const PricingModal: React.FC<Props> = ({
           language={language} l={l}
           selectedPlan={selectedPlan} setSelectedPlan={setSelectedPlan}
           payState={payState} payError={payError} user={user}
+          pendingCheckoutUrl={pendingCheckoutUrl}
           onActivate={handleUpgrade}
-          onClose={() => { setShowUpgrade(false); setPayState("idle"); setPayError(null); }}
+          onClose={() => { setShowUpgrade(false); setPayState("idle"); setPayError(null); setPendingCheckoutUrl(null); }}
           onDone={() => { setShowUpgrade(false); setTab("status"); }}
         />
       )}
